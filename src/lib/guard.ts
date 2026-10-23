@@ -1,4 +1,5 @@
 import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import type { Role } from "@db/prisma/client";
 
@@ -22,6 +23,20 @@ export async function requireStaffRole(roles: Role[]) {
   const session = await requireStaff();
   if (!roles.includes(session.user.role)) redirect("/dashboard");
   return session;
+}
+
+/** Return branchId staff (null = lintas cabang, untuk owner/sysadmin).
+ *  Admin/mekanik selalu punya branchId. */
+export async function getStaffBranchId(): Promise<string | null> {
+  const session = await requireStaff();
+  if (session.user.role === "OWNER" || session.user.role === "SYS_ADMIN") {
+    return null;
+  }
+  const user = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { branchId: true },
+  });
+  return user?.branchId ?? null;
 }
 
 export function isStaff(role: Role): boolean {
