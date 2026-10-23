@@ -1,6 +1,6 @@
 {
-  "name": "RevLedger - Manajemen Bengkel",
-  "short_name": "RevLedger",
+  "name": "RevGo - Manajemen Bengkel",
+  "short_name": "RevGo",
   "description": "Stok, cashflow, booking & proses servis bengkel",
   "id": "/",
   "start_url": "/",

@@ -28,3 +28,5 @@ npm-debug.log*
 next-env.d.ts
 *.tsbuildinfo
 .neon
+.vercel
+.env*

@@ -1,4 +1,4 @@
-# PRD — RevLedger
+# PRD — RevGo
 
 **Versi:** 0.3 (draft untuk review)
 **Tanggal:** 23 Oktober 2026
@@ -15,7 +15,7 @@
 
 **Masalah.** Bengkel kecil-menengah mengelola booking, stok part, dan arus kas lewat buku catatan/WhatsApp/Excel — data tercecer, stok sering meleset, piutang tidak terpantau, dan pemilik tidak punya gambaran keuangan harian.
 
-**Solusi.** RevLedger adalah aplikasi web (PWA, mobile-first) yang mengelola operasional bengkel terpadu: booking & proses servis, inventori suku cadang, pencatatan kas & piutang, dan laporan pemilik — dengan akses berbasis peran (owner, system administrator, admin, mekanik, customer).
+**Solusi.** RevGo adalah aplikasi web (PWA, mobile-first) yang mengelola operasional bengkel terpadu: booking & proses servis, inventori suku cadang, pencatatan kas & piutang, dan laporan pemilik — dengan akses berbasis peran (owner, system administrator, admin, mekanik, customer).
 
 **Tujuan rilis 1:**
 - Satu siklus penuh jalan: booking → estimasi disetujui → pemeriksaan unit → pengerjaan → pembayaran (lunas/DP/piutang) → kas & laporan tercatat otomatis.
@@ -88,7 +88,7 @@ PENDING / WAITING_APPROVAL / CONFIRMED ──(batal)→ CANCELLED (wajib alasan)
 
 **Pemetaan ke tahapan bengkel umum:**
 
-| Tahapan industri | Implementasi RevLedger |
+| Tahapan industri | Implementasi RevGo |
 |---|---|
 | Penerimaan & antrian (booking) | `PENDING` (booking app atau input admin) |
 | Diagnosis & penyusunan estimasi | Admin/mekanik isi estimasi → `WAITING_APPROVAL` |

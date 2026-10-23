@@ -9,7 +9,7 @@ const adapter = new PrismaPg({
 const prisma = new PrismaClient({ adapter });
 
 const DEFAULT_SETTINGS: Record<string, string> = {
-  app_name: "RevLedger",
+  app_name: "RevGo",
   dp_policy: "TANPA_REFUND",
   service_code_prefix: "SV-",
 };
@@ -37,7 +37,7 @@ async function main() {
   console.log("SystemSetting defaults siap.");
 
   // 3. Akun owner (lintas cabang, branchId null)
-  const ownerEmail = "owner@revledger.id";
+  const ownerEmail = "owner@revgo.id";
   const ownerExists = await prisma.user.findUnique({ where: { email: ownerEmail } });
   if (!ownerExists) {
     await prisma.user.create({
@@ -56,7 +56,7 @@ async function main() {
   }
 
   // 4. Akun SYS_ADMIN (lintas cabang, branchId null)
-  const sysAdminEmail = "sysadmin@revledger.id";
+  const sysAdminEmail = "sysadmin@revgo.id";
   const sysAdminExists = await prisma.user.findUnique({ where: { email: sysAdminEmail } });
   if (!sysAdminExists) {
     await prisma.user.create({

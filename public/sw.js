@@ -1,4 +1,4 @@
-const CACHE = "revledger-v1";
+const CACHE = "revgo-v1";
 const OFFLINE_URL = "/";
 
 self.addEventListener("install", (event) => {

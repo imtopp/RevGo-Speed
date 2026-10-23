@@ -41,7 +41,7 @@ export async function GET() {
 
   const payload = {
     exportedAt: new Date().toISOString(),
-    app: "RevLedger",
+    app: "RevGo",
     data: {
       branches,
       users,
@@ -58,7 +58,7 @@ export async function GET() {
     },
   };
 
-  const filename = `revledger-backup-${new Date().toISOString().slice(0, 10)}.json`;
+  const filename = `revgo-backup-${new Date().toISOString().slice(0, 10)}.json`;
 
   return new NextResponse(JSON.stringify(payload, null, 2), {
     headers: {

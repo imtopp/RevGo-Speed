@@ -22,7 +22,7 @@ export default async function StaffLayout({
   return (
     <div className="mx-auto flex min-h-dvh max-w-lg flex-col bg-slate-50">
       <header className="flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3">
-        <span className="font-bold tracking-tight">RevLedger</span>
+        <span className="font-bold tracking-tight">RevGo</span>
         <div className="flex items-center gap-3">
           <span className="max-w-24 truncate text-sm text-slate-500">
             {session.user.name}

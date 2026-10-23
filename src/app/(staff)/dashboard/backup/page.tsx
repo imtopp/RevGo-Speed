@@ -20,7 +20,7 @@ export default async function BackupPage() {
           Backup Otomatis (Neon)
         </h2>
         <p className="text-sm text-slate-600">
-          Database RevLedger berjalan di <strong>Neon Postgres</strong>. Neon
+          Database RevGo berjalan di <strong>Neon Postgres</strong>. Neon
           menyimpan backup otomatis harian dengan retensi beberapa hari serta
           mendukung <em>point-in-time restore</em> (PILIH titik waktu untuk
           memulihkan). Kamu tidak perlu menjalankan backup manual untuk

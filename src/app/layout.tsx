@@ -4,11 +4,11 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: {
-    default: "RevLedger",
-    template: "%s · RevLedger",
+    default: "RevGo",
+    template: "%s · RevGo",
   },
   description: "Manajemen bengkel: stok, cashflow, booking & proses servis",
-  applicationName: "RevLedger",
+  applicationName: "RevGo",
   manifest: "/manifest.webmanifest",
   icons: {
     icon: [
@@ -19,7 +19,7 @@ export const metadata: Metadata = {
   },
   appleWebApp: {
     capable: true,
-    title: "RevLedger",
+    title: "RevGo",
     statusBarStyle: "default",
   },
 };

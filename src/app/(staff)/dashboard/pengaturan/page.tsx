@@ -7,7 +7,7 @@ import Link from "next/link";
 export const metadata = { title: "Pengaturan" };
 
 const SETTING_FIELDS = [
-  { key: "app_name", label: "Nama Aplikasi", placeholder: "RevLedger" },
+  { key: "app_name", label: "Nama Aplikasi", placeholder: "RevGo" },
   {
     key: "dp_policy",
     label: "Kebijakan Refund DP",

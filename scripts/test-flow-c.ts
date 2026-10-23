@@ -8,7 +8,7 @@ const prisma = new PrismaClient({
 async function main() {
   const branch = await prisma.branch.findFirst({ where: { name: "Pusat" } });
   if (!branch) throw new Error("Branch Pusat tidak ada");
-  const owner = await prisma.user.findFirst({ where: { email: "owner@revledger.id" } });
+  const owner = await prisma.user.findFirst({ where: { email: "owner@revgo.id" } });
   if (!owner) throw new Error("Owner tidak ada");
 
   const sku = "TEST-" + Date.now().toString().slice(-5);

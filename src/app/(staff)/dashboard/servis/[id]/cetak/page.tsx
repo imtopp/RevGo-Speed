@@ -49,7 +49,7 @@ export default async function CetakNotaPage({
       <div className="rounded-lg bg-white p-5 text-sm text-black ring-1 ring-slate-200 print:ring-0">
         <div className="text-center">
           <p className="text-lg font-bold">{service.branch.name}</p>
-          <p className="text-xs text-slate-600">RevLedger · Bengkel</p>
+          <p className="text-xs text-slate-600">RevGo · Bengkel</p>
         </div>
 
         <div className="mt-3 border-t border-dashed border-slate-300 pt-3">

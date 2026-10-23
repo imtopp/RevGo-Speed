@@ -12,7 +12,7 @@ function totalTagihan(laborCost: number, parts: { price: number; quantity: numbe
 
 async function main() {
   const branch = await prisma.branch.findFirst({ where: { name: "Pusat" } });
-  const owner = await prisma.user.findFirst({ where: { email: "owner@revledger.id" } });
+  const owner = await prisma.user.findFirst({ where: { email: "owner@revgo.id" } });
   if (!branch || !owner) throw new Error("Seed data kurang");
   const branchId = branch.id;
   const ownerId = owner.id;
