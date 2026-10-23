@@ -1,0 +1,186 @@
+"use client";
+
+import { useActionState, useState } from "react";
+import {
+  resetPassword,
+  toggleActive,
+  assignBranch,
+  type StaffState,
+} from "./actions";
+
+type UserRow = {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  isActive: boolean;
+  branch: { id: string; name: string } | null;
+};
+
+type Branch = { id: string; name: string };
+
+const ROLE_LABEL: Record<string, string> = {
+  OWNER: "Owner",
+  SYS_ADMIN: "SysAdmin",
+  ADMIN: "Admin",
+  MECHANIC: "Mekanik",
+  CUSTOMER: "Customer",
+};
+
+function ActionPanel({
+  user,
+  branches,
+}: {
+  user: UserRow;
+  branches: Branch[];
+}) {
+  const [resetState, resetAction, resetPending] = useActionState<
+    StaffState,
+    FormData
+  >(resetPassword, {});
+  const [toggleState, toggleAction, togglePending] = useActionState<
+    StaffState,
+    FormData
+  >(toggleActive, {});
+  const [assignState, assignAction, assignPending] = useActionState<
+    StaffState,
+    FormData
+  >(assignBranch, {});
+
+  const isOwner = user.role === "OWNER";
+  const isSysAdmin = user.role === "SYS_ADMIN";
+  const assignable = !isOwner && !isSysAdmin;
+
+  return (
+    <div className="mt-3 space-y-3 border-t border-slate-200 pt-3">
+      {assignable && (
+        <form action={assignAction} className="flex items-end gap-2">
+          <input type="hidden" name="id" value={user.id} />
+          <div className="flex-1">
+            <label className="block text-xs font-medium text-slate-500">
+              Cabang
+            </label>
+            <select
+              name="branchId"
+              defaultValue={user.branch?.id ?? ""}
+              className="mt-1 w-full rounded-lg border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-slate-900"
+            >
+              <option value="">— Lintas cabang —</option>
+              {branches.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <button
+            type="submit"
+            disabled={assignPending}
+            className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 active:opacity-90 disabled:opacity-60"
+          >
+            {assignPending ? "..." : "Assign"}
+          </button>
+        </form>
+      )}
+
+      {!isOwner && (
+        <form action={resetAction} className="flex items-end gap-2">
+          <input type="hidden" name="id" value={user.id} />
+          <div className="flex-1">
+            <label className="block text-xs font-medium text-slate-500">
+              Password Baru
+            </label>
+            <input
+              name="password"
+              type="password"
+              minLength={6}
+              placeholder="min. 6 karakter"
+              className="mt-1 w-full rounded-lg border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-slate-900"
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={resetPending}
+            className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 active:opacity-90 disabled:opacity-60"
+          >
+            {resetPending ? "..." : "Reset"}
+          </button>
+        </form>
+      )}
+
+      {!isOwner && (
+        <form action={toggleAction}>
+          <input type="hidden" name="id" value={user.id} />
+          <button
+            type="submit"
+            disabled={togglePending}
+            className={`w-full rounded-lg px-3 py-1.5 text-sm font-medium active:opacity-90 disabled:opacity-60 ${
+              user.isActive
+                ? "bg-red-50 text-red-600 ring-1 ring-red-200"
+                : "bg-green-50 text-green-700 ring-1 ring-green-200"
+            }`}
+          >
+            {togglePending
+              ? "..."
+              : user.isActive
+                ? "Nonaktifkan"
+                : "Aktifkan"}
+          </button>
+        </form>
+      )}
+
+      {(resetState.error || toggleState.error || assignState.error) && (
+        <p className="text-sm text-red-600">
+          {resetState.error || toggleState.error || assignState.error}
+        </p>
+      )}
+      {(resetState.success || toggleState.success || assignState.success) && (
+        <p className="text-sm text-green-600">
+          {resetState.success || toggleState.success || assignState.success}
+        </p>
+      )}
+    </div>
+  );
+}
+
+export function UserList({
+  users,
+  branches,
+}: {
+  users: UserRow[];
+  branches: Branch[];
+}) {
+  const [openId, setOpenId] = useState<string | null>(null);
+
+  return (
+    <div className="space-y-2">
+      {users.map((user) => (
+        <div
+          key={user.id}
+          className="rounded-xl bg-white p-4 ring-1 ring-slate-200"
+        >
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <p className="font-medium">{user.name}</p>
+              <p className="truncate text-sm text-slate-500">{user.email}</p>
+              <p className="mt-1 text-xs text-slate-400">
+                {ROLE_LABEL[user.role] ?? user.role} ·{" "}
+                {user.branch?.name ?? "Lintas cabang"} ·{" "}
+                {user.isActive ? "Aktif" : "Nonaktif"}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setOpenId(openId === user.id ? null : user.id)}
+              className="shrink-0 text-sm font-medium text-slate-700 underline underline-offset-2"
+            >
+              {openId === user.id ? "Tutup" : "Atur"}
+            </button>
+          </div>
+
+          {openId === user.id && <ActionPanel user={user} branches={branches} />}
+        </div>
+      ))}
+    </div>
+  );
+}

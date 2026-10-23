@@ -9,6 +9,7 @@ datasource db {
 
 enum Role {
   OWNER
+  SYS_ADMIN
   ADMIN
   MECHANIC
   CUSTOMER
@@ -16,11 +17,18 @@ enum Role {
 
 enum ServiceStatus {
   PENDING
+  WAITING_APPROVAL
   CONFIRMED
+  CHECKED_IN
   IN_PROGRESS
   WAITING_PARTS
   DONE
   CANCELLED
+}
+
+enum ServiceSource {
+  APP
+  ADMIN
 }
 
 enum StockMovementType {
@@ -33,10 +41,20 @@ enum CashflowType {
   EXPENSE
 }
 
+enum CashflowAccount {
+  KAS
+  BANK
+}
+
 enum PaymentMethod {
   CASH
   QRIS
   TRANSFER
+}
+
+enum PaymentKind {
+  DP
+  PELUNASAN
 }
 
 model User {
@@ -47,6 +65,8 @@ model User {
   passwordHash String
   role         Role     @default(CUSTOMER)
   isActive     Boolean  @default(true)
+  branchId     String?
+  branch       Branch?  @relation(fields: [branchId], references: [id])
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -55,6 +75,58 @@ model User {
   servicesAsMechanic Service[]      @relation("ServiceMechanic")
   stockMovements     StockMovement[]
   cashflows          Cashflow[]
+  paymentsReceived   Payment[]      @relation("PaymentReceivedBy")
+}
+
+model Branch {
+  id        String   @id @default(cuid())
+  name      String
+  address   String?
+  phone     String?
+  jamBuka   String   @default("08:00")
+  jamTutup  String   @default("17:00")
+  hariAktif String   @default("1,2,3,4,5,6")
+  aktif     Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users     User[]
+  parts     Part[]
+  services  Service[]
+  cashflows Cashflow[]
+}
+
+model ServiceCatalog {
+  id         String   @id @default(cuid())
+  nama       String
+  deskripsi  String?
+  hargaDasar Int      @default(0)
+  allowDp    Boolean  @default(false)
+  aktif      Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  services Service[]
+}
+
+model Supplier {
+  id        String   @id @default(cuid())
+  nama      String
+  telepon   String?
+  catatan   String?
+  aktif     Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  parts          Part[]
+  stockMovements StockMovement[]
+}
+
+model SystemSetting {
+  key       String   @id
+  value     String
+  updatedBy String?
+  updatedAt DateTime @updatedAt
 }
 
 model Vehicle {
@@ -71,53 +143,69 @@ model Vehicle {
 }
 
 model Part {
-  id        String   @id @default(cuid())
-  sku       String   @unique
-  name      String
-  category  String?
-  unit      String   @default("pcs")
-  quantity  Int      @default(0)
-  minStock  Int      @default(0)
-  buyPrice  Int      @default(0)
-  sellPrice Int      @default(0)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id         String    @id @default(cuid())
+  sku        String
+  name       String
+  category   String?
+  unit       String    @default("pcs")
+  quantity   Int       @default(0)
+  minStock   Int       @default(0)
+  buyPrice   Int       @default(0)
+  sellPrice  Int       @default(0)
+  branchId   String
+  branch     Branch    @relation(fields: [branchId], references: [id])
+  supplierId String?
+  supplier   Supplier? @relation(fields: [supplierId], references: [id])
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
 
   movements    StockMovement[]
   serviceParts ServicePart[]
+
+  @@unique([branchId, sku])
 }
 
 model StockMovement {
-  id        String            @id @default(cuid())
-  partId    String
-  part      Part              @relation(fields: [partId], references: [id])
-  type      StockMovementType
-  quantity  Int
-  note      String?
-  userId    String?
-  user      User?             @relation(fields: [userId], references: [id])
-  createdAt DateTime          @default(now())
+  id         String            @id @default(cuid())
+  partId     String
+  part       Part              @relation(fields: [partId], references: [id])
+  type       StockMovementType
+  quantity   Int
+  cost       Int?
+  note       String?
+  userId     String?
+  user       User?             @relation(fields: [userId], references: [id])
+  supplierId String?
+  supplier   Supplier?         @relation(fields: [supplierId], references: [id])
+  createdAt  DateTime          @default(now())
 }
 
 model Service {
-  id          String        @id @default(cuid())
-  code        String        @unique
-  vehicleId   String
-  vehicle     Vehicle       @relation(fields: [vehicleId], references: [id])
-  customerId  String
-  customer    User          @relation("ServiceCustomer", fields: [customerId], references: [id])
-  mechanicId  String?
-  mechanic    User?         @relation("ServiceMechanic", fields: [mechanicId], references: [id])
-  status      ServiceStatus @default(PENDING)
-  complaint   String?
-  diagnosis   String?
-  estimate    Int           @default(0)
-  laborCost   Int           @default(0)
-  scheduledAt DateTime?
-  startedAt   DateTime?
-  finishedAt  DateTime?
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  id           String         @id @default(cuid())
+  code         String         @unique
+  branchId     String
+  branch       Branch         @relation(fields: [branchId], references: [id])
+  source       ServiceSource  @default(ADMIN)
+  catalogId    String?
+  catalog      ServiceCatalog? @relation(fields: [catalogId], references: [id])
+  vehicleId    String
+  vehicle      Vehicle        @relation(fields: [vehicleId], references: [id])
+  customerId   String
+  customer     User           @relation("ServiceCustomer", fields: [customerId], references: [id])
+  mechanicId   String?
+  mechanic     User?          @relation("ServiceMechanic", fields: [mechanicId], references: [id])
+  status       ServiceStatus  @default(PENDING)
+  complaint    String?
+  diagnosis    String?
+  estimate     Int            @default(0)
+  laborCost    Int            @default(0)
+  cancelReason String?
+  scheduledAt  DateTime?
+  checkedInAt  DateTime?
+  startedAt    DateTime?
+  finishedAt   DateTime?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
 
   parts    ServicePart[]
   payments Payment[]
@@ -131,6 +219,7 @@ model ServicePart {
   part      Part    @relation(fields: [partId], references: [id])
   quantity  Int
   price     Int
+  cost      Int     @default(0)
 }
 
 model Payment {
@@ -138,19 +227,25 @@ model Payment {
   serviceId    String?
   service      Service?      @relation(fields: [serviceId], references: [id])
   amount       Int
+  kind         PaymentKind   @default(PELUNASAN)
   method       PaymentMethod @default(CASH)
+  paidAt       DateTime      @default(now())
   note         String?
   receivedById String?
+  receivedBy   User?         @relation("PaymentReceivedBy", fields: [receivedById], references: [id])
   createdAt    DateTime      @default(now())
 }
 
 model Cashflow {
-  id            String        @id @default(cuid())
+  id            String          @id @default(cuid())
   type          CashflowType
   category      String
   amount        Int
+  account       CashflowAccount @default(KAS)
   description   String?
+  branchId      String
+  branch        Branch          @relation(fields: [branchId], references: [id])
   createdBy     String?
-  createdByUser User?         @relation(fields: [createdBy], references: [id])
-  createdAt     DateTime      @default(now())
+  createdByUser User?           @relation(fields: [createdBy], references: [id])
+  createdAt     DateTime        @default(now())
 }
