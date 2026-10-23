@@ -1,0 +1,29 @@
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+
+# npm cache (isolated di workspace)
+/.npm-cache
+
+# prisma
+/prisma/dev.db
+/prisma/dev.db-journal
+/generated
+
+# next.js
+/.next
+/out
+/build
+
+# env
+.env
+.env.local
+.env*.local
+
+# misc
+.DS_Store
+*.pem
+npm-debug.log*
+next-env.d.ts
+*.tsbuildinfo

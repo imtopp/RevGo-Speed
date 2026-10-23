@@ -1,0 +1,156 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+enum Role {
+  OWNER
+  ADMIN
+  MECHANIC
+  CUSTOMER
+}
+
+enum ServiceStatus {
+  PENDING
+  CONFIRMED
+  IN_PROGRESS
+  WAITING_PARTS
+  DONE
+  CANCELLED
+}
+
+enum StockMovementType {
+  IN
+  OUT
+}
+
+enum CashflowType {
+  INCOME
+  EXPENSE
+}
+
+enum PaymentMethod {
+  CASH
+  QRIS
+  TRANSFER
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  phone        String?
+  passwordHash String
+  role         Role     @default(CUSTOMER)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  vehicles           Vehicle[]      @relation("VehicleOwner")
+  servicesAsCustomer Service[]      @relation("ServiceCustomer")
+  servicesAsMechanic Service[]      @relation("ServiceMechanic")
+  stockMovements     StockMovement[]
+  cashflows          Cashflow[]
+}
+
+model Vehicle {
+  id          String   @id @default(cuid())
+  plateNumber String   @unique
+  brand       String
+  model       String
+  year        Int?
+  ownerId     String
+  owner       User     @relation("VehicleOwner", fields: [ownerId], references: [id])
+  createdAt   DateTime @default(now())
+
+  services Service[]
+}
+
+model Part {
+  id        String   @id @default(cuid())
+  sku       String   @unique
+  name      String
+  category  String?
+  unit      String   @default("pcs")
+  quantity  Int      @default(0)
+  minStock  Int      @default(0)
+  buyPrice  Int      @default(0)
+  sellPrice Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  movements    StockMovement[]
+  serviceParts ServicePart[]
+}
+
+model StockMovement {
+  id        String            @id @default(cuid())
+  partId    String
+  part      Part              @relation(fields: [partId], references: [id])
+  type      StockMovementType
+  quantity  Int
+  note      String?
+  userId    String?
+  user      User?             @relation(fields: [userId], references: [id])
+  createdAt DateTime          @default(now())
+}
+
+model Service {
+  id          String        @id @default(cuid())
+  code        String        @unique
+  vehicleId   String
+  vehicle     Vehicle       @relation(fields: [vehicleId], references: [id])
+  customerId  String
+  customer    User          @relation("ServiceCustomer", fields: [customerId], references: [id])
+  mechanicId  String?
+  mechanic    User?         @relation("ServiceMechanic", fields: [mechanicId], references: [id])
+  status      ServiceStatus @default(PENDING)
+  complaint   String?
+  diagnosis   String?
+  estimate    Int           @default(0)
+  laborCost   Int           @default(0)
+  scheduledAt DateTime?
+  startedAt   DateTime?
+  finishedAt  DateTime?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  parts    ServicePart[]
+  payments Payment[]
+}
+
+model ServicePart {
+  id        String  @id @default(cuid())
+  serviceId String
+  service   Service @relation(fields: [serviceId], references: [id])
+  partId    String
+  part      Part    @relation(fields: [partId], references: [id])
+  quantity  Int
+  price     Int
+}
+
+model Payment {
+  id           String        @id @default(cuid())
+  serviceId    String?
+  service      Service?      @relation(fields: [serviceId], references: [id])
+  amount       Int
+  method       PaymentMethod @default(CASH)
+  note         String?
+  receivedById String?
+  createdAt    DateTime      @default(now())
+}
+
+model Cashflow {
+  id            String        @id @default(cuid())
+  type          CashflowType
+  category      String
+  amount        Int
+  description   String?
+  createdBy     String?
+  createdByUser User?         @relation(fields: [createdBy], references: [id])
+  createdAt     DateTime      @default(now())
+}

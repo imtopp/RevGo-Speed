@@ -1,0 +1,105 @@
+"use client";
+
+import {
+  registerCustomer,
+  type RegisterState,
+} from "@/app/register/actions";
+import Link from "next/link";
+import { useActionState } from "react";
+
+export function RegisterForm() {
+  const [state, action, pending] = useActionState<
+    RegisterState,
+    FormData
+  >(registerCustomer, {});
+
+  return (
+    <form action={action} className="mt-6 space-y-4">
+      {state.error && (
+        <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
+          {state.error}
+        </p>
+      )}
+      <div>
+        <label
+          htmlFor="name"
+          className="block text-sm font-medium text-slate-700"
+        >
+          Nama
+        </label>
+        <input
+          id="name"
+          name="name"
+          type="text"
+          required
+          autoComplete="name"
+          className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-base outline-none focus:border-slate-900"
+        />
+      </div>
+      <div>
+        <label
+          htmlFor="phone"
+          className="block text-sm font-medium text-slate-700"
+        >
+          No. HP (opsional)
+        </label>
+        <input
+          id="phone"
+          name="phone"
+          type="tel"
+          autoComplete="tel"
+          className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-base outline-none focus:border-slate-900"
+        />
+      </div>
+      <div>
+        <label
+          htmlFor="email"
+          className="block text-sm font-medium text-slate-700"
+        >
+          Email
+        </label>
+        <input
+          id="email"
+          name="email"
+          type="email"
+          required
+          autoComplete="email"
+          className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-base outline-none focus:border-slate-900"
+        />
+      </div>
+      <div>
+        <label
+          htmlFor="password"
+          className="block text-sm font-medium text-slate-700"
+        >
+          Password
+        </label>
+        <input
+          id="password"
+          name="password"
+          type="password"
+          required
+          minLength={6}
+          autoComplete="new-password"
+          className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-base outline-none focus:border-slate-900"
+        />
+      </div>
+      <button
+        type="submit"
+        disabled={pending}
+        className="w-full rounded-lg bg-slate-900 py-2.5 font-medium text-white active:opacity-90 disabled:opacity-60"
+      >
+        {pending ? "Mendaftar..." : "Daftar"}
+      </button>
+      <p className="text-center text-sm text-slate-500">
+        Sudah punya akun?{" "}
+        <Link
+          href="/login"
+          className="font-medium text-slate-900 underline underline-offset-2"
+        >
+          Masuk
+        </Link>
+      </p>
+    </form>
+  );
+}
