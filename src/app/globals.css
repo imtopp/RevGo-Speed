@@ -7,3 +7,21 @@
 html {
   -webkit-tap-highlight-color: transparent;
 }
+
+/* Sembunyikan chrome app saat cetak (halaman nota/struk) */
+@media print {
+  header,
+  nav,
+  .no-print {
+    display: none !important;
+  }
+  body,
+  .print-area {
+    background: #fff !important;
+  }
+  .print-area {
+    max-width: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+}

@@ -82,6 +82,14 @@ export default async function ServisDetailPage({
         >
           ← Kembali ke daftar
         </Link>
+        {!isMechanic && (
+          <Link
+            href={`/dashboard/servis/${service.id}/cetak`}
+            className="ml-3 text-sm font-medium text-slate-700 underline underline-offset-2"
+          >
+            🖨 Cetak Nota
+          </Link>
+        )}
         <div className="mt-2 flex items-start justify-between gap-2">
           <div>
             <p className="font-mono text-sm text-slate-400">{service.code}</p>

@@ -10,6 +10,7 @@ const ALL_ITEMS = [
   { href: "/dashboard/servis", label: "Servis", roles: ["OWNER", "SYS_ADMIN", "ADMIN"] },
   { href: "/dashboard/stok", label: "Stok", roles: ["OWNER", "SYS_ADMIN", "ADMIN"] },
   { href: "/dashboard/kas", label: "Kas", roles: ["OWNER", "SYS_ADMIN", "ADMIN"] },
+  { href: "/dashboard/laporan", label: "Laporan", roles: ["OWNER", "SYS_ADMIN", "ADMIN"] },
 ] as const;
 
 export function StaffNav({ role }: { role: Role }) {

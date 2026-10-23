@@ -1,0 +1,207 @@
+import { prisma } from "@/lib/prisma";
+import { requireStaffRole, getStaffBranchId } from "@/lib/guard";
+import { formatRupiah, formatTanggalPendek } from "@/lib/service-status";
+import Link from "next/link";
+
+export const metadata = { title: "Laporan" };
+
+function monthBounds() {
+  const now = new Date();
+  const from = new Date(now.getFullYear(), now.getMonth(), 1);
+  const to = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+  return { from, to };
+}
+
+function iso(d: Date) {
+  return d.toISOString().slice(0, 10);
+}
+
+export default async function LaporanPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ from?: string; to?: string; branch?: string }>;
+}) {
+  await requireStaffRole(["OWNER", "SYS_ADMIN", "ADMIN"]);
+  const params = await searchParams;
+  const branchIdStaff = await getStaffBranchId();
+
+  const branches = await prisma.branch.findMany({
+    where: { aktif: true },
+    orderBy: { name: "asc" },
+  });
+  const activeBranchId = branchIdStaff ?? params.branch ?? branches[0]?.id ?? null;
+  const branchFilter = branchIdStaff ? branchIdStaff : activeBranchId;
+
+  const bounds = monthBounds();
+  const from = params.from ? new Date(params.from + "T00:00:00") : bounds.from;
+  const to = params.to ? new Date(params.to + "T23:59:59.999") : bounds.to;
+  const branchWhere = branchFilter ? { branchId: branchFilter } : {};
+
+  const [doneServices, payments, cashflows] = await Promise.all([
+    prisma.service.findMany({
+      where: {
+        ...branchWhere,
+        status: "DONE",
+        finishedAt: { gte: from, lte: to },
+      },
+      include: {
+        parts: { select: { price: true, quantity: true, cost: true } },
+        customer: { select: { name: true } },
+        vehicle: { select: { plateNumber: true } },
+      },
+      orderBy: { finishedAt: "asc" },
+    }),
+    prisma.payment.findMany({
+      where: { paidAt: { gte: from, lte: to } },
+      include: { service: { select: { branchId: true } } },
+    }),
+    prisma.cashflow.findMany({
+      where: { ...branchWhere, createdAt: { gte: from, lte: to } },
+    }),
+  ]);
+
+  const scopedPayments = branchFilter
+    ? payments.filter((p) => p.service?.branchId === branchFilter)
+    : payments;
+
+  // Laba per servis: revenue − HPP (snapshot cost part)
+  const rows = doneServices.map((s) => {
+    const revenue = s.laborCost + s.parts.reduce((sum, p) => sum + p.price * p.quantity, 0);
+    const hpp = s.parts.reduce((sum, p) => sum + p.cost * p.quantity, 0);
+    return { s, revenue, hpp, laba: revenue - hpp };
+  });
+  const totalRevenue = rows.reduce((sum, r) => sum + r.revenue, 0);
+  const totalHpp = rows.reduce((sum, r) => sum + r.hpp, 0);
+  const totalLaba = totalRevenue - totalHpp;
+
+  const omzet = scopedPayments.reduce((sum, p) => sum + p.amount, 0);
+  const kasMasuk = cashflows.filter((c) => c.type === "INCOME").reduce((s, c) => s + c.amount, 0);
+  const kasKeluar = cashflows.filter((c) => c.type === "EXPENSE").reduce((s, c) => s + c.amount, 0);
+
+  // Rekap per kantong
+  const rekap = { KAS: { masuk: 0, keluar: 0 }, BANK: { masuk: 0, keluar: 0 } };
+  for (const c of cashflows) {
+    if (c.type === "INCOME") rekap[c.account].masuk += c.amount;
+    else rekap[c.account].keluar += c.amount;
+  }
+
+  const exportUrl = `/api/laporan/export?from=${iso(from)}&to=${iso(to)}${
+    branchFilter ? `&branch=${branchFilter}` : ""
+  }`;
+
+  const summary = [
+    { label: "Omzet (kas masuk bayar)", value: formatRupiah(omzet) },
+    { label: "Laba kotor (rev − HPP)", value: formatRupiah(totalLaba), accent: totalLaba >= 0 },
+    { label: "Servis selesai", value: String(doneServices.length) },
+    { label: "Saldo kas periode", value: formatRupiah(kasMasuk - kasKeluar) },
+  ];
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-xl font-bold tracking-tight">Laporan</h1>
+          <p className="mt-1 text-sm text-slate-500">
+            {from.toLocaleDateString("id-ID")} – {to.toLocaleDateString("id-ID")}
+          </p>
+        </div>
+        <a
+          href={exportUrl}
+          className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700"
+        >
+          Export CSV
+        </a>
+      </div>
+
+      {/* Filter tanggal */}
+      <form method="get" className="flex flex-wrap items-end gap-2 rounded-xl bg-white p-3 ring-1 ring-slate-200">
+        <div>
+          <label className="block text-xs font-medium text-slate-500">Dari</label>
+          <input type="date" name="from" defaultValue={iso(from)} className="mt-1 rounded-lg border border-slate-300 px-2 py-1.5 text-sm" />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-slate-500">Sampai</label>
+          <input type="date" name="to" defaultValue={iso(to)} className="mt-1 rounded-lg border border-slate-300 px-2 py-1.5 text-sm" />
+        </div>
+        <button type="submit" className="rounded-lg bg-slate-900 px-3 py-2 text-sm font-medium text-white">
+          Terapkan
+        </button>
+      </form>
+
+      {/* Ringkasan */}
+      <div className="grid grid-cols-2 gap-3">
+        {summary.map((s) => (
+          <div key={s.label} className="rounded-xl bg-white p-4 ring-1 ring-slate-200">
+            <p className={`text-lg font-bold tabular-nums ${s.accent === false ? "text-red-600" : s.accent ? "text-emerald-600" : ""}`}>
+              {s.value}
+            </p>
+            <p className="mt-1 text-xs text-slate-500">{s.label}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Rekap kantong */}
+      <div className="rounded-xl bg-white p-4 ring-1 ring-slate-200">
+        <h2 className="text-sm font-semibold text-slate-700">Rekap per Kantong</h2>
+        <table className="mt-2 w-full text-sm">
+          <thead>
+            <tr className="text-left text-xs text-slate-500">
+              <th className="py-1">Kantong</th>
+              <th className="py-1 text-right">Masuk</th>
+              <th className="py-1 text-right">Keluar</th>
+              <th className="py-1 text-right">Saldo</th>
+            </tr>
+          </thead>
+          <tbody>
+            {(["KAS", "BANK"] as const).map((k) => (
+              <tr key={k} className="border-t border-slate-100">
+                <td className="py-1.5 font-medium">{k}</td>
+                <td className="py-1.5 text-right text-emerald-600">{formatRupiah(rekap[k].masuk)}</td>
+                <td className="py-1.5 text-right text-red-600">{formatRupiah(rekap[k].keluar)}</td>
+                <td className="py-1.5 text-right font-semibold">{formatRupiah(rekap[k].masuk - rekap[k].keluar)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Laba per servis */}
+      <div className="rounded-xl bg-white p-4 ring-1 ring-slate-200">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-slate-700">Laba per Servis</h2>
+          <span className="text-xs text-slate-500">
+            Rev {formatRupiah(totalRevenue)} · HPP {formatRupiah(totalHpp)}
+          </span>
+        </div>
+        {rows.length === 0 ? (
+          <p className="mt-2 text-sm text-slate-500">Tidak ada servis selesai di periode ini.</p>
+        ) : (
+          <ul className="mt-2 divide-y divide-slate-100">
+            {rows.map(({ s, revenue, hpp, laba }) => (
+              <li key={s.id} className="py-2 text-sm">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <Link href={`/dashboard/servis/${s.id}`} className="font-medium underline underline-offset-2">
+                      {s.code}
+                    </Link>
+                    <p className="text-xs text-slate-500">
+                      {s.customer.name} · {s.vehicle.plateNumber} · {formatTanggalPendek(s.finishedAt)}
+                    </p>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <p className={`font-semibold ${laba >= 0 ? "text-emerald-600" : "text-red-600"}`}>
+                      {formatRupiah(laba)}
+                    </p>
+                    <p className="text-xs text-slate-400">
+                      rev {formatRupiah(revenue)} · hpp {formatRupiah(hpp)}
+                    </p>
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </div>
+  );
+}

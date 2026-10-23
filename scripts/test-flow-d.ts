@@ -1,5 +1,6 @@
 import { PrismaClient } from "@db/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
+import type { CashflowAccount } from "@db/prisma/client";
 
 const prisma = new PrismaClient({
   adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }),
@@ -13,10 +14,12 @@ async function main() {
   const branch = await prisma.branch.findFirst({ where: { name: "Pusat" } });
   const owner = await prisma.user.findFirst({ where: { email: "owner@revledger.id" } });
   if (!branch || !owner) throw new Error("Seed data kurang");
+  const branchId = branch.id;
+  const ownerId = owner.id;
 
   // Buat customer + vehicle + part + servis tes
   const part = await prisma.part.create({
-    data: { branchId: branch.id, sku: `BD-${Date.now().toString().slice(-5)}`, name: "Part Tes D", unit: "pcs", quantity: 50, buyPrice: 50000, sellPrice: 80000 },
+    data: { branchId: branchId, sku: `BD-${Date.now().toString().slice(-5)}`, name: "Part Tes D", unit: "pcs", quantity: 50, buyPrice: 50000, sellPrice: 80000 },
   });
   const cust = await prisma.user.create({
     data: { name: "Tes Bayar", email: `bayar${Date.now()}@t.co`, role: "CUSTOMER", passwordHash: "x" },
@@ -26,7 +29,7 @@ async function main() {
   });
   const serv = await prisma.service.create({
     data: {
-      code: `TES-${Date.now().toString().slice(-5)}`, branchId: branch.id, vehicleId: veh.id,
+      code: `TES-${Date.now().toString().slice(-5)}`, branchId: branchId, vehicleId: veh.id,
       customerId: cust.id, status: "DONE", laborCost: 100000,
       parts: { create: [{ partId: part.id, quantity: 2, price: 80000, cost: 50000 }] },
     },
@@ -46,12 +49,12 @@ async function main() {
     const paid = s!.payments.reduce((x, p) => x + p.amount, 0);
     const remaining = tot - paid;
     if (amount > remaining) throw new Error(`OVERPAY: ${amount} > ${remaining}`);
-    const account = method === "CASH" ? "KAS" : "BANK";
+    const account: CashflowAccount = method === "CASH" ? "KAS" : "BANK";
     await prisma.$transaction([
-      prisma.payment.create({ data: { serviceId: serv.id, amount, kind, method, receivedById: owner.id } }),
+      prisma.payment.create({ data: { serviceId: serv.id, amount, kind, method, receivedById: ownerId } }),
       prisma.cashflow.create({
         data: { type: "INCOME", category: kind === "DP" ? "DP Servis" : "Pembayaran Servis",
-          amount, account: account as any, branchId: branch.id, description: serv.code, createdBy: owner.id },
+          amount, account, branchId: branchId, description: serv.code, createdBy: ownerId },
       }),
     ]);
     return { paid: paid + amount, remaining: remaining - amount };
@@ -96,7 +99,7 @@ async function main() {
   console.log("7. Kas manual (pengeluaran operasional)...");
   const cf = await prisma.cashflow.create({
     data: { type: "EXPENSE", category: "Operasional", amount: 50000, account: "KAS",
-      branchId: branch.id, description: "Listrik", createdBy: owner.id },
+      branchId: branchId, description: "Listrik", createdBy: ownerId },
   });
   console.log("   OK expense:", cf.category, cf.amount, cf.account);
 
