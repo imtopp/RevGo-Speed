@@ -9,6 +9,8 @@ import {
   formatTanggal,
 } from "@/lib/service-status";
 import { ActionForms } from "./action-forms";
+import { PaymentForm } from "../../kas/payment-form";
+import { formatTanggalPendek } from "@/lib/service-status";
 
 export const metadata = { title: "Detail Servis" };
 
@@ -60,6 +62,8 @@ export default async function ServisDetailPage({
     0,
   );
   const totalTagihan = totalPartHarga + service.laborCost;
+  const totalPaid = service.payments.reduce((sum, p) => sum + p.amount, 0);
+  const remaining = totalTagihan - totalPaid;
 
   const timeline = [
     service.createdAt && { label: "Booking dibuat", at: service.createdAt },
@@ -191,6 +195,52 @@ export default async function ServisDetailPage({
           </div>
         </div>
       </div>
+
+      {/* Pembayaran */}
+      <div className="rounded-xl bg-white p-4 ring-1 ring-slate-200">
+        <h2 className="text-sm font-semibold text-slate-700">Pembayaran</h2>
+        {service.payments.length === 0 ? (
+          <p className="mt-2 text-sm text-slate-500">Belum ada pembayaran.</p>
+        ) : (
+          <ul className="mt-2 divide-y divide-slate-100">
+            {service.payments.map((p) => (
+              <li key={p.id} className="flex items-center justify-between py-2 text-sm">
+                <div>
+                  <p>
+                    {p.kind === "DP" ? "DP" : "Bayar"} · {p.method}
+                  </p>
+                  <p className="text-xs text-slate-400">
+                    {formatTanggalPendek(p.paidAt)}
+                    {p.note ? ` · ${p.note}` : ""}
+                  </p>
+                </div>
+                <span className="font-medium">{formatRupiah(p.amount)}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+        <div className="mt-3 border-t border-slate-100 pt-3 text-sm">
+          <div className="flex justify-between">
+            <span className="text-slate-500">Sudah dibayar</span>
+            <span>{formatRupiah(totalPaid)}</span>
+          </div>
+          <div
+            className={`mt-1 flex justify-between font-semibold ${
+              remaining > 0 ? "text-red-600" : "text-emerald-600"
+            }`}
+          >
+            <span>{remaining > 0 ? "Sisa tagihan" : "Status"}</span>
+            <span>
+              {remaining > 0 ? formatRupiah(remaining) : "LUNAS"}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Form bayar (admin/owner, sisa > 0, servis belum batal) */}
+      {!isMechanic && service.status !== "CANCELLED" && remaining > 0 && (
+        <PaymentForm serviceId={service.id} remaining={remaining} />
+      )}
 
       {/* Aksi contextual */}
       {canAct && service.status !== "DONE" && service.status !== "CANCELLED" && (

@@ -17,6 +17,7 @@ export default async function StaffLayout({
   }
 
   const showSettings = isOwnerOrSysAdmin(session.user.role);
+  const showPiutang = ["OWNER", "SYS_ADMIN", "ADMIN"].includes(session.user.role);
 
   return (
     <div className="mx-auto flex min-h-dvh max-w-lg flex-col bg-slate-50">
@@ -26,6 +27,14 @@ export default async function StaffLayout({
           <span className="max-w-24 truncate text-sm text-slate-500">
             {session.user.name}
           </span>
+          {showPiutang && (
+            <Link
+              href="/dashboard/piutang"
+              className="text-sm font-medium text-slate-700 underline underline-offset-2"
+            >
+              Piutang
+            </Link>
+          )}
           {showSettings && (
             <Link
               href="/dashboard/pengaturan"
