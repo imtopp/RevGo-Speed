@@ -6,7 +6,8 @@ import type { Role } from "@db/prisma/client";
 
 const ALL_ITEMS = [
   { href: "/dashboard", label: "Beranda", roles: ["OWNER", "SYS_ADMIN", "ADMIN", "MECHANIC"] },
-  { href: "/dashboard/servis", label: "Servis", roles: ["OWNER", "SYS_ADMIN", "ADMIN", "MECHANIC"] },
+  { href: "/dashboard/tugas", label: "Tugas", roles: ["MECHANIC"] },
+  { href: "/dashboard/servis", label: "Servis", roles: ["OWNER", "SYS_ADMIN", "ADMIN"] },
   { href: "/dashboard/stok", label: "Stok", roles: ["OWNER", "SYS_ADMIN", "ADMIN"] },
   { href: "/dashboard/kas", label: "Kas", roles: ["OWNER", "SYS_ADMIN", "ADMIN"] },
 ] as const;

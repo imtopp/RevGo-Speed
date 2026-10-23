@@ -18,6 +18,12 @@ export async function requireOwnerOrSysAdmin() {
   return session;
 }
 
+export async function requireStaffRole(roles: Role[]) {
+  const session = await requireStaff();
+  if (!roles.includes(session.user.role)) redirect("/dashboard");
+  return session;
+}
+
 export function isStaff(role: Role): boolean {
   return STAFF_ROLES.includes(role);
 }

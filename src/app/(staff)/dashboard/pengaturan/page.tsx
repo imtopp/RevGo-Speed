@@ -59,7 +59,7 @@ export default async function PengaturanPage() {
 
       <section className="space-y-3">
         <h2 className="text-sm font-semibold text-slate-700">Lainnya</h2>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-3 gap-3">
           <Link
             href="/dashboard/akun"
             className="rounded-xl bg-white p-4 ring-1 ring-slate-200 active:opacity-90"
@@ -68,6 +68,13 @@ export default async function PengaturanPage() {
             <p className="mt-1 text-xs text-slate-500">
               Buat &amp; atur akun staff
             </p>
+          </Link>
+          <Link
+            href="/dashboard/katalog"
+            className="rounded-xl bg-white p-4 ring-1 ring-slate-200 active:opacity-90"
+          >
+            <p className="font-medium">Katalog</p>
+            <p className="mt-1 text-xs text-slate-500">Jenis jasa &amp; harga</p>
           </Link>
           <Link
             href="/dashboard/backup"
