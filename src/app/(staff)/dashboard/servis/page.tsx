@@ -107,9 +107,9 @@ export default async function ServisPage({
       </div>
 
       {/* Papan kerja: list servis */}
-      <div className="space-y-2">
+      <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
         {services.length === 0 && (
-          <div className="rounded-xl bg-white p-6 ring-1 ring-slate-200">
+          <div className="col-span-full rounded-xl bg-white p-6 ring-1 ring-slate-200">
             <p className="text-sm text-slate-500">
               Tidak ada servis pada filter ini.
             </p>

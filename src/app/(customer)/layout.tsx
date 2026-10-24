@@ -12,7 +12,7 @@ export default async function CustomerLayout({
   if (session.user.role !== "CUSTOMER") redirect("/dashboard");
 
   return (
-    <div className="mx-auto flex min-h-dvh max-w-md flex-col bg-slate-50">
+    <div className="mx-auto flex min-h-dvh w-full max-w-none flex-col bg-slate-50 md:max-w-3xl">
       <header className="flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3">
         <BrandMark />
         <div className="flex items-center gap-3">

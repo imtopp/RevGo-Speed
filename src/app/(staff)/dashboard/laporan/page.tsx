@@ -129,7 +129,7 @@ export default async function LaporanPage({
       </form>
 
       {/* Ringkasan */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         {summary.map((s) => (
           <div key={s.label} className="rounded-xl bg-white p-4 ring-1 ring-slate-200">
             <p className={`text-lg font-bold tabular-nums ${s.accent === false ? "text-red-600" : s.accent ? "text-emerald-600" : ""}`}>
@@ -140,9 +140,10 @@ export default async function LaporanPage({
         ))}
       </div>
 
-      {/* Rekap kantong */}
-      <div className="rounded-xl bg-white p-4 ring-1 ring-slate-200">
-        <h2 className="text-sm font-semibold text-slate-700">Rekap per Kantong</h2>
+      {/* Rekap kantong + Laba per servis — 2 kolom di desktop */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        <div className="rounded-xl bg-white p-4 ring-1 ring-slate-200">
+          <h2 className="text-sm font-semibold text-slate-700">Rekap per Kantong</h2>
         <table className="mt-2 w-full text-sm">
           <thead>
             <tr className="text-left text-xs text-slate-500">
@@ -163,10 +164,10 @@ export default async function LaporanPage({
             ))}
           </tbody>
         </table>
-      </div>
+        </div>
 
-      {/* Laba per servis */}
-      <div className="rounded-xl bg-white p-4 ring-1 ring-slate-200">
+        {/* Laba per servis */}
+        <div className="rounded-xl bg-white p-4 ring-1 ring-slate-200">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold text-slate-700">Laba per Servis</h2>
           <span className="text-xs text-slate-500">
@@ -201,6 +202,7 @@ export default async function LaporanPage({
             ))}
           </ul>
         )}
+        </div>
       </div>
     </div>
   );

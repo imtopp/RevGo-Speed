@@ -63,13 +63,13 @@ export default async function DashboardHome() {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-xl font-bold tracking-tight">
+        <h1 className="text-xl font-bold tracking-tight md:text-2xl">
           Halo, {session.user.name}
         </h1>
         <p className="mt-1 text-sm text-slate-500">Ringkasan bengkel hari ini</p>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
         {stats.map((stat) => (
           <div
             key={stat.label}
@@ -88,7 +88,7 @@ export default async function DashboardHome() {
       </div>
 
       {!isCustomer && (
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid max-w-xl grid-cols-2 gap-3">
           <Link
             href="/dashboard/servis?booking=1"
             className="rounded-xl bg-slate-900 p-4 text-center text-sm font-medium text-white"
