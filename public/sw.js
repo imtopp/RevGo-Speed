@@ -1,4 +1,4 @@
-const CACHE = "revgo-speed-v2";
+const CACHE = "revgo-speed-v4";
 const OFFLINE_URL = "/";
 
 self.addEventListener("install", (event) => {
@@ -34,8 +34,12 @@ self.addEventListener("fetch", (event) => {
     event.respondWith(
       fetch(request)
         .then((response) => {
-          const copy = response.clone();
-          caches.open(CACHE).then((cache) => cache.put(request, copy));
+          // Hanya simpan respons sukses — jangan sampai halaman error (500 dst.)
+          // nyangkut di cache lalu disajikan saat offline.
+          if (response.ok) {
+            const copy = response.clone();
+            caches.open(CACHE).then((cache) => cache.put(request, copy));
+          }
           return response;
         })
         .catch(async () => {

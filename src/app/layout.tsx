@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import { ServiceWorkerRegister } from "@/components/sw-register";
+import { VersionCheck } from "@/components/version-check";
 import { getAppName } from "@/lib/branding";
 import "./globals.css";
 
@@ -51,6 +52,7 @@ export default function RootLayout({
       <body className="min-h-dvh bg-background font-sans text-foreground antialiased">
         {children}
         <ServiceWorkerRegister />
+        <VersionCheck />
       </body>
     </html>
   );

@@ -91,6 +91,8 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon\\.ico|icons/|manifest\\.webmanifest|robots\\.txt).*)",
+    // Kecualikan SEMUA internal Next (static, image, HMR websocket, RSC) —
+    // proxy hanya boleh menyentuh request aplikasi & API.
+    "/((?!_next/|favicon\\.ico|icons/|manifest\\.webmanifest|robots\\.txt).*)",
   ],
 };
