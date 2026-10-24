@@ -106,4 +106,8 @@ AUTH_URL="http://localhost:3000"  # production: URL Vercel
 
 ## Testing
 
-Belum ada test framework. Smoke test manual via `scripts/test-flow-*.ts` (jalankan dengan `npx tsx scripts/test-flow-b.ts` dst., butuh server/app berjalan atau DATABASE_URL valid). Verifikasi Neon: `npx tsx scripts/verify-neon.ts`.
+Belum ada test framework. Smoke test manual via `scripts/test-flow-*.ts` (jalankan dengan `npx tsx scripts/test-flow-b.ts` dst., butuh server/app berjalan atau DATABASE_URL valid).
+
+Verifikasi DB Neon:
+- Cek koneksi cepat: `npx tsx scripts/verify-neon.ts`
+- Cek sync skema + seed + integritas (stok negatif): `npx tsx scripts/check-neon-sync.ts`
