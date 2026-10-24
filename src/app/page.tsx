@@ -4,10 +4,10 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 const features = [
-  "Manajemen stok suku cadang",
-  "Booking & proses servis",
-  "Kas masuk / keluar realtime",
-  "Multi-role: owner, admin, mekanik, customer",
+  "Booking servis mudah, langsung dari HP",
+  "Pantau status servis secara real-time",
+  "Setujui estimasi sebelum dikerjakan",
+  "Riwayat servis & tagihan dalam satu tempat",
 ];
 
 export default async function Home() {
@@ -18,14 +18,14 @@ export default async function Home() {
     <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-8 p-6">
       <div>
         <p className="text-sm font-semibold uppercase tracking-widest text-slate-500">
-          Aplikasi Bengkel
+          Servis Kendaraan
         </p>
         <h1 className="mt-2 text-4xl font-bold tracking-tight">
           Rev<span className="text-slate-500">Go Speed</span>
         </h1>
         <p className="mt-3 leading-relaxed text-slate-600">
-          Kelola stok part, arus kas, booking, dan proses servis dalam satu
-          aplikasi — nyaman dipakai dari HP maupun desktop.
+          Booking, pantau, dan bayar servis kendaraan kamu — tanpa perlu
+          antre atau menelepon. Semua bisa dilakukan dari HP.
         </p>
       </div>
 

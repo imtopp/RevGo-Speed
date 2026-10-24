@@ -10,7 +10,7 @@ export async function generateMetadata(): Promise<Metadata> {
       default: appName,
       template: `%s · ${appName}`,
     },
-    description: "Manajemen bengkel: stok, cashflow, booking & proses servis",
+    description: "Booking, pantau, dan bayar servis kendaraan — praktis dari HP",
     applicationName: appName,
     icons: {
       icon: [
