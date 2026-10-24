@@ -28,7 +28,7 @@ npm run db:studio    # prisma studio
 ## Migrasi DB & Rilis
 
 - **Dev:** perubahan skema via `npm run db:migrate` (branch `dev`) → commit file `prisma/migrations/` **bersama code** yang membutuhkannya (1 commit = skema + code, tidak boleh terpisah).
-- **Produksi:** build script Vercel menjalankan `prisma migrate deploy` **otomatis setiap deploy** — deploy commit X = migrasi di commit X ikut terjalankan. Tidak ada langkah migrasi manual.
+- **Produksi:** build command Vercel (`vercel.json` → `buildCommand`; override package.json!) menjalankan `prisma migrate deploy` **otomatis setiap deploy** — deploy commit X = migrasi di commit X ikut terjalankan. Tidak ada langkah migrasi manual.
 - **Preview deploy** memakai env `DATABASE_URL` scope **Preview** (menunjuk branch `dev`).
 - **Expand–contract:** rename/hapus kolom atau perubahan yang tidak backward-compatible wajib **2 fase deploy** — fase 1: tambah struktur baru + code baca/tulis dua-duanya; fase 2 (setelah code lama mati): buang struktur lama. Migrasi yang berjalan **tidak pernah diedit** — koreksi = migrasi baru.
 - **Cek sebelum rilis besar:** `npx prisma migrate status` (pending?) dan `npx prisma migrate diff` (drift antara DB dan folder migrasi).
