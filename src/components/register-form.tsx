@@ -6,12 +6,13 @@ import {
 } from "@/app/register/actions";
 import Link from "next/link";
 import { useActionState } from "react";
+import { SubmitButton } from "@/components/submit-button";
 
 export function RegisterForm() {
-  const [state, action, pending] = useActionState<
-    RegisterState,
-    FormData
-  >(registerCustomer, {});
+  const [state, action] = useActionState<RegisterState, FormData>(
+    registerCustomer,
+    {},
+  );
 
   return (
     <form action={action} className="mt-6 space-y-4">
@@ -84,13 +85,12 @@ export function RegisterForm() {
           className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-base outline-none focus:border-slate-900"
         />
       </div>
-      <button
-        type="submit"
-        disabled={pending}
+      <SubmitButton
+        pendingText="Mendaftar..."
         className="w-full rounded-lg bg-primary py-2.5 font-medium text-white active:opacity-90 disabled:opacity-60"
       >
-        {pending ? "Mendaftar..." : "Daftar"}
-      </button>
+        Daftar
+      </SubmitButton>
       <p className="text-center text-sm text-muted-foreground">
         Sudah punya akun?{" "}
         <Link

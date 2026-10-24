@@ -7,6 +7,7 @@ import {
   assignBranch,
   type StaffState,
 } from "./actions";
+import { SubmitButton } from "@/components/submit-button";
 
 type UserRow = {
   id: string;
@@ -34,18 +35,18 @@ function ActionPanel({
   user: UserRow;
   branches: Branch[];
 }) {
-  const [resetState, resetAction, resetPending] = useActionState<
-    StaffState,
-    FormData
-  >(resetPassword, {});
-  const [toggleState, toggleAction, togglePending] = useActionState<
-    StaffState,
-    FormData
-  >(toggleActive, {});
-  const [assignState, assignAction, assignPending] = useActionState<
-    StaffState,
-    FormData
-  >(assignBranch, {});
+  const [resetState, resetAction] = useActionState<StaffState, FormData>(
+    resetPassword,
+    {},
+  );
+  const [toggleState, toggleAction] = useActionState<StaffState, FormData>(
+    toggleActive,
+    {},
+  );
+  const [assignState, assignAction] = useActionState<StaffState, FormData>(
+    assignBranch,
+    {},
+  );
 
   const isOwner = user.role === "OWNER";
   const isSysAdmin = user.role === "SYS_ADMIN";
@@ -73,13 +74,12 @@ function ActionPanel({
               ))}
             </select>
           </div>
-          <button
-            type="submit"
-            disabled={assignPending}
+          <SubmitButton
+            pendingText="..."
             className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-foreground active:opacity-90 disabled:opacity-60"
           >
-            {assignPending ? "..." : "Assign"}
-          </button>
+            Assign
+          </SubmitButton>
         </form>
       )}
 
@@ -98,22 +98,20 @@ function ActionPanel({
               className="mt-1 w-full rounded-lg border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-slate-900"
             />
           </div>
-          <button
-            type="submit"
-            disabled={resetPending}
+          <SubmitButton
+            pendingText="..."
             className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-foreground active:opacity-90 disabled:opacity-60"
           >
-            {resetPending ? "..." : "Reset"}
-          </button>
+            Reset
+          </SubmitButton>
         </form>
       )}
 
       {!isOwner && (
         <form action={toggleAction}>
           <input type="hidden" name="id" value={user.id} />
-          <button
-            type="submit"
-            disabled={togglePending}
+          <SubmitButton
+            pendingText="..."
             aria-label={
               user.isActive
                 ? `Nonaktifkan ${user.name}`
@@ -133,12 +131,8 @@ function ActionPanel({
                 : "bg-green-50 text-green-700 ring-1 ring-green-200"
             }`}
           >
-            {togglePending
-              ? "..."
-              : user.isActive
-                ? "Nonaktifkan"
-                : "Aktifkan"}
-          </button>
+            {user.isActive ? "Nonaktifkan" : "Aktifkan"}
+          </SubmitButton>
         </form>
       )}
 

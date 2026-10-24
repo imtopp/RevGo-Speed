@@ -2,12 +2,13 @@
 
 import { useActionState, useState } from "react";
 import { createStaff, type StaffState } from "./actions";
+import { SubmitButton } from "@/components/submit-button";
 
 type Branch = { id: string; name: string };
 
 export function StaffForm({ branches }: { branches: Branch[] }) {
   const [open, setOpen] = useState(false);
-  const [state, action, pending] = useActionState<StaffState, FormData>(
+  const [state, action] = useActionState<StaffState, FormData>(
     createStaff,
     {},
   );
@@ -121,13 +122,12 @@ export function StaffForm({ branches }: { branches: Branch[] }) {
         </div>
       </div>
 
-      <button
-        type="submit"
-        disabled={pending}
+      <SubmitButton
+        pendingText="Membuat..."
         className="w-full rounded-lg bg-primary py-2.5 text-sm font-medium text-white active:opacity-90 disabled:opacity-60"
       >
-        {pending ? "Membuat..." : "Buat Akun"}
-      </button>
+        Buat Akun
+      </SubmitButton>
         </form>
       )}
     </div>

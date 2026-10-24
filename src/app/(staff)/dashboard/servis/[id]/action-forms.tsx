@@ -15,6 +15,7 @@ import {
   addServicePart,
   type ServisState,
 } from "../actions";
+import { SubmitButton } from "@/components/submit-button";
 import type { ServiceStatus } from "@db/prisma/client";
 
 type ServiceInfo = {
@@ -37,11 +38,11 @@ type Part = {
 };
 
 function useForm(action: (prev: ServisState, fd: FormData) => Promise<ServisState>) {
-  const [state, formAction, pending] = useActionState<ServisState, FormData>(
+  const [state, formAction] = useActionState<ServisState, FormData>(
     action,
     {},
   );
-  return { state, formAction, pending };
+  return { state, formAction };
 }
 
 function Msg({ state }: { state: ServisState }) {
@@ -93,7 +94,7 @@ function EstimateForm({
   service: ServiceInfo;
   mechanics: Mechanic[];
 }) {
-  const { state, formAction, pending } = useForm(submitEstimate);
+  const { state, formAction } = useForm(submitEstimate);
   return (
     <form action={formAction} className="space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
       <input type="hidden" name="id" value={service.id} />
@@ -120,28 +121,28 @@ function EstimateForm({
           <input name="scheduledAt" type="datetime-local" defaultValue="" className={inputCls} />
         </Field>
       </div>
-      <button type="submit" disabled={pending} className={btnPrimary}>
-        {pending ? "Mengirim..." : "Kirim Estimasi"}
-      </button>
+      <SubmitButton pendingText="Mengirim..." className={btnPrimary}>
+        Kirim Estimasi
+      </SubmitButton>
     </form>
   );
 }
 
 function ApproveForm({ service }: { service: ServiceInfo }) {
-  const { state, formAction, pending } = useForm(approveInPerson);
+  const { state, formAction } = useForm(approveInPerson);
   return (
     <form action={formAction} className="space-y-2 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
       <input type="hidden" name="id" value={service.id} />
       <Msg state={state} />
-      <button type="submit" disabled={pending} className={btnPrimary}>
-        {pending ? "..." : "Setujui di Tempat → Dikonfirmasi"}
-      </button>
+      <SubmitButton className={btnPrimary}>
+        Setujui di Tempat → Dikonfirmasi
+      </SubmitButton>
     </form>
   );
 }
 
 function CheckInForm({ service }: { service: ServiceInfo }) {
-  const { state, formAction, pending } = useForm(checkInUnit);
+  const { state, formAction } = useForm(checkInUnit);
   return (
     <form action={formAction} className="space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
       <input type="hidden" name="id" value={service.id} />
@@ -169,37 +170,33 @@ function CheckInForm({ service }: { service: ServiceInfo }) {
       <Field label="Keluhan disepakati">
         <input name="agreedComplaint" defaultValue={service.complaint ?? ""} className={inputCls} />
       </Field>
-      <button type="submit" disabled={pending} className={btnPrimary}>
-        {pending ? "Menyimpan..." : "Terima Unit → CHECKED_IN"}
-      </button>
+      <SubmitButton pendingText="Menyimpan..." className={btnPrimary}>
+        Terima Unit → CHECKED_IN
+      </SubmitButton>
     </form>
   );
 }
 
 function StartWorkForm({ service }: { service: ServiceInfo }) {
-  const { state, formAction, pending } = useForm(startWork);
+  const { state, formAction } = useForm(startWork);
   return (
     <form action={formAction} className="space-y-2 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
       <input type="hidden" name="id" value={service.id} />
       <Msg state={state} />
-      <button type="submit" disabled={pending} className={btnPrimary}>
-        {pending ? "..." : "Mulai Kerja"}
-      </button>
+      <SubmitButton className={btnPrimary}>Mulai Kerja</SubmitButton>
     </form>
   );
 }
 
 function DiagnosisForm({ service }: { service: ServiceInfo }) {
-  const { state, formAction, pending } = useForm(saveDiagnosis);
+  const { state, formAction } = useForm(saveDiagnosis);
   return (
     <form action={formAction} className="space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
       <input type="hidden" name="id" value={service.id} />
       <p className="text-sm font-semibold text-foreground">Diagnosis</p>
       <Msg state={state} />
       <textarea name="diagnosis" rows={3} defaultValue={service.complaint ?? ""} className={inputCls} />
-      <button type="submit" disabled={pending} className={btnSecondary}>
-        {pending ? "..." : "Simpan Diagnosis"}
-      </button>
+      <SubmitButton className={btnSecondary}>Simpan Diagnosis</SubmitButton>
     </form>
   );
 }
@@ -211,7 +208,7 @@ function AddPartForm({
   serviceId: string;
   parts: Part[];
 }) {
-  const { state, formAction, pending } = useForm(addServicePart);
+  const { state, formAction } = useForm(addServicePart);
   return (
     <form action={formAction} className="space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
       <input type="hidden" name="serviceId" value={serviceId} />
@@ -230,48 +227,42 @@ function AddPartForm({
       <Field label="Jumlah">
         <input name="quantity" type="number" min={1} defaultValue={1} className={inputCls} />
       </Field>
-      <button type="submit" disabled={pending} className={btnSecondary}>
-        {pending ? "..." : "Tambah Part"}
-      </button>
+      <SubmitButton className={btnSecondary}>Tambah Part</SubmitButton>
     </form>
   );
 }
 
 function WaitingPartsForm({ service }: { service: ServiceInfo }) {
-  const { state, formAction, pending } = useForm(markWaitingParts);
+  const { state, formAction } = useForm(markWaitingParts);
   return (
     <form action={formAction} className="space-y-2 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
       <input type="hidden" name="id" value={service.id} />
       <Msg state={state} />
-      <button type="submit" disabled={pending} className={btnSecondary}>
-        {pending ? "..." : "Tandai Menunggu Part"}
-      </button>
+      <SubmitButton className={btnSecondary}>Tandai Menunggu Part</SubmitButton>
     </form>
   );
 }
 
 function ResumeForm({ service }: { service: ServiceInfo }) {
-  const { state, formAction, pending } = useForm(resumeWork);
+  const { state, formAction } = useForm(resumeWork);
   return (
     <form action={formAction} className="space-y-2 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
       <input type="hidden" name="id" value={service.id} />
       <Msg state={state} />
-      <button type="submit" disabled={pending} className={btnPrimary}>
-        {pending ? "..." : "Stok Ready → Lanjut Kerja"}
-      </button>
+      <SubmitButton className={btnPrimary}>Stok Ready → Lanjut Kerja</SubmitButton>
     </form>
   );
 }
 
 function FinishForm({ service }: { service: ServiceInfo }) {
-  const { state, formAction, pending } = useForm(mechanicFinish);
+  const { state, formAction } = useForm(mechanicFinish);
   return (
     <form action={formAction} className="space-y-2 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
       <input type="hidden" name="id" value={service.id} />
       <Msg state={state} />
-      <button type="submit" disabled={pending} className={btnPrimary}>
-        {pending ? "..." : "Tandai Selesai Dikerjakan"}
-      </button>
+      <SubmitButton className={btnPrimary}>
+        Tandai Selesai Dikerjakan
+      </SubmitButton>
       <p className="text-xs text-slate-400">
         Menunggu verifikasi (QC) admin sebelum SELESAI.
       </p>
@@ -280,7 +271,7 @@ function FinishForm({ service }: { service: ServiceInfo }) {
 }
 
 function QcForm({ service }: { service: ServiceInfo }) {
-  const { state, formAction, pending } = useForm(qcDone);
+  const { state, formAction } = useForm(qcDone);
   return (
     <form action={formAction} className="space-y-2 rounded-xl bg-emerald-50 p-4 ring-1 ring-emerald-200">
       <input type="hidden" name="id" value={service.id} />
@@ -288,15 +279,13 @@ function QcForm({ service }: { service: ServiceInfo }) {
         Quality Control — verifikasi sebelum serah terima
       </p>
       <Msg state={state} />
-      <button type="submit" disabled={pending} className={btnPrimary}>
-        {pending ? "..." : "QC Lolos → SELESAI"}
-      </button>
+      <SubmitButton className={btnPrimary}>QC Lolos → SELESAI</SubmitButton>
     </form>
   );
 }
 
 function CancelForm({ service }: { service: ServiceInfo }) {
-  const { state, formAction, pending } = useForm(cancelService);
+  const { state, formAction } = useForm(cancelService);
   return (
     <form action={formAction} className="space-y-2 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
       <input type="hidden" name="id" value={service.id} />
@@ -305,9 +294,7 @@ function CancelForm({ service }: { service: ServiceInfo }) {
       <Field label="Alasan *">
         <input name="reason" required placeholder="Customer batal, dll" className={inputCls} />
       </Field>
-      <button type="submit" disabled={pending} className={btnDanger}>
-        {pending ? "..." : "Batalkan Servis"}
-      </button>
+      <SubmitButton className={btnDanger}>Batalkan Servis</SubmitButton>
     </form>
   );
 }

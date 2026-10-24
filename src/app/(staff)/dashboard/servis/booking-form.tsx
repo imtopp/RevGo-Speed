@@ -3,6 +3,7 @@
 import { useActionState, useState } from "react";
 import { MEREK_GROUPS, MEREK_LAINNYA, flattenModel } from "@/lib/vehicle";
 import { createBooking, type ServisState } from "./actions";
+import { SubmitButton } from "@/components/submit-button";
 
 type Branch = { id: string; name: string };
 type Catalog = { id: string; nama: string; hargaDasar: number; allowDp: boolean };
@@ -16,7 +17,7 @@ export function BookingForm({
   catalog: Catalog[];
   modelPerMerek: Record<string, string[]>;
 }) {
-  const [state, action, pending] = useActionState<ServisState, FormData>(
+  const [state, action] = useActionState<ServisState, FormData>(
     createBooking,
     {},
   );
@@ -212,13 +213,12 @@ export function BookingForm({
         />
       </div>
 
-      <button
-        type="submit"
-        disabled={pending}
+      <SubmitButton
+        pendingText="Membuat..."
         className="w-full rounded-lg bg-primary py-2.5 text-sm font-medium text-white active:opacity-90 disabled:opacity-60"
       >
-        {pending ? "Membuat..." : "Buat Booking"}
-      </button>
+        Buat Booking
+      </SubmitButton>
     </form>
   );
 }

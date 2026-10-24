@@ -2,13 +2,14 @@
 
 import { useActionState, useState } from "react";
 import { createCatalog, type KatalogState } from "./actions";
+import { SubmitButton } from "@/components/submit-button";
 
 const inputCls =
   "mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-base outline-none focus:border-slate-900";
 
 export function CatalogManager() {
   const [open, setOpen] = useState(false);
-  const [state, action, pending] = useActionState<KatalogState, FormData>(
+  const [state, action] = useActionState<KatalogState, FormData>(
     createCatalog,
     {},
   );
@@ -77,13 +78,12 @@ export function CatalogManager() {
               </label>
             </div>
           </div>
-          <button
-            type="submit"
-            disabled={pending}
+          <SubmitButton
+            pendingText="Menyimpan..."
             className="w-full rounded-lg bg-primary py-2.5 text-sm font-medium text-white active:opacity-90 disabled:opacity-60"
           >
-            {pending ? "Menyimpan..." : "Tambah Jasa"}
-          </button>
+            Tambah Jasa
+          </SubmitButton>
         </form>
       )}
     </div>

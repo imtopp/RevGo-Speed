@@ -3,6 +3,7 @@
 import { useActionState, useState } from "react";
 import { addManualCashflow, type BayarState } from "./actions";
 import { formatRupiah, formatTanggalPendek } from "@/lib/service-status";
+import { SubmitButton } from "@/components/submit-button";
 
 type Branch = { id: string; name: string };
 type Cashflow = {
@@ -39,7 +40,7 @@ export function ManualCashflowForm({
   activeBranchId: string | null;
   isLocked: boolean;
 }) {
-  const [state, action, pending] = useActionState<BayarState, FormData>(addManualCashflow, {});
+  const [state, action] = useActionState<BayarState, FormData>(addManualCashflow, {});
   return (
     <form action={action} className="space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
       <p className="text-sm font-semibold text-foreground">Entri Kas Manual</p>
@@ -84,9 +85,9 @@ export function ManualCashflowForm({
           </select>
         </div>
       )}
-      <button type="submit" disabled={pending} className={btnPrimary}>
-        {pending ? "Menyimpan..." : "Catat Kas"}
-      </button>
+      <SubmitButton pendingText="Menyimpan..." className={btnPrimary}>
+        Catat Kas
+      </SubmitButton>
     </form>
   );
 }

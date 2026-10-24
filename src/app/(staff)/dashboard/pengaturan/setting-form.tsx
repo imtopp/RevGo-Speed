@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { updateSetting, type SettingState } from "./actions";
+import { SubmitButton } from "@/components/submit-button";
 
 type Field = { key: string; label: string; placeholder: string };
 
@@ -12,7 +13,7 @@ export function SettingForm({
   field: Field;
   initialValue: string;
 }) {
-  const [state, action, pending] = useActionState<SettingState, FormData>(
+  const [state, action] = useActionState<SettingState, FormData>(
     updateSetting,
     {},
   );
@@ -31,13 +32,12 @@ export function SettingForm({
           className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-base outline-none focus:border-slate-900"
         />
       </div>
-      <button
-        type="submit"
-        disabled={pending}
+      <SubmitButton
+        pendingText="Simpan..."
         className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white active:opacity-90 disabled:opacity-60"
       >
-        {pending ? "Simpan..." : "Simpan"}
-      </button>
+        Simpan
+      </SubmitButton>
       {state.error && (
         <p className="text-sm text-danger sm:w-full">{state.error}</p>
       )}

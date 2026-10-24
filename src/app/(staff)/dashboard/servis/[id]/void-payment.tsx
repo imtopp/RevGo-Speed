@@ -2,10 +2,11 @@
 
 import { useActionState, useState } from "react";
 import { voidPayment, type BayarState } from "../../kas/actions";
+import { SubmitButton } from "@/components/submit-button";
 
 export function VoidPaymentForm({ paymentId }: { paymentId: string }) {
   const [open, setOpen] = useState(false);
-  const [state, action, pending] = useActionState<BayarState, FormData>(
+  const [state, action] = useActionState<BayarState, FormData>(
     voidPayment,
     {},
   );
@@ -39,13 +40,12 @@ export function VoidPaymentForm({ paymentId }: { paymentId: string }) {
         <p className="text-xs text-danger">{state.error}</p>
       )}
       <div className="flex gap-2">
-        <button
-          type="submit"
-          disabled={pending}
+        <SubmitButton
+          pendingText="Membatalkan..."
           className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-medium text-white active:opacity-90 disabled:opacity-60"
         >
-          {pending ? "Membatalkan..." : "Ya, batalkan"}
-        </button>
+          Ya, batalkan
+        </SubmitButton>
         <button
           type="button"
           onClick={() => setOpen(false)}

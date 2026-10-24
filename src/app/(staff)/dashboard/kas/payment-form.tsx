@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { addPayment, type BayarState } from "./actions";
+import { SubmitButton } from "@/components/submit-button";
 
 const inputCls =
   "mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-base outline-none focus:border-slate-900";
@@ -25,7 +26,7 @@ export function PaymentForm({
   remaining: number;
   compact?: boolean;
 }) {
-  const [state, action, pending] = useActionState<BayarState, FormData>(addPayment, {});
+  const [state, action] = useActionState<BayarState, FormData>(addPayment, {});
   if (remaining <= 0) return null;
 
   return (
@@ -72,9 +73,9 @@ export function PaymentForm({
           <input name="note" placeholder="opsional" className={inputCls} />
         </div>
       </div>
-      <button type="submit" disabled={pending} className={btnPrimary}>
-        {pending ? "Menyimpan..." : "Catat Pembayaran"}
-      </button>
+      <SubmitButton pendingText="Menyimpan..." className={btnPrimary}>
+        Catat Pembayaran
+      </SubmitButton>
     </form>
   );
 }

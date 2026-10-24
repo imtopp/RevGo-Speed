@@ -3,6 +3,7 @@ import { requireStaffRole, getStaffBranchId } from "@/lib/guard";
 import { formatRupiah, formatTanggalPendek } from "@/lib/service-status";
 import Link from "next/link";
 import { BranchPicker } from "../stok/branch-picker";
+import { SubmitButton } from "@/components/submit-button";
 
 export const metadata = { title: "Laporan" };
 
@@ -142,9 +143,12 @@ export default async function LaporanPage({
           <label className="block text-xs font-medium text-muted-foreground">Sampai</label>
           <input type="date" name="to" defaultValue={iso(to)} className="mt-1 rounded-lg border border-slate-300 px-2 py-1.5 text-sm" />
         </div>
-        <button type="submit" className="rounded-lg bg-primary px-3 py-2 text-sm font-medium text-white">
+        <SubmitButton
+          pendingText="Menerapkan..."
+          className="rounded-lg bg-primary px-3 py-2 text-sm font-medium text-white active:opacity-90 disabled:opacity-60"
+        >
           Terapkan
-        </button>
+        </SubmitButton>
       </form>
 
       {/* Ringkasan */}

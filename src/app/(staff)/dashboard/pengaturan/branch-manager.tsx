@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { createBranch, updateBranch, type BranchState } from "./actions";
+import { SubmitButton } from "@/components/submit-button";
 
 type Branch = {
   id: string;
@@ -126,11 +127,11 @@ export function BranchManager({ branches }: { branches: Branch[] }) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
 
-  const [createState, createAction, createPending] = useActionState<
+  const [createState, createAction] = useActionState<
     BranchState,
     FormData
   >(createBranch, {});
-  const [editState, editAction, editPending] = useActionState<
+  const [editState, editAction] = useActionState<
     BranchState,
     FormData
   >(updateBranch, {});
@@ -157,13 +158,12 @@ export function BranchManager({ branches }: { branches: Branch[] }) {
           {createState.success && (
             <p className="text-sm text-green-600">{createState.success}</p>
           )}
-          <button
-            type="submit"
-            disabled={createPending}
+          <SubmitButton
+            pendingText="Menyimpan..."
             className="w-full rounded-lg bg-primary py-2.5 text-sm font-medium text-white active:opacity-90 disabled:opacity-60"
           >
-            {createPending ? "Menyimpan..." : "Buat Cabang"}
-          </button>
+            Buat Cabang
+          </SubmitButton>
         </form>
       )}
 
@@ -205,13 +205,12 @@ export function BranchManager({ branches }: { branches: Branch[] }) {
                 {editState.success && (
                   <p className="text-sm text-green-600">{editState.success}</p>
                 )}
-                <button
-                  type="submit"
-                  disabled={editPending}
+                <SubmitButton
+                  pendingText="Menyimpan..."
                   className="w-full rounded-lg bg-primary py-2.5 text-sm font-medium text-white active:opacity-90 disabled:opacity-60"
                 >
-                  {editPending ? "Menyimpan..." : "Simpan Perubahan"}
-                </button>
+                  Simpan Perubahan
+                </SubmitButton>
               </form>
             )}
           </div>

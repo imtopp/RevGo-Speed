@@ -11,6 +11,7 @@ import {
   type StokState,
 } from "./actions";
 import { formatRupiah, formatTanggalPendek } from "@/lib/service-status";
+import { SubmitButton } from "@/components/submit-button";
 
 type Part = {
   id: string;
@@ -64,7 +65,7 @@ function PartForm({
   activeBranchId: string | null;
   isLocked: boolean;
 }) {
-  const [state, action, pending] = useActionState<StokState, FormData>(createPart, {});
+  const [state, action] = useActionState<StokState, FormData>(createPart, {});
   return (
     <form action={action} className="space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
       <p className="text-sm font-semibold text-foreground">Tambah Part Baru</p>
@@ -128,15 +129,15 @@ function PartForm({
           <input name="sellPrice" type="number" min={0} defaultValue={0} className={inputCls} />
         </div>
       </div>
-      <button type="submit" disabled={pending} className={btnPrimary}>
-        {pending ? "Menyimpan..." : "Tambah Part"}
-      </button>
+      <SubmitButton pendingText="Menyimpan..." className={btnPrimary}>
+        Tambah Part
+      </SubmitButton>
     </form>
   );
 }
 
 function StockInForm({ parts, suppliers }: { parts: Part[]; suppliers: Supplier[] }) {
-  const [state, action, pending] = useActionState<StokState, FormData>(stockIn, {});
+  const [state, action] = useActionState<StokState, FormData>(stockIn, {});
   return (
     <form action={action} className="space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
       <p className="text-sm font-semibold text-foreground">Stok Masuk (Pembelian)</p>
@@ -188,15 +189,15 @@ function StockInForm({ parts, suppliers }: { parts: Part[]; suppliers: Supplier[
       <p className="text-xs text-slate-400">
         Otomatis catat kas keluar sesuai total (qty × harga beli).
       </p>
-      <button type="submit" disabled={pending} className={btnPrimary}>
-        {pending ? "Menyimpan..." : "Catat Stok Masuk"}
-      </button>
+      <SubmitButton pendingText="Menyimpan..." className={btnPrimary}>
+        Catat Stok Masuk
+      </SubmitButton>
     </form>
   );
 }
 
 function AdjustForm({ parts }: { parts: Part[] }) {
-  const [state, action, pending] = useActionState<StokState, FormData>(adjustStock, {});
+  const [state, action] = useActionState<StokState, FormData>(adjustStock, {});
   return (
     <form action={action} className="space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
       <p className="text-sm font-semibold text-foreground">Penyesuaian Stok</p>
@@ -222,15 +223,15 @@ function AdjustForm({ parts }: { parts: Part[] }) {
         <label className="block text-sm font-medium text-foreground">Alasan *</label>
         <input name="reason" required placeholder="Opname fisik, rusak, hilang" className={inputCls} />
       </div>
-      <button type="submit" disabled={pending} className={btnSecondary}>
-        {pending ? "..." : "Terapkan Penyesuaian"}
-      </button>
+      <SubmitButton className={btnSecondary}>
+        Terapkan Penyesuaian
+      </SubmitButton>
     </form>
   );
 }
 
 function SupplierPanel({ suppliers }: { suppliers: Supplier[] }) {
-  const [createState, createAction, createPending] = useActionState<StokState, FormData>(createSupplier, {});
+  const [createState, createAction] = useActionState<StokState, FormData>(createSupplier, {});
   const [editId, setEditId] = useState<string | null>(null);
 
   return (
@@ -252,9 +253,7 @@ function SupplierPanel({ suppliers }: { suppliers: Supplier[] }) {
             <input name="catatan" className={inputCls} />
           </div>
         </div>
-        <button type="submit" disabled={createPending} className={btnPrimary}>
-          {createPending ? "..." : "Tambah Supplier"}
-        </button>
+        <SubmitButton className={btnPrimary}>Tambah Supplier</SubmitButton>
       </form>
 
       <div className="space-y-2">
@@ -288,7 +287,7 @@ function SupplierPanel({ suppliers }: { suppliers: Supplier[] }) {
 }
 
 function SupplierEdit({ supplier }: { supplier: Supplier }) {
-  const [state, action, pending] = useActionState<StokState, FormData>(updateSupplier, {});
+  const [state, action] = useActionState<StokState, FormData>(updateSupplier, {});
   return (
     <form action={action} className="mt-3 space-y-3 border-t border-slate-200 pt-3">
       <input type="hidden" name="id" value={supplier.id} />
@@ -311,9 +310,7 @@ function SupplierEdit({ supplier }: { supplier: Supplier }) {
         <input type="checkbox" name="aktif" defaultChecked={supplier.aktif} />
         Aktif
       </label>
-      <button type="submit" disabled={pending} className={btnSecondary}>
-        {pending ? "..." : "Simpan"}
-      </button>
+      <SubmitButton className={btnSecondary}>Simpan</SubmitButton>
     </form>
   );
 }
@@ -351,7 +348,7 @@ function PartRow({ part }: { part: Part }) {
 }
 
 function PartEdit({ part }: { part: Part }) {
-  const [state, action, pending] = useActionState<StokState, FormData>(updatePart, {});
+  const [state, action] = useActionState<StokState, FormData>(updatePart, {});
   return (
     <form action={action} className="mt-3 space-y-3 border-t border-slate-200 pt-3">
       <input type="hidden" name="id" value={part.id} />
@@ -386,9 +383,7 @@ function PartEdit({ part }: { part: Part }) {
           <input name="sellPrice" type="number" min={0} defaultValue={part.sellPrice} className={inputCls} />
         </div>
       </div>
-      <button type="submit" disabled={pending} className={btnSecondary}>
-        {pending ? "..." : "Simpan"}
-      </button>
+      <SubmitButton className={btnSecondary}>Simpan</SubmitButton>
     </form>
   );
 }

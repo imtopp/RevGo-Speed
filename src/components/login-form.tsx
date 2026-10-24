@@ -3,13 +3,11 @@
 import { useActionState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { login, type LoginState } from "@/app/login/actions";
+import { SubmitButton } from "@/components/submit-button";
 
 function LoginFormInner() {
   const searchParams = useSearchParams();
-  const [state, action, pending] = useActionState<LoginState, FormData>(
-    login,
-    {},
-  );
+  const [state, action] = useActionState<LoginState, FormData>(login, {});
   // ?error= dari redirect NextAuth (mis. sesi kedaluwarsa) — pesan generik.
   const redirectedWithError = searchParams.get("error");
   const registered = searchParams.get("registered");
@@ -61,13 +59,12 @@ function LoginFormInner() {
           className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-base outline-none focus:border-slate-900"
         />
       </div>
-      <button
-        type="submit"
-        disabled={pending}
+      <SubmitButton
+        pendingText="Masuk..."
         className="w-full rounded-lg bg-primary py-2.5 font-medium text-white active:opacity-90 disabled:opacity-60"
       >
-        {pending ? "Masuk..." : "Masuk"}
-      </button>
+        Masuk
+      </SubmitButton>
     </form>
   );
 }

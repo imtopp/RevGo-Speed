@@ -16,6 +16,7 @@ import {
   customerRespondEstimate,
   type CustomerState,
 } from "./actions";
+import { SubmitButton } from "@/components/submit-button";
 
 type Vehicle = { id: string; plateNumber: string; brand: string; model: string };
 type Branch = { id: string; name: string };
@@ -73,7 +74,7 @@ function MerekSelect({
 }
 
 export function RespondForm({ id }: { id: string }) {
-  const [state, action, pending] = useActionState<CustomerState, FormData>(
+  const [state, action] = useActionState<CustomerState, FormData>(
     customerRespondEstimate,
     {},
   );
@@ -84,24 +85,16 @@ export function RespondForm({ id }: { id: string }) {
         <form action={action} className="flex-1">
           <input type="hidden" name="id" value={id} />
           <input type="hidden" name="decision" value="approve" />
-          <button
-            type="submit"
-            disabled={pending}
-            className="w-full rounded-lg bg-success py-2 text-sm font-medium text-white active:opacity-90 disabled:opacity-60"
-          >
-            {pending ? "..." : "Setujui"}
-          </button>
+          <SubmitButton className="w-full rounded-lg bg-success py-2 text-sm font-medium text-white active:opacity-90 disabled:opacity-60">
+            Setujui
+          </SubmitButton>
         </form>
         <form action={action} className="flex-1">
           <input type="hidden" name="id" value={id} />
           <input type="hidden" name="decision" value="reject" />
-          <button
-            type="submit"
-            disabled={pending}
-            className="w-full rounded-lg bg-surface py-2 text-sm font-medium text-danger ring-1 ring-red-200 active:opacity-90 disabled:opacity-60"
-          >
-            {pending ? "..." : "Tolak"}
-          </button>
+          <SubmitButton className="w-full rounded-lg bg-surface py-2 text-sm font-medium text-danger ring-1 ring-red-200 active:opacity-90 disabled:opacity-60">
+            Tolak
+          </SubmitButton>
         </form>
       </div>
     </div>
@@ -115,11 +108,11 @@ function VehicleRow({
   vehicle: Vehicle;
   modelPerMerek: Record<string, string[]>;
 }) {
-  const [uState, uAction, uPending] = useActionState<CustomerState, FormData>(
+  const [uState, uAction] = useActionState<CustomerState, FormData>(
     customerUpdateVehicle,
     {},
   );
-  const [dState, dAction, dPending] = useActionState<CustomerState, FormData>(
+  const [dState, dAction] = useActionState<CustomerState, FormData>(
     customerDeleteVehicle,
     {},
   );
@@ -188,13 +181,12 @@ function VehicleRow({
             </datalist>
           </div>
           <div className="flex gap-2">
-            <button
-              type="submit"
-              disabled={uPending}
+            <SubmitButton
+              pendingText="Menyimpan..."
               className="flex-1 rounded-lg bg-primary py-2 text-sm font-medium text-white active:opacity-90 disabled:opacity-60"
             >
-              {uPending ? "Menyimpan..." : "Simpan"}
-            </button>
+              Simpan
+            </SubmitButton>
             <button
               type="button"
               onClick={() => setEdit(false)}
@@ -232,13 +224,12 @@ function VehicleRow({
             }}
           >
             <input type="hidden" name="id" value={vehicle.id} />
-            <button
-              type="submit"
-              disabled={dPending}
+            <SubmitButton
+              pendingText="Menghapus..."
               className="rounded-lg border border-red-200 bg-surface px-3 py-1.5 text-sm font-medium text-danger active:opacity-90 disabled:opacity-60"
             >
-              {dPending ? "Menghapus..." : "Hapus"}
-            </button>
+              Hapus
+            </SubmitButton>
           </form>
         </div>
       </div>
@@ -258,11 +249,11 @@ export function BookingSection({
   catalog: Catalog[];
   modelPerMerek: Record<string, string[]>;
 }) {
-  const [bookingState, bookingAction, bookingPending] = useActionState<
+  const [bookingState, bookingAction] = useActionState<
     CustomerState,
     FormData
   >(customerBooking, {});
-  const [vehicleState, vehicleAction, vehiclePending] = useActionState<
+  const [vehicleState, vehicleAction] = useActionState<
     CustomerState,
     FormData
   >(customerAddVehicle, {});
@@ -359,13 +350,12 @@ export function BookingSection({
               className={inputCls}
             />
           </div>
-          <button
-            type="submit"
-            disabled={bookingPending}
+          <SubmitButton
+            pendingText="Mengirim..."
             className="w-full rounded-lg bg-primary py-2.5 text-sm font-medium text-white active:opacity-90 disabled:opacity-60"
           >
-            {bookingPending ? "Mengirim..." : "Kirim Booking"}
-          </button>
+            Kirim Booking
+          </SubmitButton>
         </form>
       )}
 
@@ -437,13 +427,12 @@ export function BookingSection({
                 </datalist>
               </div>
             </div>
-            <button
-              type="submit"
-              disabled={vehiclePending}
+            <SubmitButton
+              pendingText="Menyimpan..."
               className="w-full rounded-lg bg-primary py-2 text-sm font-medium text-white active:opacity-90 disabled:opacity-60"
             >
-              {vehiclePending ? "Menyimpan..." : "Simpan Kendaraan"}
-            </button>
+              Simpan Kendaraan
+            </SubmitButton>
           </form>
         )}
         {vehicles.length === 0 ? (
