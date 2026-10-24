@@ -4,6 +4,9 @@ import { prisma } from "@/lib/prisma";
 import { verifyPassword } from "@/lib/password";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  // Ikuti host dari request (localhost / IP LAN / domain) — redirect setelah
+  // login tidak lagi dipatok ke AUTH_URL sehingga akses via IP:3000 aman.
+  trustHost: true,
   session: { strategy: "jwt" },
   pages: { signIn: "/login" },
   providers: [
