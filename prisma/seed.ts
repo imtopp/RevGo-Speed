@@ -10,6 +10,7 @@ const prisma = new PrismaClient({ adapter });
 
 const DEFAULT_SETTINGS: Record<string, string> = {
   app_name: "RevGo Speed",
+  logo_url: "/icons/icon-192.png",
   dp_policy: "TANPA_REFUND",
   service_code_prefix: "SV-",
 };

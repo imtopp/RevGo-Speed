@@ -15,14 +15,20 @@ export default async function Home() {
   if (session?.user) redirect(homePathForRole(session.user.role));
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-8 p-6">
+    <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-8 p-6 md:max-w-lg">
       <div>
         <p className="text-sm font-semibold uppercase tracking-widest text-slate-500">
           Servis Kendaraan
         </p>
-        <h1 className="mt-2 text-4xl font-bold tracking-tight">
-          Rev<span className="text-slate-500">Go Speed</span>
-        </h1>
+        <h1 className="sr-only">RevGo Speed</h1>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/brand/logo-title.png"
+          alt=""
+          width={750}
+          height={750}
+          className="mt-3 h-36 w-auto md:h-44"
+        />
         <p className="mt-3 leading-relaxed text-slate-600">
           Booking, pantau, dan bayar servis kendaraan kamu — tanpa perlu
           antre atau menelepon. Semua bisa dilakukan dari HP.
