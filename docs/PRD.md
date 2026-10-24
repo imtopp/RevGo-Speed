@@ -1,13 +1,14 @@
 # PRD — RevGo Speed
 
-**Versi:** 0.3 (draft untuk review)
-**Tanggal:** 23 Oktober 2026
-**Status:** Menunggu review pemilik produk
+**Versi:** 1.0 (Rilis 1 selesai)
+**Tanggal:** 24 Oktober 2026
+**Status:** ✅ Rilis 1 selesai — semua fase A–E terpasang, siap produksi
 
 **Riwayat:**
 - v0.1 — draft awal (4 modul rilis 1, multi-cabang, DP+lunas).
 - v0.2 — peran **System Administrator**; kebijakan DP/refund & jam operasional jadi **konfigurasi**; alur disesuaikan standar industri bengkel (approval estimasi, QC sebelum serah terima).
 - v0.3 — evaluasi gap vs praktik software bengkel (riset komparatif): tambah status **`CHECKED_IN` + pemeriksaan awal unit**, papan kerja, master **supplier**, sumber dana kas (**kantong uang**), menu **piutang**, snapshot **HPP per servis** (laba per job), backup DB; daftar fase 2 diperkaya (opname massal, shift kasir, PO, dsb.).
+- v1.0 — **rebrand RevLedger → RevGo Speed** (hostname & branding); migrasi SQLite → **Neon PostgreSQL**; deploy **Vercel** (production) + Neon (DB); semua fase A–E selesai.
 
 ---
 
@@ -200,7 +201,7 @@ Akses: **Owner + SysAdmin**; perubahan tercatat (siapa, kapan).
 - **Kebijakan DP & pembatalan:** `TANPA_REFUND` / `REFUND_PENUH` (MVP: panduan + eksekusi manual lewat kas; otomatis fase 2).
 - **Parameter:** nama tampilan aplikasi, default cabang aktif, **prefix kode servis** (mis. `SV-`).
 - **Kelola akun staff:** buat akun Admin/Mekanik/SysAdmin, assign cabang, reset password, nonaktifkan.
-- **Backup data:** unduh salinan database (SQLite) — rutinitas SysAdmin.
+- **Backup data:** unduh salinan database (JSON export) — rutinitas SysAdmin.
 
 ---
 
@@ -226,9 +227,10 @@ Akses: **Owner + SysAdmin**; perubahan tercatat (siapa, kapan).
 - **Mobile-first:** target HP; diuji 360–430px; PWA installable.
 - **Offline:** hanya halaman cache untuk dibaca; mutasi butuh koneksi.
 - **Keamanan:** scrypt ✅; autorisasi server-side; query selalu ter-filter cabang/role.
-- **Skala:** ratusan transaksi/hari/cabang — SQLite (dev) / PostgreSQL (produksi).
+- **Skala:** ratusan transaksi/hari/cabang — **Neon PostgreSQL** (production & staging via branch).
+- **Deploy:** **Vercel** (app) + **Neon** (Postgres, branch `production` sebagai default).
 - **Bahasa:** Indonesia; Rupiah (integer, format `Rp`).
-- **Backup:** unduh DB tersedia (FR-10); backup terjadwal otomatis: hosting produksi fase 2.
+- **Backup:** unduh DB tersedia (FR-10); Neon menyediakan **PITR** (point-in-time restore) sebagai backup otomatis.
 
 ---
 
@@ -249,11 +251,11 @@ Akses: **Owner + SysAdmin**; perubahan tercatat (siapa, kapan).
 
 | Fase | Isi | Keluaran |
 |---|---|---|
-| **A. Fondasi data & sistem** | Delta skema (App. A): Cabang+jam, katalog, supplier, SystemSetting, `SYS_ADMIN`, `WAITING_APPROVAL`, `CHECKED_IN`, `ServicePart.cost`, `Cashflow.account`; seed; halaman **Pengaturan**, **Kelola Akun**, **Backup** | Migrasi bersih; SysAdmin & konfigurasi aktif |
-| **B. Servis end-to-end** | Katalog, booking + approval, **precheck/CHECKED_IN**, papan kerja, workspace mekanik, QC→DONE | Siklus booking→DONE (approve & precheck dulu) jalan |
-| **C. Stok** | CRUD part + supplier, masuk/manual, keluar via servis + snapshot HPP, alert menipis | Stok & HPP akurat |
-| **D. Bayar & Kas** | DP/lunas/piutang, kantong kas, entri kas otomatis & manual, menu Piutang | Keuangan utuh |
-| **E. Laporan & polish** | Dashboard riil, laporan periode/cabang/mekanik/**laba per servis**/**per kantong**, export CSV, halaman cetak, PWA pass | Siap dipakai harian |
+| **A. Fondasi data & sistem** ✅ | Delta skema (App. A): Cabang+jam, katalog, supplier, SystemSetting, `SYS_ADMIN`, `WAITING_APPROVAL`, `CHECKED_IN`, `ServicePart.cost`, `Cashflow.account`; seed; halaman **Pengaturan**, **Kelola Akun**, **Backup** | Migrasi bersih; SysAdmin & konfigurasi aktif |
+| **B. Servis end-to-end** ✅ | Katalog, booking + approval, **precheck/CHECKED_IN**, papan kerja, workspace mekanik, QC→DONE | Siklus booking→DONE (approve & precheck dulu) jalan |
+| **C. Stok** ✅ | CRUD part + supplier, masuk/manual, keluar via servis + snapshot HPP, alert menipis | Stok & HPP akurat |
+| **D. Bayar & Kas** ✅ | DP/lunas/piutang, kantong kas, entri kas otomatis & manual, menu Piutang | Keuangan utuh |
+| **E. Laporan & polish** ✅ | Dashboard riil, laporan periode/cabang/mekanik/**laba per servis**/**per kantong**, export CSV, halaman cetak, PWA pass | Siap dipakai harian |
 
 Setiap fase selesai = fitur terpasang + role-guard teruji + `build`/`lint` hijau + smoke test alur utama.
 
