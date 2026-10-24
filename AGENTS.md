@@ -48,7 +48,7 @@ src/
     (customer)/pesanan/     # customer: booking, riwayat, approve estimasi
     (staff)/dashboard/      # staff: servis, stok, kas, laporan, piutang,
                             #   katalog, pengaturan, akun, backup, tugas
-    api/backup/export/      # export JSON (Owner/SysAdmin)
+    api/backup/export/      # export JSON (OWNER-only — memuat passwordHash)
     api/laporan/export/     # export CSV laporan
     login/ register/        # auth pages
   components/               # brand-mark, staff-nav, login/register form

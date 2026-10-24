@@ -36,6 +36,9 @@ export async function createStaff(
   if (!(STAFF_ROLES as readonly string[]).includes(role)) {
     return { error: "Role staff tidak valid." };
   }
+  if (role === "SYS_ADMIN" && session.user.role !== "OWNER") {
+    return { error: "Hanya Owner yang bisa membuat akun SysAdmin." };
+  }
 
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) return { error: "Email sudah terpakai." };

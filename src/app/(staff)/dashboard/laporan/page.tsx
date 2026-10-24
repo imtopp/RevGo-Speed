@@ -17,6 +17,13 @@ function iso(d: Date) {
   return d.toISOString().slice(0, 10);
 }
 
+/** Parse param YYYY-MM-DD ketat — nilai aneh jangan jadi Invalid Date (500). */
+function parseDateParam(s: string | undefined, endOfDay: boolean, fallback: Date): Date {
+  if (!s || !/^\d{4}-\d{2}-\d{2}$/.test(s)) return fallback;
+  const d = new Date(s + (endOfDay ? "T23:59:59.999" : "T00:00:00"));
+  return Number.isNaN(d.getTime()) ? fallback : d;
+}
+
 export default async function LaporanPage({
   searchParams,
 }: {
@@ -34,8 +41,8 @@ export default async function LaporanPage({
   const branchFilter = branchIdStaff ? branchIdStaff : activeBranchId;
 
   const bounds = monthBounds();
-  const from = params.from ? new Date(params.from + "T00:00:00") : bounds.from;
-  const to = params.to ? new Date(params.to + "T23:59:59.999") : bounds.to;
+  const from = parseDateParam(params.from, false, bounds.from);
+  const to = parseDateParam(params.to, true, bounds.to);
   const branchWhere = branchFilter ? { branchId: branchFilter } : {};
 
   const [doneServices, payments, cashflows] = await Promise.all([

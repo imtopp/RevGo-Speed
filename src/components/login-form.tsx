@@ -1,34 +1,30 @@
 "use client";
 
-import { signIn } from "next-auth/react";
+import { useActionState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { Suspense, useState } from "react";
+import { login, type LoginState } from "@/app/login/actions";
 
 function LoginFormInner() {
   const searchParams = useSearchParams();
-  const [pending, setPending] = useState(false);
-  const hasError = searchParams.get("error");
+  const [state, action, pending] = useActionState<LoginState, FormData>(
+    login,
+    {},
+  );
+  // ?error= dari redirect NextAuth (mis. sesi kedaluwarsa) — pesan generik.
+  const redirectedWithError = searchParams.get("error");
   const registered = searchParams.get("registered");
-
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setPending(true);
-    const formData = new FormData(e.currentTarget);
-    await signIn("credentials", {
-      email: String(formData.get("email") ?? ""),
-      password: String(formData.get("password") ?? ""),
-      redirectTo: "/dashboard",
-    });
-  }
+  const error =
+    state.error ??
+    (redirectedWithError ? "Email atau password salah." : null);
 
   return (
-    <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-      {hasError && (
+    <form action={action} className="mt-6 space-y-4">
+      {error && (
         <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-danger">
-          Email atau password salah.
+          {error}
         </p>
       )}
-      {registered && !hasError && (
+      {registered && !error && (
         <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
           Pendaftaran berhasil, silakan masuk.
         </p>

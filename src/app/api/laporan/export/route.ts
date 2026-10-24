@@ -1,8 +1,17 @@
 import { prisma } from "@/lib/prisma";
 import { requireStaffRole, getStaffBranchId } from "@/lib/guard";
 
+/** Parse param tanggal YYYY-MM-DD ketat — nilai aneh jangan pernah jadi Invalid Date. */
+function parseDateParam(s: string | null, endOfDay: boolean, fallback: Date): Date {
+  if (!s || !/^\d{4}-\d{2}-\d{2}$/.test(s)) return fallback;
+  const d = new Date(s + (endOfDay ? "T23:59:59.999" : "T00:00:00"));
+  return Number.isNaN(d.getTime()) ? fallback : d;
+}
+
 function csvEscape(v: unknown): string {
-  const s = String(v ?? "");
+  let s = String(v ?? "");
+  // Anti formula-injection Excel: sel berawalan = + - @ ditulis sebagai teks.
+  if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`;
   return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 function toCsv(rows: unknown[][]): string {
@@ -16,12 +25,16 @@ export async function GET(request: Request) {
   const p = url.searchParams;
 
   const now = new Date();
-  const from = p.get("from")
-    ? new Date(p.get("from")! + "T00:00:00")
-    : new Date(now.getFullYear(), now.getMonth(), 1);
-  const to = p.get("to")
-    ? new Date(p.get("to")! + "T23:59:59.999")
-    : new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+  const from = parseDateParam(
+    p.get("from"),
+    false,
+    new Date(now.getFullYear(), now.getMonth(), 1),
+  );
+  const to = parseDateParam(
+    p.get("to"),
+    true,
+    new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999),
+  );
   const branchFilter = branchIdStaff ?? p.get("branch") ?? null;
   const branchWhere = branchFilter ? { branchId: branchFilter } : {};
 

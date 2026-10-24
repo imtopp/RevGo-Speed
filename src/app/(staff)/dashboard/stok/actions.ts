@@ -9,12 +9,20 @@ import type { PaymentMethod } from "@db/prisma/client";
 
 export type StokState = { error?: string; success?: string };
 
+/** Batas atas nilai integer Prisma (Int32) — tolak input di luar itu. */
+const MAX_RUPIAH = 2_000_000_000;
+
 async function requireStokRole() {
   const session = await auth();
   if (!session?.user) throw new Error("Belum login.");
   if (!["OWNER", "ADMIN"].includes(session.user.role)) {
     throw new Error("Tidak punya akses.");
   }
+  const user = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { isActive: true },
+  });
+  if (!user?.isActive) throw new Error("Akun tidak aktif.");
   return session;
 }
 
@@ -71,7 +79,7 @@ export async function createPart(
   await requireStokRole();
   const branchIdStaff = await getStaffBranchId();
 
-  const branchId = String(formData.get("branchId") ?? "").trim() || branchIdStaff || "";
+  const branchId = branchIdStaff || String(formData.get("branchId") ?? "").trim() || "";
   const sku = String(formData.get("sku") ?? "").trim().toUpperCase();
   const name = String(formData.get("name") ?? "").trim();
   const category = String(formData.get("category") ?? "").trim();
@@ -83,8 +91,20 @@ export async function createPart(
   const supplierId = String(formData.get("supplierId") ?? "").trim();
 
   if (!branchId || !sku || !name) return { error: "Cabang, SKU, dan nama wajib diisi." };
-  if (quantity < 0 || minStock < 0 || buyPrice < 0 || sellPrice < 0) {
-    return { error: "Nilai tidak boleh negatif." };
+  if (
+    !Number.isFinite(quantity) ||
+    !Number.isFinite(minStock) ||
+    !Number.isFinite(buyPrice) ||
+    !Number.isFinite(sellPrice) ||
+    quantity < 0 ||
+    minStock < 0 ||
+    buyPrice < 0 ||
+    sellPrice < 0 ||
+    quantity > MAX_RUPIAH ||
+    buyPrice > MAX_RUPIAH ||
+    sellPrice > MAX_RUPIAH
+  ) {
+    return { error: "Nilai tidak valid." };
   }
 
   // Cek SKU unik per cabang
@@ -130,6 +150,10 @@ export async function updatePart(
 
   const prev = await prisma.part.findUnique({ where: { id } });
   if (!prev) return { error: "Part tidak ditemukan." };
+  const branchIdStaff = await getStaffBranchId();
+  if (branchIdStaff && prev.branchId !== branchIdStaff) {
+    return { error: "Part bukan di cabang Anda." };
+  }
 
   await prisma.$transaction(async (tx) => {
     await tx.part.update({
@@ -175,7 +199,15 @@ export async function stockIn(
   const method = String(formData.get("method") ?? "CASH") as PaymentMethod;
   const note = String(formData.get("note") ?? "").trim();
 
-  if (!partId || quantity <= 0 || buyPrice < 0) {
+  if (
+    !partId ||
+    !Number.isFinite(quantity) ||
+    !Number.isFinite(buyPrice) ||
+    quantity <= 0 ||
+    quantity > MAX_RUPIAH ||
+    buyPrice < 0 ||
+    buyPrice > MAX_RUPIAH
+  ) {
     return { error: "Part, jumlah, dan harga beli tidak valid." };
   }
   if (!["CASH", "TRANSFER", "QRIS"].includes(method)) {
@@ -184,6 +216,10 @@ export async function stockIn(
 
   const part = await prisma.part.findUnique({ where: { id: partId } });
   if (!part) return { error: "Part tidak ditemukan." };
+  const branchIdStaff = await getStaffBranchId();
+  if (branchIdStaff && part.branchId !== branchIdStaff) {
+    return { error: "Part bukan di cabang Anda." };
+  }
 
   const total = quantity * buyPrice;
 
@@ -243,11 +279,22 @@ export async function adjustStock(
   const delta = Number(formData.get("delta") ?? 0);
   const reason = String(formData.get("reason") ?? "").trim();
 
-  if (!partId || delta === 0) return { error: "Part dan selisih tidak valid." };
+  if (
+    !partId ||
+    !Number.isFinite(delta) ||
+    delta === 0 ||
+    Math.abs(delta) > MAX_RUPIAH
+  ) {
+    return { error: "Part dan selisih tidak valid." };
+  }
   if (!reason) return { error: "Alasan penyesuaian wajib diisi." };
 
   const part = await prisma.part.findUnique({ where: { id: partId } });
   if (!part) return { error: "Part tidak ditemukan." };
+  const branchIdStaff = await getStaffBranchId();
+  if (branchIdStaff && part.branchId !== branchIdStaff) {
+    return { error: "Part bukan di cabang Anda." };
+  }
   if (part.quantity + delta < 0) {
     return { error: `Stok tidak boleh negatif (tersisa ${part.quantity}).` };
   }
@@ -255,11 +302,16 @@ export async function adjustStock(
   const type = delta > 0 ? "IN" : "OUT";
   const absDelta = Math.abs(delta);
 
-  await prisma.$transaction(async (tx) => {
-    await tx.part.update({
-      where: { id: partId },
+  const ok = await prisma.$transaction(async (tx) => {
+    // Guard atomik anti-race: decrement hanya bila stok masih mencukupi di DB.
+    const updated = await tx.part.updateMany({
+      where: {
+        id: partId,
+        ...(delta < 0 ? { quantity: { gte: -delta } } : {}),
+      },
       data: { quantity: { increment: delta } },
     });
+    if (updated.count === 0) return false;
     await tx.stockMovement.create({
       data: {
         partId,
@@ -278,7 +330,11 @@ export async function adjustStock(
       before: { quantity: part.quantity },
       after: { quantity: part.quantity + delta, reason },
     });
+    return true;
   });
+  if (!ok) {
+    return { error: `Stok tidak boleh negatif (tersisa ${part.quantity}).` };
+  }
 
   revalidatePath("/dashboard/stok");
   return {

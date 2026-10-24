@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { requireStaffRole } from "@/lib/guard";
+import { requireStaffRole, getStaffBranchId } from "@/lib/guard";
 import Link from "next/link";
 import {
   STATUS_LABEL,
@@ -32,16 +32,21 @@ export default async function ServisPage({
   searchParams: Promise<{ status?: string; booking?: string }>;
 }) {
   await requireStaffRole(["OWNER", "ADMIN"]);
+  const branchIdStaff = await getStaffBranchId();
   const params = await searchParams;
-  const filter = params.status ?? "aktif";
+  // Validasi enum status dari URL — nilai asing jangan pernah masuk query Prisma.
+  const rawFilter = params.status ?? "aktif";
+  const filter = FILTERS.some((f) => f.key === rawFilter) ? rawFilter : "aktif";
   const showBooking = params.booking === "1";
 
-  const where =
-    filter === "semua"
+  const where = {
+    ...(branchIdStaff ? { branchId: branchIdStaff } : {}),
+    ...(filter === "semua"
       ? {}
       : filter === "aktif"
         ? { status: { in: ACTIVE_STATUSES } }
-        : { status: filter as ServiceStatus };
+        : { status: filter as ServiceStatus }),
+  };
 
   const [services, branches, catalog, modelRows] = await Promise.all([
     prisma.service.findMany({
@@ -53,7 +58,10 @@ export default async function ServisPage({
         mechanic: { select: { name: true } },
       },
     }),
-    prisma.branch.findMany({ where: { aktif: true }, orderBy: { name: "asc" } }),
+    prisma.branch.findMany({
+      where: { aktif: true, ...(branchIdStaff ? { id: branchIdStaff } : {}) },
+      orderBy: { name: "asc" },
+    }),
     prisma.serviceCatalog.findMany({
       where: { aktif: true },
       orderBy: { nama: "asc" },

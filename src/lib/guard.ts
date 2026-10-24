@@ -10,6 +10,13 @@ export async function requireStaff() {
   const session = await auth();
   if (!session?.user) redirect("/login");
   if (session.user.role === "CUSTOMER") redirect("/pesanan");
+  // Revalidasi akun tiap request: JWT bisa hidup 30 hari — akun yang
+  // dinonaktifkan/diharuskan keluar harus langsung terblokir.
+  const user = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { isActive: true },
+  });
+  if (!user || !user.isActive) redirect("/login?error=session");
   return session;
 }
 

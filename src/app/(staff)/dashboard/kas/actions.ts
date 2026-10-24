@@ -9,12 +9,20 @@ import type { PaymentKind, PaymentMethod, CashflowType, CashflowAccount } from "
 
 export type BayarState = { error?: string; success?: string };
 
+/** Batas atas nilai integer Prisma (Int32) — tolak input di luar itu. */
+const MAX_RUPIAH = 2_000_000_000;
+
 async function requireKasRole() {
   const session = await auth();
   if (!session?.user) throw new Error("Belum login.");
   if (!["OWNER", "ADMIN"].includes(session.user.role)) {
     throw new Error("Tidak punya akses.");
   }
+  const user = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { isActive: true },
+  });
+  if (!user?.isActive) throw new Error("Akun tidak aktif.");
   return session;
 }
 
@@ -43,7 +51,9 @@ export async function addPayment(
   const method = String(formData.get("method") ?? "CASH") as PaymentMethod;
   const note = String(formData.get("note") ?? "").trim();
 
-  if (!serviceId || amount <= 0) return { error: "Jumlah bayar tidak valid." };
+  if (!serviceId || !Number.isFinite(amount) || amount <= 0 || amount > MAX_RUPIAH) {
+    return { error: "Jumlah bayar tidak valid." };
+  }
   if (!["DP", "PELUNASAN"].includes(kind)) return { error: "Jenis bayar tidak valid." };
   if (!["CASH", "QRIS", "TRANSFER"].includes(method)) return { error: "Metode tidak valid." };
 
@@ -58,6 +68,10 @@ export async function addPayment(
   });
   if (!service) return { error: "Servis tidak ditemukan." };
   if (service.status === "CANCELLED") return { error: "Servis dibatalkan, tidak bisa dibayar." };
+  const branchIdStaff = await getStaffBranchId();
+  if (branchIdStaff && service.branchId !== branchIdStaff) {
+    return { error: "Servis bukan di cabang Anda." };
+  }
 
   const total = totalTagihan(service.laborCost, service.parts);
   const paid = service.payments.reduce((s, p) => s + p.amount, 0);
@@ -70,6 +84,17 @@ export async function addPayment(
   const category = kind === "DP" ? "DP Servis" : "Pembayaran Servis";
 
   await prisma.$transaction(async (tx) => {
+    // Kunci baris servis (FOR UPDATE) — serialisasi cek sisa tagihan antar request
+    // agar dua pembayaran paralel tidak bisa sama-sama lolos cek sisa.
+    await tx.$queryRaw`SELECT id FROM "Service" WHERE id = ${serviceId} FOR UPDATE`;
+    const paidAgg = await tx.payment.aggregate({
+      where: { serviceId, voidedAt: null },
+      _sum: { amount: true },
+    });
+    const paidNow = paidAgg._sum.amount ?? 0;
+    if (amount > total - paidNow) {
+      throw new Error("Melebihi sisa tagihan — coba lagi.");
+    }
     const payment = await tx.payment.create({
       data: {
         serviceId,
@@ -193,10 +218,18 @@ export async function addManualCashflow(
   const amount = Number(formData.get("amount") ?? 0);
   const account = String(formData.get("account") ?? "KAS") as CashflowAccount;
   const description = String(formData.get("description") ?? "").trim();
-  const branchId = String(formData.get("branchId") ?? "").trim() || branchIdStaff || "";
+  const branchId = branchIdStaff || String(formData.get("branchId") ?? "").trim() || "";
 
   if (!["INCOME", "EXPENSE"].includes(type)) return { error: "Tipe kas tidak valid." };
-  if (!category || amount <= 0 || !branchId) return { error: "Kategori, jumlah, dan cabang wajib diisi." };
+  if (
+    !category ||
+    !branchId ||
+    !Number.isFinite(amount) ||
+    amount <= 0 ||
+    amount > MAX_RUPIAH
+  ) {
+    return { error: "Kategori, jumlah, dan cabang wajib diisi." };
+  }
   if (!["KAS", "BANK"].includes(account)) return { error: "Kantong tidak valid." };
 
   const session = await auth();

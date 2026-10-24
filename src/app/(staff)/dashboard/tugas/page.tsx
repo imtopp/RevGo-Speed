@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { requireStaffRole } from "@/lib/guard";
+import { requireStaffRole, getStaffBranchId } from "@/lib/guard";
 import Link from "next/link";
 import {
   STATUS_LABEL,
@@ -20,6 +20,7 @@ const ACTIVE_MECHANIC_STATUSES: ServiceStatus[] = [
 export default async function TugasPage() {
   const session = await requireStaffRole(["MECHANIC", "OWNER", "ADMIN"]);
   const isMechanic = session.user.role === "MECHANIC";
+  const branchIdStaff = await getStaffBranchId();
 
   const where = isMechanic
     ? {
@@ -29,6 +30,7 @@ export default async function TugasPage() {
     : {
         status: { in: ACTIVE_MECHANIC_STATUSES },
         mechanicId: { not: null },
+        ...(branchIdStaff ? { branchId: branchIdStaff } : {}),
       };
 
   const services = await prisma.service.findMany({

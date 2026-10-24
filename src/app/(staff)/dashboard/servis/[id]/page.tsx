@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { requireStaffRole } from "@/lib/guard";
+import { requireStaffRole, getStaffBranchId } from "@/lib/guard";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import {
@@ -42,6 +42,10 @@ export default async function ServisDetailPage({
   });
   if (!service) notFound();
 
+  // Scoping cabang: ADMIN/MECHANIC tidak boleh membuka servis cabang lain.
+  const branchIdStaff = await getStaffBranchId();
+  if (branchIdStaff && service.branchId !== branchIdStaff) notFound();
+
   const isMechanic = session.user.role === "MECHANIC";
   const isOwner = session.user.role === "OWNER";
   const isAssignedMechanic =
@@ -49,7 +53,7 @@ export default async function ServisDetailPage({
   const canAct = !isMechanic || isAssignedMechanic;
 
   const mechanics = await prisma.user.findMany({
-    where: { role: "MECHANIC", isActive: true },
+    where: { role: "MECHANIC", isActive: true, branchId: service.branchId },
     orderBy: { name: "asc" },
     select: { id: true, name: true },
   });

@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { requireStaffRole } from "@/lib/guard";
+import { requireStaffRole, getStaffBranchId } from "@/lib/guard";
 import { getAppName } from "@/lib/branding";
 import { notFound } from "next/navigation";
 import Link from "next/link";
@@ -28,6 +28,9 @@ export default async function CetakNotaPage({
     },
   });
   if (!service) notFound();
+  // Scoping cabang: ADMIN tidak boleh mencetak nota servis cabang lain.
+  const branchIdStaff = await getStaffBranchId();
+  if (branchIdStaff && service.branchId !== branchIdStaff) notFound();
 
   const totalPart = service.parts.reduce((s, p) => s + p.price * p.quantity, 0);
   const totalTagihan = totalPart + service.laborCost;

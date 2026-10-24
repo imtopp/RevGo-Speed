@@ -1,14 +1,15 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
-import { isOwnerOrSysAdmin } from "@/lib/guard";
 import { getAppName } from "@/lib/branding";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
   const session = await auth();
-  if (!session?.user || !isOwnerOrSysAdmin(session.user.role)) {
+  // OWNER-only: ekspor memuat passwordHash semua user — jangan sampai
+  // SysAdmin (atau di bawahnya) mengekstrak hash milik owner.
+  if (session?.user?.role !== "OWNER") {
     return NextResponse.json({ error: "Tidak punya akses." }, { status: 403 });
   }
 

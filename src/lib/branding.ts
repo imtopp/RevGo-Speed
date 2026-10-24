@@ -13,9 +13,14 @@ export const getBranding = cache(async (): Promise<Branding> => {
     const map = new Map(rows.map((r) => [r.key, r.value]));
     const name = map.get("app_name")?.trim();
     const logo = map.get("logo_url")?.trim();
+    // Sanitasi: hanya https:// atau path relatif — blok skema aneh (http:, data:, javascript:).
+    const logoSafe =
+      logo && (logo.startsWith("https://") || logo.startsWith("/"))
+        ? logo
+        : null;
     return {
       appName: name && name.length > 0 ? name : PLATFORM_NAME,
-      logoUrl: logo && logo.length > 0 ? logo : null,
+      logoUrl: logoSafe,
     };
   } catch {
     return { appName: PLATFORM_NAME, logoUrl: null };

@@ -9,6 +9,13 @@ import { revalidatePath } from "next/cache";
 export type SettingState = { error?: string; success?: string };
 export type BranchState = { error?: string; success?: string };
 
+/** Key pengaturan yang boleh ditulis — jangan biarkan input bebas membuat key sembarangan. */
+const ALLOWED_SETTING_KEYS = new Set([
+  "app_name",
+  "logo_url",
+  "service_code_prefix",
+]);
+
 async function requireOwnerOrSysAdminAction() {
   const session = await auth();
   if (!session?.user || !isOwnerOrSysAdmin(session.user.role)) {
@@ -26,6 +33,13 @@ export async function updateSetting(
   const value = String(formData.get("value") ?? "").trim();
 
   if (!key) return { error: "Key wajib diisi." };
+  if (!ALLOWED_SETTING_KEYS.has(key)) {
+    return { error: "Key pengaturan tidak dikenal." };
+  }
+  // Logo hanya https:// atau path relatif — sejalan dengan sanitasi di branding.ts.
+  if (key === "logo_url" && value && !value.startsWith("https://") && !value.startsWith("/")) {
+    return { error: "Logo harus URL https:// atau path gambar (diawali /)." };
+  }
 
   const prev = await prisma.systemSetting.findUnique({ where: { key } });
 

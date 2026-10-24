@@ -100,6 +100,10 @@ export async function customerAddVehicle(
   );
   const model = normalizeTipe(String(formData.get("model") ?? ""));
   const yearRaw = String(formData.get("year") ?? "").trim();
+  const year = yearRaw ? Number(yearRaw) : null;
+  if (year !== null && (!Number.isInteger(year) || year < 1900 || year > 2100)) {
+    return { error: "Tahun kendaraan tidak valid." };
+  }
 
   if (!plateNumber || !brand || !model) {
     return { error: "Plat, merek, dan tipe wajib diisi." };
@@ -109,14 +113,22 @@ export async function customerAddVehicle(
   }
 
   const existing = await prisma.vehicle.findUnique({ where: { plateNumber } });
-  if (existing) return { error: "Plat nomor sudah terdaftar." };
+  if (existing) {
+    // Pesan generik untuk plat milik orang lain — cegah enumeration plat lintas user.
+    return {
+      error:
+        existing.ownerId === session.user.id
+          ? "Plat nomor sudah terdaftar di kendaraan Anda."
+          : "Plat nomor tidak bisa digunakan.",
+    };
+  }
 
   await prisma.vehicle.create({
     data: {
       plateNumber,
       brand,
       model,
-      year: yearRaw ? Number(yearRaw) : null,
+      year,
       ownerId: session.user.id,
     },
   });
@@ -153,9 +165,16 @@ export async function customerUpdateVehicle(
   if (plateNumber !== vehicle.plateNumber) {
     const dup = await prisma.vehicle.findUnique({
       where: { plateNumber },
-      select: { id: true },
+      select: { id: true, ownerId: true },
     });
-    if (dup) return { error: "Plat nomor sudah terdaftar." };
+    if (dup) {
+      return {
+        error:
+          dup.ownerId === session.user.id
+            ? "Plat nomor sudah terdaftar di kendaraan Anda."
+            : "Plat nomor tidak bisa digunakan.",
+      };
+    }
   }
 
   await prisma.vehicle.update({

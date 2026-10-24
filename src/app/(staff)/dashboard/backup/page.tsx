@@ -1,11 +1,11 @@
-import { requireOwnerOrSysAdmin } from "@/lib/guard";
+import { requireStaffRole } from "@/lib/guard";
 import { getAppName } from "@/lib/branding";
 import Link from "next/link";
 
 export const metadata = { title: "Backup" };
 
 export default async function BackupPage() {
-  await requireOwnerOrSysAdmin();
+  await requireStaffRole(["OWNER"]);
   const appName = await getAppName();
 
   return (

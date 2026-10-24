@@ -271,3 +271,13 @@ model AuditLog {
   @@index([action, createdAt])
   @@index([entityType, entityId])
 }
+
+/// Counter rate-limit bersama lintas isolate Vercel — dihitung dari proxy (edge)
+/// via @neondatabase/serverless. Satu baris per (IP:scope), fixed window.
+model RateLimitBucket {
+  key         String   @id
+  windowStart DateTime
+  count       Int
+
+  @@index([windowStart])
+}

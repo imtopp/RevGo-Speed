@@ -2,6 +2,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+import { getStaffBranchId } from "@/lib/guard";
 import { logAudit } from "@/lib/audit";
 import { normalizeMerek, normalizeTipe, modelTidakSesuaiMerek, MEREK_LAINNYA } from "@/lib/vehicle";
 import { revalidatePath } from "next/cache";
@@ -13,7 +14,21 @@ async function requireStaffRole(roles: string[]) {
   const session = await auth();
   if (!session?.user) throw new Error("Belum login.");
   if (!roles.includes(session.user.role)) throw new Error("Tidak punya akses.");
+  const user = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { isActive: true },
+  });
+  if (!user?.isActive) throw new Error("Akun tidak aktif.");
   return session;
+}
+
+/** ADMIN/MECHANIC terikat cabang: kembalikan pesan error bila beda cabang, null bila boleh. */
+async function cekCabangServis(branchId: string): Promise<string | null> {
+  const branchIdStaff = await getStaffBranchId();
+  if (branchIdStaff && branchId !== branchIdStaff) {
+    return "Servis bukan di cabang Anda.";
+  }
+  return null;
 }
 
 async function generateServiceCode(branchId: string): Promise<string> {
@@ -37,7 +52,8 @@ export async function createBooking(
   formData: FormData,
 ): Promise<ServisState> {
   await requireStaffRole(["OWNER", "ADMIN"]);
-  const branchId = String(formData.get("branchId") ?? "").trim();
+  const branchIdStaff = await getStaffBranchId();
+  const branchId = branchIdStaff || String(formData.get("branchId") ?? "").trim();
   const plateNumber = String(formData.get("plateNumber") ?? "").trim().toUpperCase();
   const catalogId = String(formData.get("catalogId") ?? "").trim();
   const complaint = String(formData.get("complaint") ?? "").trim();
@@ -67,6 +83,7 @@ export async function createBooking(
     where: { plateNumber },
     include: { owner: true },
   });
+  let passwordSementara: string | null = null;
 
   if (!vehicle) {
     // Kendaraan baru → butuh data customer + merek/tipe
@@ -82,12 +99,15 @@ export async function createBooking(
     let customer = await prisma.user.findUnique({ where: { email: customerEmail } });
     if (!customer) {
       const { hashPassword } = await import("@/lib/password");
+      const { randomBytes } = await import("node:crypto");
+      // Password acak per akun — jangan pernah pakai default publik.
+      passwordSementara = randomBytes(8).toString("hex");
       customer = await prisma.user.create({
         data: {
           name: customerName,
           email: customerEmail,
           phone: customerPhone || null,
-          passwordHash: hashPassword("bengkel123"),
+          passwordHash: hashPassword(passwordSementara),
           role: "CUSTOMER",
         },
       });
@@ -138,7 +158,13 @@ export async function createBooking(
   });
 
   revalidatePath("/dashboard/servis");
-  return { success: `Booking ${code} dibuat untuk ${plateNumber}.` };
+  return {
+    success:
+      `Booking ${code} dibuat untuk ${plateNumber}.` +
+      (passwordSementara
+        ? ` Akun customer baru dibuat — password sementara: ${passwordSementara} (beritahu customer, sarankan diganti).`
+        : ""),
+  };
 }
 
 // ─── Transisi Status ──────────────────────────────────────────────────
@@ -159,6 +185,8 @@ async function transition(
   extra: Record<string, unknown> = {},
 ) {
   const service = await getServiceOrThrow(id);
+  const aksesError = await cekCabangServis(service.branchId);
+  if (aksesError) throw new Error(aksesError);
   if (!from.includes(service.status)) {
     throw new Error(
       `Status saat ini "${service.status}" tidak bisa diubah ke "${to}".`,
@@ -196,13 +224,28 @@ export async function submitEstimate(
   const mechanicId = String(formData.get("mechanicId") ?? "").trim();
   const scheduledAtRaw = String(formData.get("scheduledAt") ?? "").trim();
 
-  if (estimate < 0 || laborCost < 0) return { error: "Biaya tidak valid." };
+  if (
+    !Number.isFinite(estimate) ||
+    !Number.isFinite(laborCost) ||
+    estimate < 0 ||
+    laborCost < 0 ||
+    estimate > 2_000_000_000 ||
+    laborCost > 2_000_000_000
+  ) {
+    return { error: "Biaya tidak valid." };
+  }
+  let scheduledAt: Date | undefined;
+  if (scheduledAtRaw) {
+    const d = new Date(scheduledAtRaw);
+    if (Number.isNaN(d.getTime())) return { error: "Jadwal tidak valid." };
+    scheduledAt = d;
+  }
 
   await transition(id, ["PENDING"], "WAITING_APPROVAL", {
     estimate,
     laborCost,
     mechanicId: mechanicId || null,
-    scheduledAt: scheduledAtRaw ? new Date(scheduledAtRaw) : undefined,
+    scheduledAt,
   });
 
   revalidatePath("/dashboard/servis");
@@ -310,6 +353,9 @@ export async function saveDiagnosis(
   await requireStaffRole(["OWNER", "ADMIN", "MECHANIC"]);
   const id = String(formData.get("id") ?? "").trim();
   const diagnosis = String(formData.get("diagnosis") ?? "").trim();
+  const service = await getServiceOrThrow(id);
+  const aksesError = await cekCabangServis(service.branchId);
+  if (aksesError) return { error: aksesError };
   await prisma.service.update({ where: { id }, data: { diagnosis } });
   revalidatePath(`/dashboard/servis/${id}`);
   revalidatePath("/dashboard/tugas");
@@ -383,7 +429,7 @@ export async function addServicePart(
   const partId = String(formData.get("partId") ?? "").trim();
   const quantity = Number(formData.get("quantity") ?? 0);
 
-  if (!serviceId || !partId || quantity <= 0) {
+  if (!serviceId || !partId || !Number.isInteger(quantity) || quantity <= 0 || quantity > 1_000_000) {
     return { error: "Part dan jumlah tidak valid." };
   }
 
@@ -392,6 +438,8 @@ export async function addServicePart(
     include: { branch: true },
   });
   if (!service) return { error: "Servis tidak ditemukan." };
+  const aksesError = await cekCabangServis(service.branchId);
+  if (aksesError) return { error: aksesError };
 
   const part = await prisma.part.findFirst({
     where: { id: partId, branchId: service.branchId },
@@ -403,6 +451,14 @@ export async function addServicePart(
 
   // Transaksi atomik: tambah ServicePart + kurangi stok + catat movement
   await prisma.$transaction(async (tx) => {
+    // Guard atomik anti-race: decrement hanya bila stok masih mencukupi di DB.
+    const updated = await tx.part.updateMany({
+      where: { id: partId, quantity: { gte: quantity } },
+      data: { quantity: { decrement: quantity } },
+    });
+    if (updated.count === 0) {
+      throw new Error(`Stok ${part.name} kurang (tersisa ${part.quantity}).`);
+    }
     const sp = await tx.servicePart.create({
       data: {
         serviceId,
@@ -411,10 +467,6 @@ export async function addServicePart(
         price: part.sellPrice,
         cost: part.buyPrice,
       },
-    });
-    await tx.part.update({
-      where: { id: partId },
-      data: { quantity: { decrement: quantity } },
     });
     await tx.stockMovement.create({
       data: {
@@ -456,6 +508,8 @@ export async function removeServicePart(
   if (sp.service.status === "DONE" || sp.service.status === "CANCELLED") {
     return { error: "Tidak bisa ubah part servis yang sudah selesai/dibatalkan." };
   }
+  const aksesError = await cekCabangServis(sp.service.branchId);
+  if (aksesError) return { error: aksesError };
 
   await prisma.$transaction(async (tx) => {
     await tx.servicePart.delete({ where: { id } });

@@ -19,6 +19,7 @@
   "dependencies": {
     "@neon/config": "^1.9.3",
     "@neon/env": "^1.6.4",
+    "@neondatabase/serverless": "^1.2.0",
     "@prisma/adapter-pg": "^7.10.1",
     "@prisma/client": "^7.10.1",
     "dotenv": "^18.0.9",
