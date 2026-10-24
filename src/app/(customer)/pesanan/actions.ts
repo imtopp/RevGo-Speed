@@ -2,7 +2,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
-import { normalizeMerek, normalizeTipe, modelTidakSesuaiMerek, MEREK_LAINNYA } from "@/lib/vehicle";
+import { normalizeMerek, normalizeTipe, modelTidakSesuaiMerek, normalizePlate, MEREK_LAINNYA } from "@/lib/vehicle";
 import { revalidatePath } from "next/cache";
 
 export type CustomerState = { error?: string; success?: string };
@@ -93,7 +93,7 @@ export async function customerAddVehicle(
   formData: FormData,
 ): Promise<CustomerState> {
   const session = await requireCustomer();
-  const plateNumber = String(formData.get("plateNumber") ?? "").trim().toUpperCase();
+  const plateRaw = String(formData.get("plateNumber") ?? "").trim();
   const brandRaw = String(formData.get("brand") ?? "").trim();
   const brand = normalizeMerek(
     brandRaw === MEREK_LAINNYA ? String(formData.get("brandLain") ?? "") : brandRaw,
@@ -105,8 +105,12 @@ export async function customerAddVehicle(
     return { error: "Tahun kendaraan tidak valid." };
   }
 
-  if (!plateNumber || !brand || !model) {
+  if (!plateRaw || !brand || !model) {
     return { error: "Plat, merek, dan tipe wajib diisi." };
+  }
+  const plateNumber = normalizePlate(plateRaw);
+  if (!plateNumber) {
+    return { error: "Format plat nomor tidak valid. Contoh: B 1234 XY." };
   }
   if (modelTidakSesuaiMerek(brand, model)) {
     return { error: `"${model}" bukan tipe merek ${brand}. Periksa pilihan merek/tipe.` };
@@ -143,15 +147,19 @@ export async function customerUpdateVehicle(
 ): Promise<CustomerState> {
   const session = await requireCustomer();
   const id = String(formData.get("id") ?? "").trim();
-  const plateNumber = String(formData.get("plateNumber") ?? "").trim().toUpperCase();
+  const plateRaw = String(formData.get("plateNumber") ?? "").trim();
   const brandRaw = String(formData.get("brand") ?? "").trim();
   const brand = normalizeMerek(
     brandRaw === MEREK_LAINNYA ? String(formData.get("brandLain") ?? "") : brandRaw,
   );
   const model = normalizeTipe(String(formData.get("model") ?? ""));
 
-  if (!plateNumber || !brand || !model) {
+  if (!plateRaw || !brand || !model) {
     return { error: "Plat, merek, dan tipe wajib diisi." };
+  }
+  const plateNumber = normalizePlate(plateRaw);
+  if (!plateNumber) {
+    return { error: "Format plat nomor tidak valid. Contoh: B 1234 XY." };
   }
   if (modelTidakSesuaiMerek(brand, model)) {
     return { error: `"${model}" bukan tipe merek ${brand}. Periksa pilihan merek/tipe.` };

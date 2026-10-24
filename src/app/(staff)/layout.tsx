@@ -1,5 +1,6 @@
 import { StaffNav, SidebarNav } from "@/components/staff-nav";
 import { BrandMark } from "@/components/brand-mark";
+import { SubmitButton } from "@/components/submit-button";
 import { auth, signOut } from "@/lib/auth";
 import { homePathForRole } from "@/lib/role";
 import { isOwnerOrSysAdmin } from "@/lib/guard";
@@ -34,9 +35,12 @@ export default async function StaffLayout({ children }: { children: React.ReactN
             }}
             className="mt-2"
           >
-            <button className="text-sm font-medium text-foreground underline underline-offset-2">
+            <SubmitButton
+              pendingText="Keluar..."
+              className="text-sm font-medium text-foreground underline underline-offset-2 disabled:opacity-60"
+            >
               Keluar
-            </button>
+            </SubmitButton>
           </form>
         </div>
       </aside>
@@ -64,9 +68,12 @@ export default async function StaffLayout({ children }: { children: React.ReactN
                 await signOut({ redirectTo: "/login" });
               }}
             >
-              <button className="text-sm font-medium text-slate-200 underline underline-offset-2">
+              <SubmitButton
+                pendingText="Keluar..."
+                className="text-sm font-medium text-slate-200 underline underline-offset-2 disabled:opacity-60"
+              >
                 Keluar
-              </button>
+              </SubmitButton>
             </form>
           </div>
         </header>

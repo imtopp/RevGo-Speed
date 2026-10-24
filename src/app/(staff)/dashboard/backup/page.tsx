@@ -1,6 +1,6 @@
 import { requireStaffRole } from "@/lib/guard";
 import { getAppName } from "@/lib/branding";
-import Link from "next/link";
+import { DownloadLink } from "@/components/download-link";
 
 export const metadata = { title: "Backup" };
 
@@ -51,12 +51,13 @@ export default async function BackupPage() {
           pembayaran, kas, pengaturan) dalam format JSON. Berguna untuk arsip
           mandiri atau migrasi.
         </p>
-        <Link
+        <DownloadLink
           href="/api/backup/export"
+          filename="backup-revgo.json"
           className="inline-block rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-foreground active:opacity-90"
         >
           Unduh Backup JSON
-        </Link>
+        </DownloadLink>
         <p className="text-xs text-slate-400">
           Catatan: file export memuat data sensitif (termasuk hash password).
           Simpan di tempat aman dan jangan bagikan sembarangan.

@@ -128,6 +128,14 @@ generated/                  # Prisma client output (gitignored)
 
 - Shell: **PowerShell** — `npx` / `opencode` / `vercel` sering diblokir execution policy → gunakan `npx.cmd`, `opencode.cmd`, `vercel.cmd`.
 
+### Restart dev server — WAJIB pakai script
+
+- **Selalu** restart dev server dengan: `powershell -NoProfile -ExecutionPolicy Bypass -File scripts\restart-dev.ps1`
+  - Script ini mematikan semua proses node dev project (by path) + pemilik port 3000, lalu start ulang terpisah, probe `/login` maks 30 detik → output `DEV-OK (n detik)` atau `DEV-TIMEOUT` + exit. **Selalu berhenti sendiri** — tidak menggantung.
+  - Log dev: `%TEMP%\opencode\devlog.txt`.
+- **JANGAN** menulis perintah restart inline (kombinasi `Start-Process` + `Start-Sleep` + `Invoke-WebRequest` timeout panjang) — pola itu berulang kali nyangkut di tengah sesi sehingga user harus Esc berkali-kali.
+- Tool timeout untuk memanggil script: 60000 ms (cukup untuk kasus terburuk 30 detik + margin).
+
 ## Environment Variables
 
 Lihat `.env.example`. Yang dibutuhkan:

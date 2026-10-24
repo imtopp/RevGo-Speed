@@ -73,6 +73,8 @@ export function BookingForm({
             value={plate}
             onChange={(e) => setPlate(e.target.value.toUpperCase())}
             placeholder="B 1234 XYZ"
+            pattern="[A-Za-z]{1,4}\s?\d{1,4}(\s?[A-Za-z]{1,3})?"
+            title="Format plat nomor: B 1234 XY"
             className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-base uppercase outline-none focus:border-slate-900"
           />
         </div>

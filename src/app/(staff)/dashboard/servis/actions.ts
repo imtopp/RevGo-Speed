@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { getStaffBranchId } from "@/lib/guard";
 import { logAudit } from "@/lib/audit";
-import { normalizeMerek, normalizeTipe, modelTidakSesuaiMerek, MEREK_LAINNYA } from "@/lib/vehicle";
+import { normalizeMerek, normalizeTipe, modelTidakSesuaiMerek, normalizePlate, MEREK_LAINNYA } from "@/lib/vehicle";
 import { revalidatePath } from "next/cache";
 import type { ServiceStatus } from "@db/prisma/client";
 
@@ -54,7 +54,7 @@ export async function createBooking(
   await requireStaffRole(["OWNER", "ADMIN"]);
   const branchIdStaff = await getStaffBranchId();
   const branchId = branchIdStaff || String(formData.get("branchId") ?? "").trim();
-  const plateNumber = String(formData.get("plateNumber") ?? "").trim().toUpperCase();
+  const plateRaw = String(formData.get("plateNumber") ?? "").trim();
   const catalogId = String(formData.get("catalogId") ?? "").trim();
   const complaint = String(formData.get("complaint") ?? "").trim();
   const scheduledAtRaw = String(formData.get("scheduledAt") ?? "").trim();
@@ -69,8 +69,12 @@ export async function createBooking(
   const customerEmail = String(formData.get("customerEmail") ?? "").trim().toLowerCase();
   const customerPhone = String(formData.get("customerPhone") ?? "").trim();
 
-  if (!branchId || !plateNumber) {
+  if (!branchId || !plateRaw) {
     return { error: "Cabang dan plat nomor wajib diisi." };
+  }
+  const plateNumber = normalizePlate(plateRaw);
+  if (!plateNumber) {
+    return { error: "Format plat nomor tidak valid. Contoh: B 1234 XY." };
   }
 
   const branch = await prisma.branch.findFirst({

@@ -1,5 +1,6 @@
 import { auth, signOut } from "@/lib/auth";
 import { BrandMark } from "@/components/brand-mark";
+import { SubmitButton } from "@/components/submit-button";
 import { redirect } from "next/navigation";
 
 export default async function CustomerLayout({
@@ -25,9 +26,12 @@ export default async function CustomerLayout({
               await signOut({ redirectTo: "/login" });
             }}
           >
-            <button className="text-sm font-medium text-slate-200 underline underline-offset-2">
+            <SubmitButton
+              pendingText="Keluar..."
+              className="text-sm font-medium text-slate-200 underline underline-offset-2 disabled:opacity-60"
+            >
               Keluar
-            </button>
+            </SubmitButton>
           </form>
         </div>
       </header>

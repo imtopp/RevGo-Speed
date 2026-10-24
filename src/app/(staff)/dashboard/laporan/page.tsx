@@ -4,6 +4,7 @@ import { formatRupiah, formatTanggalPendek } from "@/lib/service-status";
 import Link from "next/link";
 import { BranchPicker } from "../stok/branch-picker";
 import { SubmitButton } from "@/components/submit-button";
+import { DownloadLink } from "@/components/download-link";
 
 export const metadata = { title: "Laporan" };
 
@@ -123,12 +124,13 @@ export default async function LaporanPage({
               params={{ from: iso(from), to: iso(to) }}
             />
           )}
-          <a
+          <DownloadLink
             href={exportUrl}
+            filename="laporan-revgo.csv"
             className="rounded-lg border border-slate-300 bg-surface px-3 py-2 text-sm font-medium text-foreground"
           >
             Export CSV
-          </a>
+          </DownloadLink>
         </div>
       </div>
 

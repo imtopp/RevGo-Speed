@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import {
   MEREK_GROUPS,
   MEREK_LAINNYA,
@@ -104,22 +104,33 @@ export function RespondForm({ id }: { id: string }) {
 function VehicleRow({
   vehicle,
   modelPerMerek,
+  onFlash,
 }: {
   vehicle: Vehicle;
   modelPerMerek: Record<string, string[]>;
+  onFlash: (msg: string) => void;
 }) {
-  const [uState, uAction] = useActionState<CustomerState, FormData>(
-    customerUpdateVehicle,
-    {},
-  );
-  const [dState, dAction] = useActionState<CustomerState, FormData>(
-    customerDeleteVehicle,
-    {},
-  );
   const [edit, setEdit] = useState(false);
   const [merekPilih, setMerekPilih] = useState(
     merekDikenal(vehicle.brand) ? normalizeMerek(vehicle.brand) : MEREK_LAINNYA,
   );
+
+  const runUpdate = async (prev: CustomerState, fd: FormData) => {
+    const r = await customerUpdateVehicle(prev, fd);
+    if (r.success) {
+      setEdit(false);
+      onFlash(r.success);
+    }
+    return r;
+  };
+  const runDelete = async (prev: CustomerState, fd: FormData) => {
+    const r = await customerDeleteVehicle(prev, fd);
+    if (r.success) onFlash(r.success);
+    return r;
+  };
+  const [uState, uAction] = useActionState(runUpdate, {});
+  const [dState, dAction] = useActionState(runDelete, {});
+
   const tipeOptions =
     merekPilih && merekPilih !== MEREK_LAINNYA
       ? (modelPerMerek[merekPilih] ?? [])
@@ -131,7 +142,7 @@ function VehicleRow({
       <div className="rounded-lg border border-slate-200 p-3">
         <form action={uAction} className="space-y-2">
           <input type="hidden" name="id" value={vehicle.id} />
-          <Msg state={uState} />
+          {!uState.success && <Msg state={uState} />}
           <div>
             <label className="block text-xs font-medium text-muted-foreground">
               Plat
@@ -140,6 +151,8 @@ function VehicleRow({
               name="plateNumber"
               required
               defaultValue={vehicle.plateNumber}
+              pattern="[A-Za-z]{1,4}\s?\d{1,4}(\s?[A-Za-z]{1,3})?"
+              title="Format plat nomor: B 1234 XY"
               className={`${inputCls} uppercase`}
             />
           </div>
@@ -249,16 +262,34 @@ export function BookingSection({
   catalog: Catalog[];
   modelPerMerek: Record<string, string[]>;
 }) {
-  const [bookingState, bookingAction] = useActionState<
-    CustomerState,
-    FormData
-  >(customerBooking, {});
-  const [vehicleState, vehicleAction] = useActionState<
-    CustomerState,
-    FormData
-  >(customerAddVehicle, {});
   const [showAddVehicle, setShowAddVehicle] = useState(false);
   const [showBooking, setShowBooking] = useState(false);
+  const [flash, setFlash] = useState<string | null>(null);
+
+  const runBooking = async (prev: CustomerState, fd: FormData) => {
+    const r = await customerBooking(prev, fd);
+    if (r.success) {
+      setFlash(r.success);
+      setShowBooking(false);
+    }
+    return r;
+  };
+  const runAddVehicle = async (prev: CustomerState, fd: FormData) => {
+    const r = await customerAddVehicle(prev, fd);
+    if (r.success) {
+      setFlash(r.success);
+      setShowAddVehicle(false);
+    }
+    return r;
+  };
+  const [bookingState, bookingAction] = useActionState(runBooking, {});
+  const [vehicleState, vehicleAction] = useActionState(runAddVehicle, {});
+
+  useEffect(() => {
+    if (!flash) return;
+    const t = setTimeout(() => setFlash(null), 6000);
+    return () => clearTimeout(t);
+  }, [flash]);
   const [merekPilih, setMerekPilih] = useState("");
   const tipeOptions =
     merekPilih && merekPilih !== MEREK_LAINNYA
@@ -267,9 +298,17 @@ export function BookingSection({
 
   return (
     <div className="space-y-3">
+      {flash && (
+        <p className="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700">
+          {flash}
+        </p>
+      )}
       <button
         type="button"
-        onClick={() => setShowBooking((v) => !v)}
+        onClick={() => {
+          setFlash(null);
+          setShowBooking((v) => !v);
+        }}
         className="w-full rounded-xl bg-primary py-3 text-sm font-semibold text-white active:opacity-90"
       >
         {showBooking ? "Tutup Booking Servis" : "+ Booking Servis Baru"}
@@ -283,7 +322,7 @@ export function BookingSection({
           <p className="text-sm font-semibold text-foreground">
             Booking Servis Baru
           </p>
-          <Msg state={bookingState} />
+          {!bookingState.success && <Msg state={bookingState} />}
           {vehicles.length === 0 && (
             <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
               Belum ada kendaraan — tambah dulu lewat kartu Kendaraan Saya di
@@ -366,7 +405,10 @@ export function BookingSection({
           </p>
           <button
             type="button"
-            onClick={() => setShowAddVehicle((v) => !v)}
+            onClick={() => {
+              setFlash(null);
+              setShowAddVehicle((v) => !v);
+            }}
             className="rounded-lg border border-slate-300 bg-surface px-3 py-1.5 text-sm font-medium text-foreground active:opacity-90"
           >
             {showAddVehicle ? "Tutup" : "+ Tambah"}
@@ -377,7 +419,7 @@ export function BookingSection({
             <p className="text-sm font-semibold text-foreground">
               Tambah Kendaraan
             </p>
-            <Msg state={vehicleState} />
+            {!vehicleState.success && <Msg state={vehicleState} />}
             <div className="grid grid-cols-3 gap-2">
               <div>
                 <label className="block text-xs font-medium text-muted-foreground">
@@ -386,7 +428,9 @@ export function BookingSection({
                 <input
                   name="plateNumber"
                   required
-                  placeholder="B 1234"
+                  placeholder="B 1234 XY"
+                  pattern="[A-Za-z]{1,4}\s?\d{1,4}(\s?[A-Za-z]{1,3})?"
+                  title="Format plat nomor: B 1234 XY"
                   className={`${inputCls} uppercase`}
                 />
               </div>
@@ -442,7 +486,12 @@ export function BookingSection({
         ) : (
           <div className="space-y-2">
             {vehicles.map((v) => (
-              <VehicleRow key={v.id} vehicle={v} modelPerMerek={modelPerMerek} />
+              <VehicleRow
+                key={v.id}
+                vehicle={v}
+                modelPerMerek={modelPerMerek}
+                onFlash={setFlash}
+              />
             ))}
           </div>
         )}

@@ -154,3 +154,12 @@ export function merekDikenal(brand: string): boolean {
   const t = collapseSpace(brand).toLowerCase();
   return !!t && MEREK_CANONICAL.some((m) => m.toLowerCase() === t);
 }
+
+const PLATE_RE = /^([A-Z]{1,4})\s*(\d{1,4})\s*([A-Z]{1,3})?$/;
+
+export function normalizePlate(raw: string): string | null {
+  const t = collapseSpace(raw).toUpperCase();
+  const m = PLATE_RE.exec(t);
+  if (!m) return null;
+  return m[3] ? `${m[1]} ${m[2]} ${m[3]}` : `${m[1]} ${m[2]}`;
+}
