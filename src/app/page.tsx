@@ -21,7 +21,7 @@ export default async function Home() {
           Aplikasi Bengkel
         </p>
         <h1 className="mt-2 text-4xl font-bold tracking-tight">
-          Rev<span className="text-slate-500">Ledger</span>
+          Rev<span className="text-slate-500">Go Speed</span>
         </h1>
         <p className="mt-3 leading-relaxed text-slate-600">
           Kelola stok part, arus kas, booking, dan proses servis dalam satu
