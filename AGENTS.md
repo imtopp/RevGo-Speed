@@ -19,6 +19,8 @@ Aplikasi manajemen bengkel **motor** (PWA, mobile-first, bahasa Indonesia). Whit
 npm run dev          # dev server (Next dev)
 npm run build        # prisma migrate deploy && prisma generate && next build
 npm run lint         # eslint .
+npm test             # vitest run (unit test sekali jalan)
+npm run test:watch   # vitest watch (saat mengembangkan)
 npm run db:generate  # regenerate Prisma client → generated/
 npm run db:migrate   # prisma migrate dev (butuh DATABASE_URL) — untuk branch DEV
 npm run db:seed      # tsx prisma/seed.ts
@@ -138,7 +140,9 @@ AUTH_URL="http://localhost:3000"  # production: URL Vercel
 
 ## Testing
 
-Belum ada test framework. Smoke test manual via `scripts/test-flow-*.ts` (jalankan dengan `npx tsx scripts/test-flow-b.ts` dst., butuh server/app berjalan atau DATABASE_URL valid).
+- **Unit test: Vitest** (`vitest.config.ts`, pola `src/**/*.test.ts`, environment node). Modul murni yang sudah dicover: `src/lib/service-status.ts`, `password.ts`, `role.test.ts` — jalankan `npm test`.
+- **Aturan wajib — test mengikuti perubahan:** setiap mengubah/menambah fitur, fungsi, atau modul → **sesuaikan unit test-nya**: perbaiki test lama yang terdampak, tambahkan test untuk perilaku baru. `npm test` + `npm run lint` harus hijau **sebelum commit**. Perubahan yang membuat test gagal = belum selesai (jangan di-skip/di-disable).
+- **Belum dicover unit test** (butuh DB/auth): server actions, `guard.ts`, `branding.ts`, prisma query → smoke test manual via `scripts/test-flow-*.ts` (jalankan dengan `npx tsx scripts/test-flow-b.ts` dst., butuh server/app berjalan atau DATABASE_URL valid). Rencana fase 2: integration test terhadap branch `dev`.
 
 Verifikasi DB Neon:
 - Cek koneksi cepat: `npx tsx scripts/verify-neon.ts`
