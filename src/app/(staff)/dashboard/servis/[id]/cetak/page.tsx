@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { requireStaffRole } from "@/lib/guard";
+import { getAppName } from "@/lib/branding";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { formatRupiah, formatTanggal } from "@/lib/service-status";
@@ -14,6 +15,7 @@ export default async function CetakNotaPage({
 }) {
   await requireStaffRole(["OWNER", "SYS_ADMIN", "ADMIN"]);
   const { id } = await params;
+  const appName = await getAppName();
 
   const service = await prisma.service.findUnique({
     where: { id },
@@ -49,7 +51,7 @@ export default async function CetakNotaPage({
       <div className="rounded-lg bg-white p-5 text-sm text-black ring-1 ring-slate-200 print:ring-0">
         <div className="text-center">
           <p className="text-lg font-bold">{service.branch.name}</p>
-          <p className="text-xs text-slate-600">RevGo · Bengkel</p>
+          <p className="text-xs text-slate-600">{appName} · Bengkel</p>
         </div>
 
         <div className="mt-3 border-t border-dashed border-slate-300 pt-3">

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { isOwnerOrSysAdmin } from "@/lib/guard";
+import { getAppName } from "@/lib/branding";
 
 export const dynamic = "force-dynamic";
 
@@ -39,9 +40,11 @@ export async function GET() {
     prisma.systemSetting.findMany(),
   ]);
 
+  const appName = await getAppName();
+
   const payload = {
     exportedAt: new Date().toISOString(),
-    app: "RevGo",
+    app: appName,
     data: {
       branches,
       users,
@@ -58,7 +61,8 @@ export async function GET() {
     },
   };
 
-  const filename = `revgo-backup-${new Date().toISOString().slice(0, 10)}.json`;
+  const slug = appName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "app";
+  const filename = `${slug}-backup-${new Date().toISOString().slice(0, 10)}.json`;
 
   return new NextResponse(JSON.stringify(payload, null, 2), {
     headers: {

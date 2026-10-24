@@ -1,10 +1,12 @@
 import { requireOwnerOrSysAdmin } from "@/lib/guard";
+import { getAppName } from "@/lib/branding";
 import Link from "next/link";
 
 export const metadata = { title: "Backup" };
 
 export default async function BackupPage() {
   await requireOwnerOrSysAdmin();
+  const appName = await getAppName();
 
   return (
     <div className="space-y-6">
@@ -20,7 +22,7 @@ export default async function BackupPage() {
           Backup Otomatis (Neon)
         </h2>
         <p className="text-sm text-slate-600">
-          Database RevGo berjalan di <strong>Neon Postgres</strong>. Neon
+          Database {appName} berjalan di <strong>Neon Postgres</strong>. Neon
           menyimpan backup otomatis harian dengan retensi beberapa hari serta
           mendukung <em>point-in-time restore</em> (PILIH titik waktu untuk
           memulihkan). Kamu tidak perlu menjalankan backup manual untuk
