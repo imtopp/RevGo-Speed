@@ -17,13 +17,21 @@ Aplikasi manajemen bengkel (PWA, mobile-first, bahasa Indonesia). White-label: m
 
 ```bash
 npm run dev          # dev server (Next dev)
-npm run build        # prisma generate && next build
+npm run build        # prisma migrate deploy && prisma generate && next build
 npm run lint         # eslint .
 npm run db:generate  # regenerate Prisma client → generated/
-npm run db:migrate   # prisma migrate dev (butuh DATABASE_URL)
+npm run db:migrate   # prisma migrate dev (butuh DATABASE_URL) — untuk branch DEV
 npm run db:seed      # tsx prisma/seed.ts
 npm run db:studio    # prisma studio
 ```
+
+## Migrasi DB & Rilis
+
+- **Dev:** perubahan skema via `npm run db:migrate` (branch `dev`) → commit file `prisma/migrations/` **bersama code** yang membutuhkannya (1 commit = skema + code, tidak boleh terpisah).
+- **Produksi:** build script Vercel menjalankan `prisma migrate deploy` **otomatis setiap deploy** — deploy commit X = migrasi di commit X ikut terjalankan. Tidak ada langkah migrasi manual.
+- **Preview deploy** memakai env `DATABASE_URL` scope **Preview** (menunjuk branch `dev`).
+- **Expand–contract:** rename/hapus kolom atau perubahan yang tidak backward-compatible wajib **2 fase deploy** — fase 1: tambah struktur baru + code baca/tulis dua-duanya; fase 2 (setelah code lama mati): buang struktur lama. Migrasi yang berjalan **tidak pernah diedit** — koreksi = migrasi baru.
+- **Cek sebelum rilis besar:** `npx prisma migrate status` (pending?) dan `npx prisma migrate diff` (drift antara DB dan folder migrasi).
 
 ## Path Alias
 
