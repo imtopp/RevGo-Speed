@@ -103,7 +103,7 @@ generated/                  # Prisma client output (gitignored)
 | GitHub repo | `imtopp/RevGo-Speed` | |
 | Vercel project | `revgo-speed` | `AUTH_URL=https://revgo-speed.vercel.app` |
 | Neon project | `RevGo Speed` (`green-hill-87037178`) | Org: `red-brook-12514567` |
-| Neon branch | `production` (default) | Dev branch menyusul |
+| Neon branch | `production` (default), `dev` (lokal) | Dev: dipakai `DATABASE_URL` lokal |
 | Package name | `revgo-speed` | |
 
 ## Neon MCP
