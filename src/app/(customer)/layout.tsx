@@ -12,11 +12,11 @@ export default async function CustomerLayout({
   if (session.user.role !== "CUSTOMER") redirect("/dashboard");
 
   return (
-    <div className="mx-auto flex min-h-dvh w-full max-w-none flex-col bg-slate-50 md:max-w-3xl">
-      <header className="flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3">
+    <div className="mx-auto flex min-h-dvh w-full max-w-none flex-col bg-background md:max-w-3xl">
+      <header className="flex items-center justify-between bg-secondary px-4 py-3 text-white">
         <BrandMark />
         <div className="flex items-center gap-3">
-          <span className="max-w-32 truncate text-sm text-slate-500">
+          <span className="max-w-32 truncate text-sm text-slate-300">
             {session.user.name}
           </span>
           <form
@@ -25,7 +25,7 @@ export default async function CustomerLayout({
               await signOut({ redirectTo: "/login" });
             }}
           >
-            <button className="text-sm font-medium text-slate-700 underline underline-offset-2">
+            <button className="text-sm font-medium text-slate-200 underline underline-offset-2">
               Keluar
             </button>
           </form>

@@ -19,8 +19,8 @@ export default async function StaffLayout({ children }: { children: React.ReactN
   return (
     <div className="flex min-h-dvh">
       {/* Sidebar — desktop (md+) */}
-      <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 flex-col border-r border-slate-200 bg-white md:flex">
-        <div className="border-b border-slate-200 px-5 py-4">
+      <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 flex-col border-r border-slate-200 bg-surface md:flex">
+        <div className="bg-secondary px-5 py-4 text-white">
           <BrandMark />
         </div>
         <SidebarNav role={session.user.role} />
@@ -45,16 +45,16 @@ export default async function StaffLayout({ children }: { children: React.ReactN
       {/* Kolom konten */}
       <div className="flex min-h-dvh min-w-0 flex-1 flex-col">
         {/* Header — hanya mobile */}
-        <header className="flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3 md:hidden">
+        <header className="flex items-center justify-between bg-secondary px-4 py-3 text-white md:hidden">
           <BrandMark />
           <div className="flex items-center gap-3">
-            <span className="max-w-24 truncate text-sm text-slate-500">
+            <span className="max-w-24 truncate text-sm text-slate-300">
               {session.user.name}
             </span>
             {showPiutang && (
               <Link
                 href="/dashboard/piutang"
-                className="text-sm font-medium text-slate-700 underline underline-offset-2"
+                className="text-sm font-medium text-slate-200 underline underline-offset-2"
               >
                 Piutang
               </Link>
@@ -62,7 +62,7 @@ export default async function StaffLayout({ children }: { children: React.ReactN
             {showSettings && (
               <Link
                 href="/dashboard/pengaturan"
-                className="text-sm font-medium text-slate-700 underline underline-offset-2"
+                className="text-sm font-medium text-slate-200 underline underline-offset-2"
               >
                 Atur
               </Link>
@@ -73,7 +73,7 @@ export default async function StaffLayout({ children }: { children: React.ReactN
                 await signOut({ redirectTo: "/login" });
               }}
             >
-              <button className="text-sm font-medium text-slate-700 underline underline-offset-2">
+              <button className="text-sm font-medium text-slate-200 underline underline-offset-2">
                 Keluar
               </button>
             </form>

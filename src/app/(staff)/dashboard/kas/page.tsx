@@ -52,7 +52,7 @@ export default async function KasPage({
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold tracking-tight">Kas</h1>
-          <p className="mt-1 text-sm text-slate-500">Arus kas bengkel</p>
+          <p className="mt-1 text-sm text-muted-foreground">Arus kas bengkel</p>
         </div>
         {!branchIdStaff && branches.length > 1 && (
           <BranchPicker branches={branches} current={activeBranchId} tab="" />
@@ -61,13 +61,13 @@ export default async function KasPage({
 
       {/* Ringkasan kantong */}
       <div className="grid grid-cols-2 gap-3">
-        <div className="rounded-xl bg-white p-4 ring-1 ring-slate-200">
-          <p className="text-sm text-slate-500">Kantong Kas</p>
-          <p className="mt-1 text-xl font-bold text-slate-900">{formatRupiah(totalKas)}</p>
+        <div className="rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
+          <p className="text-sm text-muted-foreground">Kantong Kas</p>
+          <p className="mt-1 text-xl font-bold text-foreground">{formatRupiah(totalKas)}</p>
         </div>
-        <div className="rounded-xl bg-white p-4 ring-1 ring-slate-200">
-          <p className="text-sm text-slate-500">Kantong Bank</p>
-          <p className="mt-1 text-xl font-bold text-slate-900">{formatRupiah(totalBank)}</p>
+        <div className="rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
+          <p className="text-sm text-muted-foreground">Kantong Bank</p>
+          <p className="mt-1 text-xl font-bold text-foreground">{formatRupiah(totalBank)}</p>
         </div>
       </div>
 

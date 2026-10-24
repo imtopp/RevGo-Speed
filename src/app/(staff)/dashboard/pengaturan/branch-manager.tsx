@@ -140,7 +140,7 @@ export function BranchManager({ branches }: { branches: Branch[] }) {
       <button
         type="button"
         onClick={() => setShowCreate((v) => !v)}
-        className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 active:opacity-90"
+        className="rounded-lg border border-slate-300 bg-surface px-3 py-2 text-sm font-medium text-slate-700 active:opacity-90"
       >
         {showCreate ? "Tutup" : "+ Tambah Cabang"}
       </button>
@@ -148,7 +148,7 @@ export function BranchManager({ branches }: { branches: Branch[] }) {
       {showCreate && (
         <form
           action={createAction}
-          className="space-y-3 rounded-xl bg-white p-4 ring-1 ring-slate-200"
+          className="space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card"
         >
           <BranchFields />
           {createState.error && (
@@ -160,7 +160,7 @@ export function BranchManager({ branches }: { branches: Branch[] }) {
           <button
             type="submit"
             disabled={createPending}
-            className="w-full rounded-lg bg-slate-900 py-2.5 text-sm font-medium text-white active:opacity-90 disabled:opacity-60"
+            className="w-full rounded-lg bg-primary py-2.5 text-sm font-medium text-white active:opacity-90 disabled:opacity-60"
           >
             {createPending ? "Menyimpan..." : "Buat Cabang"}
           </button>
@@ -171,12 +171,12 @@ export function BranchManager({ branches }: { branches: Branch[] }) {
         {branches.map((branch) => (
           <div
             key={branch.id}
-            className="rounded-xl bg-white p-4 ring-1 ring-slate-200"
+            className="rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card"
           >
             <div className="flex items-start justify-between gap-2">
               <div>
                 <p className="font-medium">{branch.name}</p>
-                <p className="text-sm text-slate-500">
+                <p className="text-sm text-muted-foreground">
                   {branch.jamBuka}–{branch.jamTutup} ·{" "}
                   {branch.aktif ? "Aktif" : "Nonaktif"}
                 </p>
@@ -208,7 +208,7 @@ export function BranchManager({ branches }: { branches: Branch[] }) {
                 <button
                   type="submit"
                   disabled={editPending}
-                  className="w-full rounded-lg bg-slate-900 py-2.5 text-sm font-medium text-white active:opacity-90 disabled:opacity-60"
+                  className="w-full rounded-lg bg-primary py-2.5 text-sm font-medium text-white active:opacity-90 disabled:opacity-60"
                 >
                   {editPending ? "Menyimpan..." : "Simpan Perubahan"}
                 </button>

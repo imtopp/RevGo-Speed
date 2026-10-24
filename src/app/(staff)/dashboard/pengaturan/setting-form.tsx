@@ -34,7 +34,7 @@ export function SettingForm({
       <button
         type="submit"
         disabled={pending}
-        className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white active:opacity-90 disabled:opacity-60"
+        className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white active:opacity-90 disabled:opacity-60"
       >
         {pending ? "Simpan..." : "Simpan"}
       </button>

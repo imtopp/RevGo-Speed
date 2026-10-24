@@ -101,29 +101,29 @@ export default async function LaporanPage({
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold tracking-tight">Laporan</h1>
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="mt-1 text-sm text-muted-foreground">
             {from.toLocaleDateString("id-ID")} – {to.toLocaleDateString("id-ID")}
           </p>
         </div>
         <a
           href={exportUrl}
-          className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700"
+          className="rounded-lg border border-slate-300 bg-surface px-3 py-2 text-sm font-medium text-slate-700"
         >
           Export CSV
         </a>
       </div>
 
       {/* Filter tanggal */}
-      <form method="get" className="flex flex-wrap items-end gap-2 rounded-xl bg-white p-3 ring-1 ring-slate-200">
+      <form method="get" className="flex flex-wrap items-end gap-2 rounded-xl bg-surface p-3 ring-1 ring-slate-200 shadow-card">
         <div>
-          <label className="block text-xs font-medium text-slate-500">Dari</label>
+          <label className="block text-xs font-medium text-muted-foreground">Dari</label>
           <input type="date" name="from" defaultValue={iso(from)} className="mt-1 rounded-lg border border-slate-300 px-2 py-1.5 text-sm" />
         </div>
         <div>
-          <label className="block text-xs font-medium text-slate-500">Sampai</label>
+          <label className="block text-xs font-medium text-muted-foreground">Sampai</label>
           <input type="date" name="to" defaultValue={iso(to)} className="mt-1 rounded-lg border border-slate-300 px-2 py-1.5 text-sm" />
         </div>
-        <button type="submit" className="rounded-lg bg-slate-900 px-3 py-2 text-sm font-medium text-white">
+        <button type="submit" className="rounded-lg bg-primary px-3 py-2 text-sm font-medium text-white">
           Terapkan
         </button>
       </form>
@@ -131,22 +131,22 @@ export default async function LaporanPage({
       {/* Ringkasan */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         {summary.map((s) => (
-          <div key={s.label} className="rounded-xl bg-white p-4 ring-1 ring-slate-200">
-            <p className={`text-lg font-bold tabular-nums ${s.accent === false ? "text-red-600" : s.accent ? "text-emerald-600" : ""}`}>
+          <div key={s.label} className="rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
+            <p className={`text-lg font-bold tabular-nums ${s.accent === false ? "text-red-600" : s.accent ? "text-success" : ""}`}>
               {s.value}
             </p>
-            <p className="mt-1 text-xs text-slate-500">{s.label}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{s.label}</p>
           </div>
         ))}
       </div>
 
       {/* Rekap kantong + Laba per servis — 2 kolom di desktop */}
       <div className="grid gap-4 lg:grid-cols-2">
-        <div className="rounded-xl bg-white p-4 ring-1 ring-slate-200">
+        <div className="rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
           <h2 className="text-sm font-semibold text-slate-700">Rekap per Kantong</h2>
         <table className="mt-2 w-full text-sm">
           <thead>
-            <tr className="text-left text-xs text-slate-500">
+            <tr className="text-left text-xs text-muted-foreground">
               <th className="py-1">Kantong</th>
               <th className="py-1 text-right">Masuk</th>
               <th className="py-1 text-right">Keluar</th>
@@ -157,7 +157,7 @@ export default async function LaporanPage({
             {(["KAS", "BANK"] as const).map((k) => (
               <tr key={k} className="border-t border-slate-100">
                 <td className="py-1.5 font-medium">{k}</td>
-                <td className="py-1.5 text-right text-emerald-600">{formatRupiah(rekap[k].masuk)}</td>
+                <td className="py-1.5 text-right text-success">{formatRupiah(rekap[k].masuk)}</td>
                 <td className="py-1.5 text-right text-red-600">{formatRupiah(rekap[k].keluar)}</td>
                 <td className="py-1.5 text-right font-semibold">{formatRupiah(rekap[k].masuk - rekap[k].keluar)}</td>
               </tr>
@@ -167,15 +167,15 @@ export default async function LaporanPage({
         </div>
 
         {/* Laba per servis */}
-        <div className="rounded-xl bg-white p-4 ring-1 ring-slate-200">
+        <div className="rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold text-slate-700">Laba per Servis</h2>
-          <span className="text-xs text-slate-500">
+          <span className="text-xs text-muted-foreground">
             Rev {formatRupiah(totalRevenue)} · HPP {formatRupiah(totalHpp)}
           </span>
         </div>
         {rows.length === 0 ? (
-          <p className="mt-2 text-sm text-slate-500">Tidak ada servis selesai di periode ini.</p>
+          <p className="mt-2 text-sm text-muted-foreground">Tidak ada servis selesai di periode ini.</p>
         ) : (
           <ul className="mt-2 divide-y divide-slate-100">
             {rows.map(({ s, revenue, hpp, laba }) => (
@@ -185,12 +185,12 @@ export default async function LaporanPage({
                     <Link href={`/dashboard/servis/${s.id}`} className="font-medium underline underline-offset-2">
                       {s.code}
                     </Link>
-                    <p className="text-xs text-slate-500">
+                    <p className="text-xs text-muted-foreground">
                       {s.customer.name} · {s.vehicle.plateNumber} · {formatTanggalPendek(s.finishedAt)}
                     </p>
                   </div>
                   <div className="shrink-0 text-right">
-                    <p className={`font-semibold ${laba >= 0 ? "text-emerald-600" : "text-red-600"}`}>
+                    <p className={`font-semibold ${laba >= 0 ? "text-success" : "text-red-600"}`}>
                       {formatRupiah(laba)}
                     </p>
                     <p className="text-xs text-slate-400">

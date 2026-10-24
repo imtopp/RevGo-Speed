@@ -35,14 +35,14 @@ export default async function PengaturanPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-xl font-bold tracking-tight">Pengaturan</h1>
-        <p className="mt-1 text-sm text-slate-500">
+        <p className="mt-1 text-sm text-muted-foreground">
           Konfigurasi sistem &amp; kelola cabang
         </p>
       </div>
 
       <section className="space-y-3">
         <h2 className="text-sm font-semibold text-slate-700">Umum</h2>
-        <div className="space-y-3 rounded-xl bg-white p-4 ring-1 ring-slate-200">
+        <div className="space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
           {SETTING_FIELDS.map((field) => (
             <SettingForm
               key={field.key}
@@ -63,26 +63,26 @@ export default async function PengaturanPage() {
         <div className="grid grid-cols-3 gap-3">
           <Link
             href="/dashboard/akun"
-            className="rounded-xl bg-white p-4 ring-1 ring-slate-200 active:opacity-90"
+            className="rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card active:opacity-90"
           >
             <p className="font-medium">Kelola Akun</p>
-            <p className="mt-1 text-xs text-slate-500">
+            <p className="mt-1 text-xs text-muted-foreground">
               Buat &amp; atur akun staff
             </p>
           </Link>
           <Link
             href="/dashboard/katalog"
-            className="rounded-xl bg-white p-4 ring-1 ring-slate-200 active:opacity-90"
+            className="rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card active:opacity-90"
           >
             <p className="font-medium">Katalog</p>
-            <p className="mt-1 text-xs text-slate-500">Jenis jasa &amp; harga</p>
+            <p className="mt-1 text-xs text-muted-foreground">Jenis jasa &amp; harga</p>
           </Link>
           <Link
             href="/dashboard/backup"
-            className="rounded-xl bg-white p-4 ring-1 ring-slate-200 active:opacity-90"
+            className="rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card active:opacity-90"
           >
             <p className="font-medium">Backup</p>
-            <p className="mt-1 text-xs text-slate-500">
+            <p className="mt-1 text-xs text-muted-foreground">
               Unduh &amp; info cadangan
             </p>
           </Link>

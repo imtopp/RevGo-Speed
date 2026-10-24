@@ -52,30 +52,30 @@ export default async function PiutangPage({
     <div className="space-y-4">
       <div>
         <h1 className="text-xl font-bold tracking-tight">Piutang</h1>
-        <p className="mt-1 text-sm text-slate-500">
+        <p className="mt-1 text-sm text-muted-foreground">
           {outstanding.length} servis belum lunas · total{" "}
           {formatRupiah(totalPiutang)}
         </p>
       </div>
 
       {outstanding.length === 0 && (
-        <div className="rounded-xl bg-white p-6 ring-1 ring-slate-200">
-          <p className="text-sm text-slate-500">Tidak ada piutang. Semua lunas 🎉</p>
+        <div className="rounded-xl bg-surface p-6 ring-1 ring-slate-200 shadow-card">
+          <p className="text-sm text-muted-foreground">Tidak ada piutang. Semua lunas 🎉</p>
         </div>
       )}
 
       <div className="space-y-3">
         {outstanding.map((s) => (
-          <div key={s.id} className="rounded-xl bg-white p-4 ring-1 ring-slate-200">
+          <div key={s.id} className="rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
                 <Link
                   href={`/dashboard/servis/${s.id}`}
-                  className="font-medium text-slate-900 underline underline-offset-2"
+                  className="font-medium text-foreground underline underline-offset-2"
                 >
                   {s.code}
                 </Link>
-                <p className="text-sm text-slate-500">
+                <p className="text-sm text-muted-foreground">
                   {s.customer.name} · {s.vehicle.plateNumber}
                 </p>
                 <p className="text-xs text-slate-400">

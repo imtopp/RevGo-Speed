@@ -53,7 +53,7 @@ export default async function StokPage({
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold tracking-tight">Stok Part</h1>
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="mt-1 text-sm text-muted-foreground">
             {parts.length} item · nilai {formatRupiah(totalNilai)}
           </p>
         </div>
@@ -93,8 +93,8 @@ export default async function StokPage({
             href={`/dashboard/stok?tab=${t.key}${branchFilter ? `&branch=${branchFilter}` : ""}`}
             className={`rounded-full px-3 py-1.5 text-xs font-medium ${
               tab === t.key
-                ? "bg-slate-900 text-white"
-                : "bg-white text-slate-600 ring-1 ring-slate-200"
+                ? "bg-primary text-white"
+                : "bg-surface text-slate-600 ring-1 ring-slate-200 shadow-card"
             }`}
           >
             {t.label}

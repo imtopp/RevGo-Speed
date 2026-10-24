@@ -6,7 +6,7 @@ import { addPayment, type BayarState } from "./actions";
 const inputCls =
   "mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-base outline-none focus:border-slate-900";
 const btnPrimary =
-  "w-full rounded-lg bg-slate-900 py-2.5 text-sm font-medium text-white active:opacity-90 disabled:opacity-60";
+  "w-full rounded-lg bg-primary py-2.5 text-sm font-medium text-white active:opacity-90 disabled:opacity-60";
 
 function Msg({ state }: { state: BayarState }) {
   if (state.error)
@@ -33,14 +33,14 @@ export function PaymentForm({
       action={action}
       className={
         compact
-          ? "space-y-2 rounded-xl bg-white p-3 ring-1 ring-slate-200"
-          : "space-y-3 rounded-xl bg-white p-4 ring-1 ring-slate-200"
+          ? "space-y-2 rounded-xl bg-surface p-3 ring-1 ring-slate-200 shadow-card"
+          : "space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card"
       }
     >
       <input type="hidden" name="serviceId" value={serviceId} />
       <div className="flex items-center justify-between">
         <p className="text-sm font-semibold text-slate-700">Terima Bayar</p>
-        <p className="text-xs text-slate-500">
+        <p className="text-xs text-muted-foreground">
           Sisa {remaining.toLocaleString("id-ID")}
         </p>
       </div>

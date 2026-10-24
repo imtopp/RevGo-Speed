@@ -66,14 +66,14 @@ export default async function DashboardHome() {
         <h1 className="text-xl font-bold tracking-tight md:text-2xl">
           Halo, {session.user.name}
         </h1>
-        <p className="mt-1 text-sm text-slate-500">Ringkasan bengkel hari ini</p>
+        <p className="mt-1 text-sm text-muted-foreground">Ringkasan bengkel hari ini</p>
       </div>
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
         {stats.map((stat) => (
           <div
             key={stat.label}
-            className="rounded-xl bg-white p-4 ring-1 ring-slate-200"
+            className="rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card"
           >
             <p
               className={`text-xl font-bold tabular-nums ${
@@ -82,7 +82,7 @@ export default async function DashboardHome() {
             >
               {stat.value}
             </p>
-            <p className="mt-1 text-xs text-slate-500">{stat.label}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{stat.label}</p>
           </div>
         ))}
       </div>
@@ -91,13 +91,13 @@ export default async function DashboardHome() {
         <div className="grid max-w-xl grid-cols-2 gap-3">
           <Link
             href="/dashboard/servis?booking=1"
-            className="rounded-xl bg-slate-900 p-4 text-center text-sm font-medium text-white"
+            className="rounded-xl bg-primary p-4 text-center text-sm font-medium text-white"
           >
             + Booking Baru
           </Link>
           <Link
             href="/dashboard/piutang"
-            className="rounded-xl bg-white p-4 text-center text-sm font-medium text-slate-700 ring-1 ring-slate-200"
+            className="rounded-xl bg-surface p-4 text-center text-sm font-medium text-slate-700 ring-1 ring-slate-200 shadow-card"
           >
             Lihat Piutang
           </Link>

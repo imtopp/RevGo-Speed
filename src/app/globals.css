@@ -1,7 +1,54 @@
 @import "tailwindcss";
 
+/* ============================================================
+   Design System Tokens — RevGo Speed
+   Aesthetic: modern, clean, flat tech-startup (Gojek/Tokopedia)
+   ============================================================ */
+@theme {
+  /* Warna */
+  --color-primary: #d32f2f; /* Automotive Red — CTA, active states, branding */
+  --color-primary-foreground: #ffffff;
+  --color-secondary: #1e293b; /* Deep Slate — judul, top navbar */
+  --color-secondary-foreground: #ffffff;
+  --color-background: #f8fafc; /* Neutral Background — halaman */
+  --color-surface: #ffffff; /* Neutral Surface — kartu/container */
+  --color-success: #10b981; /* Green — cashflow positif, servis selesai */
+  --color-warning: #f59e0b; /* Amber — restock, antrian pending */
+  --color-foreground: #0f172a; /* Text Primary */
+  --color-muted-foreground: #64748b; /* Text Secondary — subtitle/placeholder */
+
+  /* Radius — soft rounded corners */
+  --radius-lg: 12px;
+  --radius-xl: 12px;
+  --radius-2xl: 16px;
+
+  /* Shadow — halus, flat, tanpa gradasi 3D */
+  --shadow-card: 0 1px 2px 0 rgb(15 23 42 / 0.04),
+    0 4px 14px -8px rgb(15 23 42 / 0.1);
+
+  /* Tipografi — highly legible sans-serif */
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system,
+    "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
 :root {
   color-scheme: light;
+}
+
+@layer base {
+  /* Text Secondary — placeholder */
+  ::placeholder {
+    color: var(--color-muted-foreground);
+    opacity: 1;
+  }
+
+  /* Deep Slate — judul */
+  h1,
+  h2,
+  h3,
+  h4 {
+    color: var(--color-secondary);
+  }
 }
 
 html {
@@ -23,5 +70,9 @@ html {
     max-width: none !important;
     padding: 0 !important;
     margin: 0 !important;
+  }
+  /* Flat & bersih di kertas: buang shadow/ring */
+  * {
+    box-shadow: none !important;
   }
 }

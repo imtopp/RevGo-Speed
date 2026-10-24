@@ -71,6 +71,7 @@ generated/                  # Prisma client output (gitignored)
 - **Format:** Rupiah via `formatRupiah()` (integer, tanpa desimal), tanggal via `formatTanggal()` / `formatTanggalPendek()` — semua di `src/lib/service-status.ts`.
 - **Bahasa:** Seluruh UI, label, dan pesan error dalam bahasa Indonesia.
 - **Desain:** Mobile-first, max-width `max-w-lg` (staff) / `max-w-md` (customer), bottom-nav, Tailwind utility classes, tidak pakai component library eksternal.
+- **Design system:** token di `src/app/globals.css` (`@theme`) — CTA/active `bg-primary` (#D32F2F), top navbar `bg-secondary` (#1E293B), halaman `bg-background` (#F8FAFC), kartu `bg-surface` + `shadow-card` (radius 12/16px), teks `text-foreground` / `text-muted-foreground`, status `text-success` / `text-warning`, font Inter via `--font-sans`. **Jangan pakai hex warna hardcoded** di komponen — gunakan token ini.
 - **Warna status servis:** konsisten di `STATUS_COLOR` (`src/lib/service-status.ts`).
 - **Nilai moneter:** selalu integer (Rupiah), jangan float.
 

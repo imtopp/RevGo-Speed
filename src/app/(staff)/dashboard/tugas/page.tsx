@@ -44,15 +44,15 @@ export default async function TugasPage() {
     <div className="space-y-4">
       <div>
         <h1 className="text-xl font-bold tracking-tight">Tugas Saya</h1>
-        <p className="mt-1 text-sm text-slate-500">
+        <p className="mt-1 text-sm text-muted-foreground">
           {services.length} tugas aktif
         </p>
       </div>
 
       <div className="space-y-2">
         {services.length === 0 && (
-          <div className="rounded-xl bg-white p-6 ring-1 ring-slate-200">
-            <p className="text-sm text-slate-500">
+          <div className="rounded-xl bg-surface p-6 ring-1 ring-slate-200 shadow-card">
+            <p className="text-sm text-muted-foreground">
               Tidak ada tugas aktif saat ini.
             </p>
           </div>
@@ -61,7 +61,7 @@ export default async function TugasPage() {
           <Link
             key={s.id}
             href={`/dashboard/servis/${s.id}`}
-            className="block rounded-xl bg-white p-4 ring-1 ring-slate-200 active:opacity-90"
+            className="block rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card active:opacity-90"
           >
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
@@ -69,7 +69,7 @@ export default async function TugasPage() {
                 <p className="font-medium">
                   {s.vehicle.plateNumber} · {s.vehicle.brand} {s.vehicle.model}
                 </p>
-                <p className="text-sm text-slate-500">{s.customer.name}</p>
+                <p className="text-sm text-muted-foreground">{s.customer.name}</p>
                 {s.complaint && (
                   <p className="mt-1 line-clamp-2 text-sm text-slate-600">
                     {s.complaint}

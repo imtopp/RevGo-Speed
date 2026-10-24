@@ -57,7 +57,7 @@ function ActionPanel({
         <form action={assignAction} className="flex items-end gap-2">
           <input type="hidden" name="id" value={user.id} />
           <div className="flex-1">
-            <label className="block text-xs font-medium text-slate-500">
+            <label className="block text-xs font-medium text-muted-foreground">
               Cabang
             </label>
             <select
@@ -87,7 +87,7 @@ function ActionPanel({
         <form action={resetAction} className="flex items-end gap-2">
           <input type="hidden" name="id" value={user.id} />
           <div className="flex-1">
-            <label className="block text-xs font-medium text-slate-500">
+            <label className="block text-xs font-medium text-muted-foreground">
               Password Baru
             </label>
             <input
@@ -157,12 +157,12 @@ export function UserList({
       {users.map((user) => (
         <div
           key={user.id}
-          className="rounded-xl bg-white p-4 ring-1 ring-slate-200"
+          className="rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card"
         >
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
               <p className="font-medium">{user.name}</p>
-              <p className="truncate text-sm text-slate-500">{user.email}</p>
+              <p className="truncate text-sm text-muted-foreground">{user.email}</p>
               <p className="mt-1 text-xs text-slate-400">
                 {ROLE_LABEL[user.role] ?? user.role} ·{" "}
                 {user.branch?.name ?? "Lintas cabang"} ·{" "}

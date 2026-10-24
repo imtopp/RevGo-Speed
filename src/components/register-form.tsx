@@ -87,15 +87,15 @@ export function RegisterForm() {
       <button
         type="submit"
         disabled={pending}
-        className="w-full rounded-lg bg-slate-900 py-2.5 font-medium text-white active:opacity-90 disabled:opacity-60"
+        className="w-full rounded-lg bg-primary py-2.5 font-medium text-white active:opacity-90 disabled:opacity-60"
       >
         {pending ? "Mendaftar..." : "Daftar"}
       </button>
-      <p className="text-center text-sm text-slate-500">
+      <p className="text-center text-sm text-muted-foreground">
         Sudah punya akun?{" "}
         <Link
           href="/login"
-          className="font-medium text-slate-900 underline underline-offset-2"
+          className="font-medium text-foreground underline underline-offset-2"
         >
           Masuk
         </Link>

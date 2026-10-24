@@ -16,15 +16,15 @@ export default async function KatalogPage() {
     <div className="space-y-5">
       <div>
         <h1 className="text-xl font-bold tracking-tight">Katalog Jasa</h1>
-        <p className="mt-1 text-sm text-slate-500">
+        <p className="mt-1 text-sm text-muted-foreground">
           Jenis jasa, harga dasar, dan izin DP
         </p>
       </div>
 
       <div className="space-y-2">
         {catalog.length === 0 && (
-          <div className="rounded-xl bg-white p-6 ring-1 ring-slate-200">
-            <p className="text-sm text-slate-500">
+          <div className="rounded-xl bg-surface p-6 ring-1 ring-slate-200 shadow-card">
+            <p className="text-sm text-muted-foreground">
               Belum ada jasa. Tambahkan di bawah.
             </p>
           </div>
@@ -32,12 +32,12 @@ export default async function KatalogPage() {
         {catalog.map((item) => (
           <div
             key={item.id}
-            className="rounded-xl bg-white p-4 ring-1 ring-slate-200"
+            className="rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card"
           >
             <div className="flex items-start justify-between gap-2">
               <div>
                 <p className="font-medium">{item.nama}</p>
-                <p className="text-sm text-slate-500">{formatRupiah(item.hargaDasar)}</p>
+                <p className="text-sm text-muted-foreground">{formatRupiah(item.hargaDasar)}</p>
                 <p className="mt-1 text-xs text-slate-400">
                   {item.allowDp ? "Boleh DP" : "Lunas penuh"} ·{" "}
                   {item.aktif ? "Aktif" : "Nonaktif"}

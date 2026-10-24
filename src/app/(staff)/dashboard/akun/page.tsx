@@ -31,7 +31,7 @@ export default async function AkunPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-xl font-bold tracking-tight">Kelola Akun</h1>
-        <p className="mt-1 text-sm text-slate-500">
+        <p className="mt-1 text-sm text-muted-foreground">
           Buat &amp; atur akun staff (SysAdmin, Admin, Mekanik)
         </p>
       </div>

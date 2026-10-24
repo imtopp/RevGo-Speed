@@ -49,9 +49,9 @@ function Msg({ state }: { state: StokState }) {
 const inputCls =
   "mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-base outline-none focus:border-slate-900";
 const btnPrimary =
-  "w-full rounded-lg bg-slate-900 py-2.5 text-sm font-medium text-white active:opacity-90 disabled:opacity-60";
+  "w-full rounded-lg bg-primary py-2.5 text-sm font-medium text-white active:opacity-90 disabled:opacity-60";
 const btnSecondary =
-  "rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 active:opacity-90";
+  "rounded-lg border border-slate-300 bg-surface px-3 py-2 text-sm font-medium text-slate-700 active:opacity-90";
 
 function PartForm({
   branches,
@@ -66,7 +66,7 @@ function PartForm({
 }) {
   const [state, action, pending] = useActionState<StokState, FormData>(createPart, {});
   return (
-    <form action={action} className="space-y-3 rounded-xl bg-white p-4 ring-1 ring-slate-200">
+    <form action={action} className="space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
       <p className="text-sm font-semibold text-slate-700">Tambah Part Baru</p>
       <Msg state={state} />
       {!isLocked && (
@@ -138,7 +138,7 @@ function PartForm({
 function StockInForm({ parts, suppliers }: { parts: Part[]; suppliers: Supplier[] }) {
   const [state, action, pending] = useActionState<StokState, FormData>(stockIn, {});
   return (
-    <form action={action} className="space-y-3 rounded-xl bg-white p-4 ring-1 ring-slate-200">
+    <form action={action} className="space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
       <p className="text-sm font-semibold text-slate-700">Stok Masuk (Pembelian)</p>
       <Msg state={state} />
       <div>
@@ -198,7 +198,7 @@ function StockInForm({ parts, suppliers }: { parts: Part[]; suppliers: Supplier[
 function AdjustForm({ parts }: { parts: Part[] }) {
   const [state, action, pending] = useActionState<StokState, FormData>(adjustStock, {});
   return (
-    <form action={action} className="space-y-3 rounded-xl bg-white p-4 ring-1 ring-slate-200">
+    <form action={action} className="space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
       <p className="text-sm font-semibold text-slate-700">Penyesuaian Stok</p>
       <Msg state={state} />
       <div>
@@ -235,7 +235,7 @@ function SupplierPanel({ suppliers }: { suppliers: Supplier[] }) {
 
   return (
     <div className="space-y-3">
-      <form action={createAction} className="space-y-3 rounded-xl bg-white p-4 ring-1 ring-slate-200">
+      <form action={createAction} className="space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
         <p className="text-sm font-semibold text-slate-700">Tambah Supplier</p>
         <Msg state={createState} />
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -259,16 +259,16 @@ function SupplierPanel({ suppliers }: { suppliers: Supplier[] }) {
 
       <div className="space-y-2">
         {suppliers.length === 0 && (
-          <div className="rounded-xl bg-white p-4 ring-1 ring-slate-200">
-            <p className="text-sm text-slate-500">Belum ada supplier.</p>
+          <div className="rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
+            <p className="text-sm text-muted-foreground">Belum ada supplier.</p>
           </div>
         )}
         {suppliers.map((s) => (
-          <div key={s.id} className="rounded-xl bg-white p-4 ring-1 ring-slate-200">
+          <div key={s.id} className="rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
             <div className="flex items-start justify-between">
               <div>
                 <p className="font-medium">{s.nama}</p>
-                <p className="text-sm text-slate-500">{s.telepon ?? "—"}</p>
+                <p className="text-sm text-muted-foreground">{s.telepon ?? "—"}</p>
                 <p className="text-xs text-slate-400">{s.aktif ? "Aktif" : "Nonaktif"}</p>
               </div>
               <button
@@ -322,14 +322,14 @@ function PartRow({ part }: { part: Part }) {
   const [open, setOpen] = useState(false);
   const low = part.quantity <= part.minStock;
   return (
-    <div className="rounded-xl bg-white p-4 ring-1 ring-slate-200">
+    <div className="rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="font-medium">
             {part.name}
             {low && <span className="ml-2 text-xs text-amber-600">⚠ menipis</span>}
           </p>
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-muted-foreground">
             {part.sku} · stok {part.quantity} {part.unit} (min {part.minStock})
           </p>
           <p className="text-xs text-slate-400">
@@ -422,22 +422,22 @@ export function StokPanels({
     return (
       <div className="space-y-2">
         {movements.length === 0 && (
-          <div className="rounded-xl bg-white p-6 ring-1 ring-slate-200">
-            <p className="text-sm text-slate-500">Belum ada pergerakan stok.</p>
+          <div className="rounded-xl bg-surface p-6 ring-1 ring-slate-200 shadow-card">
+            <p className="text-sm text-muted-foreground">Belum ada pergerakan stok.</p>
           </div>
         )}
         {movements.map((m) => (
-          <div key={m.id} className="rounded-xl bg-white p-3 ring-1 ring-slate-200">
+          <div key={m.id} className="rounded-xl bg-surface p-3 ring-1 ring-slate-200 shadow-card">
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
                 <p className="text-sm font-medium">
-                  <span className={m.type === "IN" ? "text-emerald-600" : "text-red-600"}>
+                  <span className={m.type === "IN" ? "text-success" : "text-red-600"}>
                     {m.type === "IN" ? "+" : "−"}
                     {m.quantity}
                   </span>{" "}
                   {m.part.name}
                 </p>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-muted-foreground">
                   {m.note ?? "—"}
                   {m.supplier ? ` · ${m.supplier.nama}` : ""}
                   {m.user ? ` · ${m.user.name}` : ""}
@@ -481,8 +481,8 @@ export function StokPanels({
 
       <div className="space-y-2">
         {parts.length === 0 && (
-          <div className="rounded-xl bg-white p-6 ring-1 ring-slate-200">
-            <p className="text-sm text-slate-500">
+          <div className="rounded-xl bg-surface p-6 ring-1 ring-slate-200 shadow-card">
+            <p className="text-sm text-muted-foreground">
               Belum ada part. Tambah lewat &quot;+ Aksi Stok&quot;.
             </p>
           </div>

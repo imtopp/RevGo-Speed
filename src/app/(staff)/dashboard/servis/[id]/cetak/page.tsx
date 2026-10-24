@@ -41,14 +41,14 @@ export default async function CetakNotaPage({
         <PrintButton />
         <Link
           href={`/dashboard/servis/${service.id}`}
-          className="rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700"
+          className="rounded-lg border border-slate-300 bg-surface px-4 py-2.5 text-sm font-medium text-slate-700"
         >
           Kembali
         </Link>
       </div>
 
       {/* Nota */}
-      <div className="rounded-lg bg-white p-5 text-sm text-black ring-1 ring-slate-200 print:ring-0">
+      <div className="rounded-lg bg-surface p-5 text-sm text-black ring-1 ring-slate-200 shadow-card print:ring-0">
         <div className="text-center">
           <p className="text-lg font-bold">{service.branch.name}</p>
           <p className="text-xs text-slate-600">{appName} · Bengkel</p>
@@ -120,14 +120,14 @@ export default async function CetakNotaPage({
               <span>{formatRupiah(sisa)}</span>
             </div>
           ) : (
-            <div className="mt-0.5 flex justify-between font-semibold text-emerald-600">
+            <div className="mt-0.5 flex justify-between font-semibold text-success">
               <span>Status</span>
               <span>LUNAS</span>
             </div>
           )}
         </div>
 
-        <p className="mt-4 text-center text-[10px] text-slate-500">
+        <p className="mt-4 text-center text-[10px] text-muted-foreground">
           Terima kasih atas kunjungan Anda 🙏
         </p>
       </div>

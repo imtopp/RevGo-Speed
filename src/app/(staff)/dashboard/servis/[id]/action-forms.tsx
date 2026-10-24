@@ -78,7 +78,7 @@ function Field({
 const inputCls =
   "mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-base outline-none focus:border-slate-900";
 const btnPrimary =
-  "w-full rounded-lg bg-slate-900 py-2.5 text-sm font-medium text-white active:opacity-90 disabled:opacity-60";
+  "w-full rounded-lg bg-primary py-2.5 text-sm font-medium text-white active:opacity-90 disabled:opacity-60";
 const btnSecondary =
   "w-full rounded-lg border border-slate-300 py-2.5 text-sm font-medium text-slate-700 active:opacity-90 disabled:opacity-60";
 const btnDanger =
@@ -95,7 +95,7 @@ function EstimateForm({
 }) {
   const { state, formAction, pending } = useForm(submitEstimate);
   return (
-    <form action={formAction} className="space-y-3 rounded-xl bg-white p-4 ring-1 ring-slate-200">
+    <form action={formAction} className="space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
       <input type="hidden" name="id" value={service.id} />
       <p className="text-sm font-semibold text-slate-700">Isi Estimasi</p>
       <Msg state={state} />
@@ -130,7 +130,7 @@ function EstimateForm({
 function ApproveForm({ service }: { service: ServiceInfo }) {
   const { state, formAction, pending } = useForm(approveInPerson);
   return (
-    <form action={formAction} className="space-y-2 rounded-xl bg-white p-4 ring-1 ring-slate-200">
+    <form action={formAction} className="space-y-2 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
       <input type="hidden" name="id" value={service.id} />
       <Msg state={state} />
       <button type="submit" disabled={pending} className={btnPrimary}>
@@ -143,7 +143,7 @@ function ApproveForm({ service }: { service: ServiceInfo }) {
 function CheckInForm({ service }: { service: ServiceInfo }) {
   const { state, formAction, pending } = useForm(checkInUnit);
   return (
-    <form action={formAction} className="space-y-3 rounded-xl bg-white p-4 ring-1 ring-slate-200">
+    <form action={formAction} className="space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
       <input type="hidden" name="id" value={service.id} />
       <p className="text-sm font-semibold text-slate-700">
         Pemeriksaan Awal (Terima Unit)
@@ -179,7 +179,7 @@ function CheckInForm({ service }: { service: ServiceInfo }) {
 function StartWorkForm({ service }: { service: ServiceInfo }) {
   const { state, formAction, pending } = useForm(startWork);
   return (
-    <form action={formAction} className="space-y-2 rounded-xl bg-white p-4 ring-1 ring-slate-200">
+    <form action={formAction} className="space-y-2 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
       <input type="hidden" name="id" value={service.id} />
       <Msg state={state} />
       <button type="submit" disabled={pending} className={btnPrimary}>
@@ -192,7 +192,7 @@ function StartWorkForm({ service }: { service: ServiceInfo }) {
 function DiagnosisForm({ service }: { service: ServiceInfo }) {
   const { state, formAction, pending } = useForm(saveDiagnosis);
   return (
-    <form action={formAction} className="space-y-3 rounded-xl bg-white p-4 ring-1 ring-slate-200">
+    <form action={formAction} className="space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
       <input type="hidden" name="id" value={service.id} />
       <p className="text-sm font-semibold text-slate-700">Diagnosis</p>
       <Msg state={state} />
@@ -213,7 +213,7 @@ function AddPartForm({
 }) {
   const { state, formAction, pending } = useForm(addServicePart);
   return (
-    <form action={formAction} className="space-y-3 rounded-xl bg-white p-4 ring-1 ring-slate-200">
+    <form action={formAction} className="space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
       <input type="hidden" name="serviceId" value={serviceId} />
       <p className="text-sm font-semibold text-slate-700">Catat Part Terpakai</p>
       <Msg state={state} />
@@ -298,7 +298,7 @@ function QcForm({ service }: { service: ServiceInfo }) {
 function CancelForm({ service }: { service: ServiceInfo }) {
   const { state, formAction, pending } = useForm(cancelService);
   return (
-    <form action={formAction} className="space-y-2 rounded-xl bg-white p-4 ring-1 ring-slate-200">
+    <form action={formAction} className="space-y-2 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
       <input type="hidden" name="id" value={service.id} />
       <p className="text-sm font-semibold text-red-600">Batalkan Servis</p>
       <Msg state={state} />

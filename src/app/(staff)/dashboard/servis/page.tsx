@@ -64,20 +64,20 @@ export default async function ServisPage({
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold tracking-tight">Servis</h1>
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="mt-1 text-sm text-muted-foreground">
             {services.length} servis · papan kerja
           </p>
         </div>
         <div className="flex items-center gap-2">
           <Link
             href="/dashboard/katalog"
-            className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 active:opacity-90"
+            className="rounded-lg border border-slate-300 bg-surface px-3 py-2 text-sm font-medium text-slate-700 active:opacity-90"
           >
             Katalog
           </Link>
           <Link
             href={showBooking ? "/dashboard/servis" : "/dashboard/servis?booking=1"}
-            className="rounded-lg bg-slate-900 px-3 py-2 text-sm font-medium text-white active:opacity-90"
+            className="rounded-lg bg-primary px-3 py-2 text-sm font-medium text-white active:opacity-90"
           >
             {showBooking ? "Tutup" : "+ Booking"}
           </Link>
@@ -96,8 +96,8 @@ export default async function ServisPage({
               href={`/dashboard/servis?status=${f.key}`}
               className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-medium ${
                 active
-                  ? "bg-slate-900 text-white"
-                  : "bg-white text-slate-600 ring-1 ring-slate-200"
+                  ? "bg-primary text-white"
+                  : "bg-surface text-slate-600 ring-1 ring-slate-200 shadow-card"
               }`}
             >
               {f.label}
@@ -109,8 +109,8 @@ export default async function ServisPage({
       {/* Papan kerja: list servis */}
       <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
         {services.length === 0 && (
-          <div className="col-span-full rounded-xl bg-white p-6 ring-1 ring-slate-200">
-            <p className="text-sm text-slate-500">
+          <div className="col-span-full rounded-xl bg-surface p-6 ring-1 ring-slate-200 shadow-card">
+            <p className="text-sm text-muted-foreground">
               Tidak ada servis pada filter ini.
             </p>
           </div>
@@ -119,7 +119,7 @@ export default async function ServisPage({
           <Link
             key={s.id}
             href={`/dashboard/servis/${s.id}`}
-            className="block rounded-xl bg-white p-4 ring-1 ring-slate-200 active:opacity-90"
+            className="block rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card active:opacity-90"
           >
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
@@ -127,7 +127,7 @@ export default async function ServisPage({
                 <p className="font-medium">
                   {s.vehicle.plateNumber} · {s.vehicle.brand} {s.vehicle.model}
                 </p>
-                <p className="text-sm text-slate-500">
+                <p className="text-sm text-muted-foreground">
                   {s.customer.name}
                   {s.mechanic ? ` · ${s.mechanic.name}` : ""}
                 </p>

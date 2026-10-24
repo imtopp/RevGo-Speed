@@ -54,7 +54,7 @@ export function StaffNav({ role }: { role: Role }) {
 
   return (
     <nav
-      className="grid border-t border-slate-200 bg-white pb-[env(safe-area-inset-bottom)]"
+      className="grid border-t border-slate-200 bg-surface pb-[env(safe-area-inset-bottom)]"
       style={{ gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))` }}
     >
       {items.map((item) => {
@@ -66,8 +66,8 @@ export function StaffNav({ role }: { role: Role }) {
             aria-current={active ? "page" : undefined}
             className={`border-t-2 py-3 text-center text-sm transition-colors ${
               active
-                ? "border-slate-900 font-semibold text-slate-900"
-                : "border-transparent font-medium text-slate-500"
+                ? "border-slate-900 font-semibold text-foreground"
+                : "border-transparent font-medium text-muted-foreground"
             }`}
           >
             {item.label}
@@ -101,8 +101,8 @@ export function SidebarNav({ role }: { role: Role }) {
                     aria-current={active ? "page" : undefined}
                     className={`block rounded-lg px-3 py-2 text-sm transition-colors ${
                       active
-                        ? "bg-slate-900 font-semibold text-white"
-                        : "font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                        ? "bg-primary font-semibold text-white"
+                        : "font-medium text-slate-600 hover:bg-slate-100 hover:text-foreground"
                     }`}
                   >
                     {item.label}

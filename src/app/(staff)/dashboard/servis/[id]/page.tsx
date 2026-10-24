@@ -78,7 +78,7 @@ export default async function ServisDetailPage({
       <div>
         <Link
           href="/dashboard/servis"
-          className="text-sm text-slate-500 underline underline-offset-2"
+          className="text-sm text-muted-foreground underline underline-offset-2"
         >
           ← Kembali ke daftar
         </Link>
@@ -96,7 +96,7 @@ export default async function ServisDetailPage({
             <h1 className="text-xl font-bold tracking-tight">
               {service.vehicle.plateNumber}
             </h1>
-            <p className="text-sm text-slate-500">
+            <p className="text-sm text-muted-foreground">
               {service.vehicle.brand} {service.vehicle.model} ·{" "}
               {service.customer.name}
             </p>
@@ -110,39 +110,39 @@ export default async function ServisDetailPage({
       </div>
 
       {/* Info dasar */}
-      <div className="rounded-xl bg-white p-4 ring-1 ring-slate-200">
+      <div className="rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
         <dl className="grid grid-cols-2 gap-3 text-sm">
           <div>
-            <dt className="text-slate-500">Cabang</dt>
+            <dt className="text-muted-foreground">Cabang</dt>
             <dd className="font-medium">{service.branch.name}</dd>
           </div>
           <div>
-            <dt className="text-slate-500">Sumber</dt>
+            <dt className="text-muted-foreground">Sumber</dt>
             <dd className="font-medium">
               {service.source === "APP" ? "Booking App" : "Input Admin"}
             </dd>
           </div>
           <div>
-            <dt className="text-slate-500">Mekanik</dt>
+            <dt className="text-muted-foreground">Mekanik</dt>
             <dd className="font-medium">{service.mechanic?.name ?? "—"}</dd>
           </div>
           <div>
-            <dt className="text-slate-500">Jenis Jasa</dt>
+            <dt className="text-muted-foreground">Jenis Jasa</dt>
             <dd className="font-medium">{service.catalog?.nama ?? "—"}</dd>
           </div>
           <div className="col-span-2">
-            <dt className="text-slate-500">Keluhan</dt>
+            <dt className="text-muted-foreground">Keluhan</dt>
             <dd>{service.complaint ?? "—"}</dd>
           </div>
           {service.diagnosis && (
             <div className="col-span-2">
-              <dt className="text-slate-500">Diagnosis / Catatan</dt>
+              <dt className="text-muted-foreground">Diagnosis / Catatan</dt>
               <dd>{service.diagnosis}</dd>
             </div>
           )}
           {service.cancelReason && (
             <div className="col-span-2">
-              <dt className="text-slate-500">Alasan Batal</dt>
+              <dt className="text-muted-foreground">Alasan Batal</dt>
               <dd className="text-red-600">{service.cancelReason}</dd>
             </div>
           )}
@@ -150,7 +150,7 @@ export default async function ServisDetailPage({
       </div>
 
       {/* Timeline */}
-      <div className="rounded-xl bg-white p-4 ring-1 ring-slate-200">
+      <div className="rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
         <h2 className="text-sm font-semibold text-slate-700">Riwayat</h2>
         <ul className="mt-2 space-y-1.5">
           {timeline.map((t) => (
@@ -163,15 +163,15 @@ export default async function ServisDetailPage({
       </div>
 
       {/* Part terpakai */}
-      <div className="rounded-xl bg-white p-4 ring-1 ring-slate-200">
+      <div className="rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold text-slate-700">Part Terpakai</h2>
-          <span className="text-sm text-slate-500">
+          <span className="text-sm text-muted-foreground">
             {formatRupiah(totalPartHarga)}
           </span>
         </div>
         {service.parts.length === 0 ? (
-          <p className="mt-2 text-sm text-slate-500">Belum ada part.</p>
+          <p className="mt-2 text-sm text-muted-foreground">Belum ada part.</p>
         ) : (
           <ul className="mt-2 divide-y divide-slate-100">
             {service.parts.map((sp) => (
@@ -194,7 +194,7 @@ export default async function ServisDetailPage({
         )}
         <div className="mt-3 border-t border-slate-100 pt-3 text-sm">
           <div className="flex justify-between">
-            <span className="text-slate-500">Biaya jasa</span>
+            <span className="text-muted-foreground">Biaya jasa</span>
             <span>{formatRupiah(service.laborCost)}</span>
           </div>
           <div className="mt-1 flex justify-between font-semibold">
@@ -205,10 +205,10 @@ export default async function ServisDetailPage({
       </div>
 
       {/* Pembayaran */}
-      <div className="rounded-xl bg-white p-4 ring-1 ring-slate-200">
+      <div className="rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
         <h2 className="text-sm font-semibold text-slate-700">Pembayaran</h2>
         {service.payments.length === 0 ? (
-          <p className="mt-2 text-sm text-slate-500">Belum ada pembayaran.</p>
+          <p className="mt-2 text-sm text-muted-foreground">Belum ada pembayaran.</p>
         ) : (
           <ul className="mt-2 divide-y divide-slate-100">
             {service.payments.map((p) => (
@@ -229,12 +229,12 @@ export default async function ServisDetailPage({
         )}
         <div className="mt-3 border-t border-slate-100 pt-3 text-sm">
           <div className="flex justify-between">
-            <span className="text-slate-500">Sudah dibayar</span>
+            <span className="text-muted-foreground">Sudah dibayar</span>
             <span>{formatRupiah(totalPaid)}</span>
           </div>
           <div
             className={`mt-1 flex justify-between font-semibold ${
-              remaining > 0 ? "text-red-600" : "text-emerald-600"
+              remaining > 0 ? "text-red-600" : "text-success"
             }`}
           >
             <span>{remaining > 0 ? "Sisa tagihan" : "Status"}</span>
@@ -270,8 +270,8 @@ export default async function ServisDetailPage({
       )}
 
       {(service.status === "DONE" || service.status === "CANCELLED") && (
-        <div className="rounded-xl bg-white p-4 ring-1 ring-slate-200">
-          <p className="text-sm text-slate-500">
+        <div className="rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
+          <p className="text-sm text-muted-foreground">
             Servis sudah {STATUS_LABEL[service.status].toLowerCase()}.{" "}
             {service.status === "DONE" && "Pembayaran & pelunasan di modul Kas."}
           </p>

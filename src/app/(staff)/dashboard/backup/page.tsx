@@ -12,12 +12,12 @@ export default async function BackupPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-xl font-bold tracking-tight">Backup</h1>
-        <p className="mt-1 text-sm text-slate-500">
+        <p className="mt-1 text-sm text-muted-foreground">
           Cadangan data &amp; informasi pemulihan
         </p>
       </div>
 
-      <section className="space-y-3 rounded-xl bg-white p-4 ring-1 ring-slate-200">
+      <section className="space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
         <h2 className="text-sm font-semibold text-slate-700">
           Backup Otomatis (Neon)
         </h2>
@@ -28,7 +28,7 @@ export default async function BackupPage() {
           memulihkan). Kamu tidak perlu menjalankan backup manual untuk
           keamanan dasar.
         </p>
-        <p className="text-sm text-slate-500">
+        <p className="text-sm text-muted-foreground">
           Pengaturan backup &amp; restore ada di dashboard Neon → project →{" "}
           <span className="font-medium">Restore</span>.
         </p>
@@ -42,7 +42,7 @@ export default async function BackupPage() {
         </a>
       </section>
 
-      <section className="space-y-3 rounded-xl bg-white p-4 ring-1 ring-slate-200">
+      <section className="space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
         <h2 className="text-sm font-semibold text-slate-700">
           Export Data Manual (JSON)
         </h2>
@@ -53,7 +53,7 @@ export default async function BackupPage() {
         </p>
         <Link
           href="/api/backup/export"
-          className="inline-block rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white active:opacity-90"
+          className="inline-block rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white active:opacity-90"
         >
           Unduh Backup JSON
         </Link>

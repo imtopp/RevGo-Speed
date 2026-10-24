@@ -18,9 +18,9 @@ type Cashflow = {
 const inputCls =
   "mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-base outline-none focus:border-slate-900";
 const btnPrimary =
-  "w-full rounded-lg bg-slate-900 py-2.5 text-sm font-medium text-white active:opacity-90 disabled:opacity-60";
+  "w-full rounded-lg bg-primary py-2.5 text-sm font-medium text-white active:opacity-90 disabled:opacity-60";
 const btnSecondary =
-  "rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 active:opacity-90";
+  "rounded-lg border border-slate-300 bg-surface px-3 py-2 text-sm font-medium text-slate-700 active:opacity-90";
 
 function Msg({ state }: { state: BayarState }) {
   if (state.error)
@@ -41,7 +41,7 @@ export function ManualCashflowForm({
 }) {
   const [state, action, pending] = useActionState<BayarState, FormData>(addManualCashflow, {});
   return (
-    <form action={action} className="space-y-3 rounded-xl bg-white p-4 ring-1 ring-slate-200">
+    <form action={action} className="space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
       <p className="text-sm font-semibold text-slate-700">Entri Kas Manual</p>
       <Msg state={state} />
       <div className="grid grid-cols-2 gap-3">
@@ -94,24 +94,24 @@ export function ManualCashflowForm({
 export function RiwayatList({ items }: { items: Cashflow[] }) {
   if (items.length === 0)
     return (
-      <div className="rounded-xl bg-white p-6 ring-1 ring-slate-200">
-        <p className="text-sm text-slate-500">Belum ada arus kas.</p>
+      <div className="rounded-xl bg-surface p-6 ring-1 ring-slate-200 shadow-card">
+        <p className="text-sm text-muted-foreground">Belum ada arus kas.</p>
       </div>
     );
   return (
     <div className="space-y-2">
       {items.map((c) => (
-        <div key={c.id} className="rounded-xl bg-white p-3 ring-1 ring-slate-200">
+        <div key={c.id} className="rounded-xl bg-surface p-3 ring-1 ring-slate-200 shadow-card">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
               <p className="text-sm font-medium">
-                <span className={c.type === "INCOME" ? "text-emerald-600" : "text-red-600"}>
+                <span className={c.type === "INCOME" ? "text-success" : "text-red-600"}>
                   {c.type === "INCOME" ? "+" : "−"}
                   {formatRupiah(c.amount)}
                 </span>{" "}
                 <span className="text-slate-600">{c.category}</span>
               </p>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-muted-foreground">
                 {c.description ?? "—"} · {c.account}
               </p>
             </div>

@@ -12,7 +12,7 @@ export function CatalogManager() {
   return (
     <form
       action={action}
-      className="space-y-3 rounded-xl bg-white p-4 ring-1 ring-slate-200"
+      className="space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card"
     >
       <p className="text-sm font-semibold text-slate-700">Tambah Jasa Baru</p>
       {state.error && (
@@ -67,7 +67,7 @@ export function CatalogManager() {
       <button
         type="submit"
         disabled={pending}
-        className="w-full rounded-lg bg-slate-900 py-2.5 text-sm font-medium text-white active:opacity-90 disabled:opacity-60"
+        className="w-full rounded-lg bg-primary py-2.5 text-sm font-medium text-white active:opacity-90 disabled:opacity-60"
       >
         {pending ? "Menyimpan..." : "Tambah Jasa"}
       </button>
