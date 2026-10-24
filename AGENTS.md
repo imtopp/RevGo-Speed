@@ -54,7 +54,7 @@ prisma/
   schema.prisma             # skema database
   seed.ts                   # seed: branch Pusat, settings, owner, sysadmin
   migrations/               # SQL migrations
-scripts/                    # test-flow-*.ts, cleanup-test.ts, gen-icons.mjs, verify-neon.ts
+scripts/                    # test-flow-*.ts, cleanup-test.ts, gen-icons.mjs, verify-neon.ts, check-neon-sync.ts
 docs/PRD.md                 # product requirements (v0.3)
 generated/                  # Prisma client output (gitignored)
 ```
@@ -93,6 +93,29 @@ generated/                  # Prisma client output (gitignored)
 5. **Setelah ubah `schema.prisma`** → `npm run db:generate` agar types di `generated/` update.
 6. **Role guard di setiap server action** — jangan hanya andalkan UI hide/show.
 7. **Jangan hardcode nama aplikasi** — pakai `getAppName()` / `getBranding()` dari `src/lib/branding.ts`.
+8. **Jangan pernah sebut "RevLedger"** — nama lama project sebelum rebrand. Nama resmi: **RevGo Speed**. Jika menemukan sisa referensi "RevLedger" di mana pun, hapus/ganti.
+9. **Token/credential wajib aman:** `.env` di-gitignore; token OAuth MCP di `~/.local/share/opencode/mcp-auth.json` (lokal, jangan commit); Vercel env vars disimpan sebagai Secret. Jangan pernah log, print, atau commit secret ke repo.
+
+## Branding & Naming (eksternal)
+
+| Service | Nama | Catatan |
+|---------|------|---------|
+| GitHub repo | `imtopp/RevGo-Speed` | |
+| Vercel project | `revgo-speed` | `AUTH_URL=https://revgo-speed.vercel.app` |
+| Neon project | `RevGo Speed` (`green-hill-87037178`) | Org: `red-brook-12514567` |
+| Neon branch | `production` (default) | Dev branch menyusul |
+| Package name | `revgo-speed` | |
+
+## Neon MCP
+
+- Config di **project-level** `opencode.json` (bukan global `~/.config/opencode/`).
+- Auth via OAuth: `opencode mcp auth Neon` (CLI, butuh browser).
+- Token tersimpan di `~/.local/share/opencode/mcp-auth.json`.
+- Tools tersedia untuk: list/create branch, run SQL, inspect project, dsb.
+
+## Environment (Windows)
+
+- Shell: **PowerShell** — `npx` / `opencode` / `vercel` sering diblokir execution policy → gunakan `npx.cmd`, `opencode.cmd`, `vercel.cmd`.
 
 ## Environment Variables
 
