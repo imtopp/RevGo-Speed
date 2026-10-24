@@ -276,85 +276,13 @@ export function BookingSection({
 
   return (
     <div className="space-y-3">
-      <div className="flex gap-2">
-        <button
-          type="button"
-          onClick={() => setShowBooking((v) => !v)}
-          className="flex-1 rounded-lg bg-primary py-2.5 text-sm font-medium text-white active:opacity-90"
-        >
-          {showBooking ? "Tutup Booking" : "+ Booking Servis"}
-        </button>
-        <button
-          type="button"
-          onClick={() => setShowAddVehicle((v) => !v)}
-          className="rounded-lg border border-slate-300 bg-surface px-3 py-2.5 text-sm font-medium text-foreground active:opacity-90"
-        >
-          {showAddVehicle ? "Tutup" : "+ Kendaraan"}
-        </button>
-      </div>
-
-      {showAddVehicle && (
-        <form
-          action={vehicleAction}
-          className="space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card"
-        >
-          <p className="text-sm font-semibold text-foreground">
-            Tambah Kendaraan
-          </p>
-          <Msg state={vehicleState} />
-          <div className="grid grid-cols-3 gap-2">
-            <div>
-              <label className="block text-xs font-medium text-muted-foreground">
-                Plat
-              </label>
-              <input
-                name="plateNumber"
-                required
-                placeholder="B 1234"
-                className={`${inputCls} uppercase`}
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-muted-foreground">
-                Merek
-              </label>
-              <MerekSelect value={merekPilih} onChange={setMerekPilih} />
-            </div>
-            {merekPilih === MEREK_LAINNYA && (
-              <div className="col-span-3">
-                <label className="block text-xs font-medium text-muted-foreground">
-                  Merek lainnya
-                </label>
-                <input name="brandLain" required placeholder="Tulis merek" className={inputCls} />
-              </div>
-            )}
-            <div>
-              <label className="block text-xs font-medium text-muted-foreground">
-                Tipe
-              </label>
-              <input
-                name="model"
-                required
-                placeholder="Vario"
-                list="tipe-kendaraan"
-                className={inputCls}
-              />
-              <datalist id="tipe-kendaraan">
-                {tipeOptions.map((m) => (
-                  <option key={m} value={m} />
-                ))}
-              </datalist>
-            </div>
-          </div>
-          <button
-            type="submit"
-            disabled={vehiclePending}
-            className="w-full rounded-lg bg-primary py-2 text-sm font-medium text-white active:opacity-90 disabled:opacity-60"
-          >
-            {vehiclePending ? "Menyimpan..." : "Simpan Kendaraan"}
-          </button>
-        </form>
-      )}
+      <button
+        type="button"
+        onClick={() => setShowBooking((v) => !v)}
+        className="w-full rounded-xl bg-primary py-3 text-sm font-semibold text-white active:opacity-90"
+      >
+        {showBooking ? "Tutup Booking Servis" : "+ Booking Servis Baru"}
+      </button>
 
       {showBooking && (
         <form
@@ -365,6 +293,12 @@ export function BookingSection({
             Booking Servis Baru
           </p>
           <Msg state={bookingState} />
+          {vehicles.length === 0 && (
+            <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
+              Belum ada kendaraan — tambah dulu lewat kartu Kendaraan Saya di
+              bawah.
+            </p>
+          )}
           <div>
             <label className="block text-sm font-medium text-foreground">
               Kendaraan
@@ -436,12 +370,85 @@ export function BookingSection({
       )}
 
       <div className="rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
-        <p className="mb-2 text-sm font-semibold text-foreground">
-          Kendaraan Saya
-        </p>
+        <div className="mb-3 flex items-center justify-between gap-2">
+          <p className="text-sm font-semibold text-foreground">
+            Kendaraan Saya
+          </p>
+          <button
+            type="button"
+            onClick={() => setShowAddVehicle((v) => !v)}
+            className="rounded-lg border border-slate-300 bg-surface px-3 py-1.5 text-sm font-medium text-foreground active:opacity-90"
+          >
+            {showAddVehicle ? "Tutup" : "+ Tambah"}
+          </button>
+        </div>
+        {showAddVehicle && (
+          <form action={vehicleAction} className="space-y-3">
+            <p className="text-sm font-semibold text-foreground">
+              Tambah Kendaraan
+            </p>
+            <Msg state={vehicleState} />
+            <div className="grid grid-cols-3 gap-2">
+              <div>
+                <label className="block text-xs font-medium text-muted-foreground">
+                  Plat
+                </label>
+                <input
+                  name="plateNumber"
+                  required
+                  placeholder="B 1234"
+                  className={`${inputCls} uppercase`}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-muted-foreground">
+                  Merek
+                </label>
+                <MerekSelect value={merekPilih} onChange={setMerekPilih} />
+              </div>
+              {merekPilih === MEREK_LAINNYA && (
+                <div className="col-span-3">
+                  <label className="block text-xs font-medium text-muted-foreground">
+                    Merek lainnya
+                  </label>
+                  <input
+                    name="brandLain"
+                    required
+                    placeholder="Tulis merek"
+                    className={inputCls}
+                  />
+                </div>
+              )}
+              <div>
+                <label className="block text-xs font-medium text-muted-foreground">
+                  Tipe
+                </label>
+                <input
+                  name="model"
+                  required
+                  placeholder="Vario"
+                  list="tipe-kendaraan"
+                  className={inputCls}
+                />
+                <datalist id="tipe-kendaraan">
+                  {tipeOptions.map((m) => (
+                    <option key={m} value={m} />
+                  ))}
+                </datalist>
+              </div>
+            </div>
+            <button
+              type="submit"
+              disabled={vehiclePending}
+              className="w-full rounded-lg bg-primary py-2 text-sm font-medium text-white active:opacity-90 disabled:opacity-60"
+            >
+              {vehiclePending ? "Menyimpan..." : "Simpan Kendaraan"}
+            </button>
+          </form>
+        )}
         {vehicles.length === 0 ? (
           <p className="text-sm text-muted-foreground">
-            Belum ada kendaraan — tambah lewat tombol + Kendaraan.
+            Belum ada kendaraan — ketuk + Tambah di atas.
           </p>
         ) : (
           <div className="space-y-2">

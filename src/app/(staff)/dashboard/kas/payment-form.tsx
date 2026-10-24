@@ -33,7 +33,7 @@ export function PaymentForm({
       action={action}
       className={
         compact
-          ? "space-y-2 rounded-xl bg-surface p-3 ring-1 ring-slate-200 shadow-card"
+          ? "space-y-2 border-t border-slate-100 pt-3"
           : "space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card"
       }
     >

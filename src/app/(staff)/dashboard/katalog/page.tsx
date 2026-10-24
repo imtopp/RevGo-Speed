@@ -21,11 +21,13 @@ export default async function KatalogPage() {
         </p>
       </div>
 
+      <CatalogManager />
+
       <div className="space-y-2">
         {catalog.length === 0 && (
           <div className="rounded-xl bg-surface p-6 ring-1 ring-slate-200 shadow-card">
             <p className="text-sm text-muted-foreground">
-              Belum ada jasa. Tambahkan di bawah.
+              Belum ada jasa — ketuk &ldquo;+ Tambah Jasa&rdquo; di atas.
             </p>
           </div>
         )}
@@ -47,8 +49,6 @@ export default async function KatalogPage() {
           </div>
         ))}
       </div>
-
-      <CatalogManager />
     </div>
   );
 }

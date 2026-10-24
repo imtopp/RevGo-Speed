@@ -413,6 +413,7 @@ export function StokPanels({
   isLockedBranch: boolean;
 }) {
   const [showForms, setShowForms] = useState(false);
+  const [aksi, setAksi] = useState<"part" | "masuk" | "opname">("part");
 
   if (tab === "supplier") {
     return <SupplierPanel suppliers={suppliers} />;
@@ -456,26 +457,48 @@ export function StokPanels({
   // Tab part (default)
   return (
     <div className="space-y-3">
-      <div className="flex gap-2">
-        <button
-          type="button"
-          onClick={() => setShowForms((v) => !v)}
-          className={btnSecondary}
-        >
-          {showForms ? "Tutup" : "+ Aksi Stok"}
-        </button>
-      </div>
+      <button
+        type="button"
+        onClick={() => setShowForms((v) => !v)}
+        className="w-full rounded-xl bg-primary py-3 text-sm font-semibold text-white active:opacity-90"
+      >
+        {showForms ? "Tutup Aksi Stok" : "+ Aksi Stok"}
+      </button>
 
       {showForms && (
         <div className="space-y-3">
-          <PartForm
-            branches={branches}
-            suppliers={suppliers}
-            activeBranchId={activeBranchId}
-            isLocked={isLockedBranch}
-          />
-          <StockInForm parts={parts} suppliers={suppliers} />
-          <AdjustForm parts={parts} />
+          <div className="grid grid-cols-3 gap-1 rounded-xl bg-surface p-1 ring-1 ring-slate-200 shadow-card">
+            {(
+              [
+                ["part", "Tambah Part"],
+                ["masuk", "Stok Masuk"],
+                ["opname", "Opname"],
+              ] as const
+            ).map(([key, label]) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setAksi(key)}
+                className={`rounded-lg px-2 py-2 text-xs font-medium active:opacity-90 sm:text-sm ${
+                  aksi === key
+                    ? "bg-primary text-white"
+                    : "text-muted-foreground"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          {aksi === "part" && (
+            <PartForm
+              branches={branches}
+              suppliers={suppliers}
+              activeBranchId={activeBranchId}
+              isLocked={isLockedBranch}
+            />
+          )}
+          {aksi === "masuk" && <StockInForm parts={parts} suppliers={suppliers} />}
+          {aksi === "opname" && <AdjustForm parts={parts} />}
         </div>
       )}
 

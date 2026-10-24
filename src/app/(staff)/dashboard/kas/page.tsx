@@ -55,7 +55,11 @@ export default async function KasPage({
           <p className="mt-1 text-sm text-muted-foreground">Arus kas bengkel</p>
         </div>
         {!branchIdStaff && branches.length > 1 && (
-          <BranchPicker branches={branches} current={activeBranchId} tab="" />
+          <BranchPicker
+            branches={branches}
+            current={activeBranchId}
+            basePath="/dashboard/kas"
+          />
         )}
       </div>
 

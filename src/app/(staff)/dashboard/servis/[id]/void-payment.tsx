@@ -51,7 +51,7 @@ export function VoidPaymentForm({ paymentId }: { paymentId: string }) {
           onClick={() => setOpen(false)}
           className="rounded-lg border border-slate-200 bg-surface px-3 py-1.5 text-xs text-muted-foreground"
         >
-          Batal
+          Tutup
         </button>
       </div>
     </form>

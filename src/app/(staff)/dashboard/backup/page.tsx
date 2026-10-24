@@ -53,7 +53,7 @@ export default async function BackupPage() {
         </p>
         <Link
           href="/api/backup/export"
-          className="inline-block rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white active:opacity-90"
+          className="inline-block rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-foreground active:opacity-90"
         >
           Unduh Backup JSON
         </Link>

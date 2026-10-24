@@ -1,21 +1,32 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { createStaff, type StaffState } from "./actions";
 
 type Branch = { id: string; name: string };
 
 export function StaffForm({ branches }: { branches: Branch[] }) {
+  const [open, setOpen] = useState(false);
   const [state, action, pending] = useActionState<StaffState, FormData>(
     createStaff,
     {},
   );
 
   return (
-    <form
-      action={action}
-      className="space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card"
-    >
+    <div className="max-w-lg space-y-3">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="w-full rounded-xl bg-primary py-3 text-sm font-semibold text-white active:opacity-90"
+      >
+        {open ? "Tutup Form Akun" : "+ Buat Akun Staff"}
+      </button>
+
+      {open && (
+        <form
+          action={action}
+          className="space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card"
+        >
       {state.error && (
         <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-danger">
           {state.error}
@@ -117,6 +128,8 @@ export function StaffForm({ branches }: { branches: Branch[] }) {
       >
         {pending ? "Membuat..." : "Buat Akun"}
       </button>
-    </form>
+        </form>
+      )}
+    </div>
   );
 }

@@ -114,6 +114,19 @@ function ActionPanel({
           <button
             type="submit"
             disabled={togglePending}
+            aria-label={
+              user.isActive
+                ? `Nonaktifkan ${user.name}`
+                : `Aktifkan ${user.name}`
+            }
+            onClick={(e) => {
+              if (
+                user.isActive &&
+                !confirm(`Nonaktifkan akun ${user.name}? Ia tidak bisa login.`)
+              ) {
+                e.preventDefault();
+              }
+            }}
             className={`w-full rounded-lg px-3 py-1.5 text-sm font-medium active:opacity-90 disabled:opacity-60 ${
               user.isActive
                 ? "bg-red-50 text-danger ring-1 ring-red-200"

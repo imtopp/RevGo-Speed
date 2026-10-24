@@ -302,7 +302,7 @@ export default async function ServisDetailPage({
                 {NEXT_ACTION_LABEL[service.status]}
               </span>
               <span className="shrink-0 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-white">
-                Buka Aksi ↓
+                Buka Aksi Servis
               </span>
             </a>
           </div>
@@ -312,8 +312,11 @@ export default async function ServisDetailPage({
       {(service.status === "DONE" || service.status === "CANCELLED") && (
         <div className="rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
           <p className="text-sm text-muted-foreground">
-            Servis sudah {STATUS_LABEL[service.status].toLowerCase()}.{" "}
-            {service.status === "DONE" && "Pembayaran & pelunasan di modul Kas."}
+            {service.status === "DONE"
+              ? remaining > 0
+                ? `Sisa tagihan ${formatRupiah(remaining)} — lunasi lewat form bayar di halaman ini atau di modul Kas.`
+                : "Servis selesai dan tagihan sudah lunas."
+              : `Servis sudah ${STATUS_LABEL[service.status].toLowerCase()}.`}
           </p>
         </div>
       )}

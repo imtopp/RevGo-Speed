@@ -67,27 +67,25 @@ export default async function ServisPage({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h1 className="text-xl font-bold tracking-tight">Servis</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             {services.length} servis · papan kerja
           </p>
-        </div>
-        <div className="flex items-center gap-2">
           <Link
             href="/dashboard/katalog"
-            className="rounded-lg border border-slate-300 bg-surface px-3 py-2 text-sm font-medium text-foreground active:opacity-90"
+            className="mt-1 inline-block text-sm font-medium text-muted-foreground underline underline-offset-2"
           >
-            Katalog
-          </Link>
-          <Link
-            href={showBooking ? "/dashboard/servis" : "/dashboard/servis?booking=1"}
-            className="rounded-lg bg-primary px-3 py-2 text-sm font-medium text-white active:opacity-90"
-          >
-            {showBooking ? "Tutup" : "+ Booking"}
+            Kelola katalog →
           </Link>
         </div>
+        <Link
+          href={showBooking ? "/dashboard/servis" : "/dashboard/servis?booking=1"}
+          className="rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white active:opacity-90"
+        >
+          {showBooking ? "Tutup Booking Servis" : "+ Booking Servis"}
+        </Link>
       </div>
 
       {showBooking && (
@@ -105,7 +103,7 @@ export default async function ServisPage({
           return (
             <Link
               key={f.key}
-              href={`/dashboard/servis?status=${f.key}`}
+              href={`/dashboard/servis?status=${f.key}${showBooking ? "&booking=1" : ""}`}
               className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-medium ${
                 active
                   ? "bg-primary text-white"

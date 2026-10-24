@@ -58,7 +58,12 @@ export default async function StokPage({
           </p>
         </div>
         {!branchIdStaff && branches.length > 1 && (
-          <BranchPicker branches={branches} current={activeBranchId} tab={tab} />
+          <BranchPicker
+            branches={branches}
+            current={activeBranchId}
+            basePath="/dashboard/stok"
+            params={{ tab }}
+          />
         )}
       </div>
 

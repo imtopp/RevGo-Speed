@@ -126,7 +126,7 @@ export default async function DashboardHome() {
             href="/dashboard/piutang"
             className="rounded-xl bg-surface p-4 text-center text-sm font-medium text-foreground ring-1 ring-slate-200 shadow-card"
           >
-            Lihat Piutang
+            Lihat Piutang &rarr;
           </Link>
         </div>
       )}

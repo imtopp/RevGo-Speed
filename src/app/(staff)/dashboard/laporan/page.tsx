@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { requireStaffRole, getStaffBranchId } from "@/lib/guard";
 import { formatRupiah, formatTanggalPendek } from "@/lib/service-status";
 import Link from "next/link";
+import { BranchPicker } from "../stok/branch-picker";
 
 export const metadata = { title: "Laporan" };
 
@@ -98,23 +99,34 @@ export default async function LaporanPage({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2">
         <div>
           <h1 className="text-xl font-bold tracking-tight">Laporan</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             {from.toLocaleDateString("id-ID")} – {to.toLocaleDateString("id-ID")}
           </p>
         </div>
-        <a
-          href={exportUrl}
-          className="rounded-lg border border-slate-300 bg-surface px-3 py-2 text-sm font-medium text-foreground"
-        >
-          Export CSV
-        </a>
+        <div className="flex items-center gap-2">
+          {!branchIdStaff && branches.length > 1 && (
+            <BranchPicker
+              branches={branches}
+              current={activeBranchId}
+              basePath="/dashboard/laporan"
+              params={{ from: iso(from), to: iso(to) }}
+            />
+          )}
+          <a
+            href={exportUrl}
+            className="rounded-lg border border-slate-300 bg-surface px-3 py-2 text-sm font-medium text-foreground"
+          >
+            Export CSV
+          </a>
+        </div>
       </div>
 
       {/* Filter tanggal */}
       <form method="get" className="flex flex-wrap items-end gap-2 rounded-xl bg-surface p-3 ring-1 ring-slate-200 shadow-card">
+        {activeBranchId && <input type="hidden" name="branch" value={activeBranchId} />}
         <div>
           <label className="block text-xs font-medium text-muted-foreground">Dari</label>
           <input type="date" name="from" defaultValue={iso(from)} className="mt-1 rounded-lg border border-slate-300 px-2 py-1.5 text-sm" />
