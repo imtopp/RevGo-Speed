@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { requireStaffRole, getStaffBranchId } from "@/lib/guard";
+import { OPNAME_NOTE_PREFIX, opnameDeltaValue } from "@/lib/opname";
 
 /** Parse param tanggal YYYY-MM-DD ketat — nilai aneh jangan pernah jadi Invalid Date. */
 function parseDateParam(s: string | null, endOfDay: boolean, fallback: Date): Date {
@@ -38,7 +39,7 @@ export async function GET(request: Request) {
   const branchFilter = branchIdStaff ?? p.get("branch") ?? null;
   const branchWhere = branchFilter ? { branchId: branchFilter } : {};
 
-  const [doneServices, cashflows] = await Promise.all([
+  const [doneServices, cashflows, opnameMoves] = await Promise.all([
     prisma.service.findMany({
       where: { ...branchWhere, status: "DONE", finishedAt: { gte: from, lte: to } },
       include: {
@@ -52,6 +53,14 @@ export async function GET(request: Request) {
     prisma.cashflow.findMany({
       where: { ...branchWhere, createdAt: { gte: from, lte: to } },
       orderBy: { createdAt: "asc" },
+    }),
+    prisma.stockMovement.findMany({
+      where: {
+        note: { startsWith: OPNAME_NOTE_PREFIX },
+        createdAt: { gte: from, lte: to },
+        ...(branchFilter ? { part: { branchId: branchFilter } } : {}),
+      },
+      include: { part: { select: { buyPrice: true } } },
     }),
   ]);
 
@@ -71,6 +80,17 @@ export async function GET(request: Request) {
     ]);
   }
   servisRows.push(["TOTAL", "", "", "", "", totRev, totHpp, totRev - totHpp]);
+
+  // Selisih opname: OUT (hilang) = beban negatif, IN (temuan) = positif.
+  const opnameDelta = opnameDeltaValue(
+    opnameMoves.map((m) => ({
+      type: m.type,
+      quantity: m.quantity,
+      unitCost: m.part.buyPrice,
+    })),
+  );
+  servisRows.push(["SELISIH OPNAME", "", "", "", "", "", "", opnameDelta]);
+  servisRows.push(["LABA BERSIH", "", "", "", "", "", "", totRev - totHpp + opnameDelta]);
 
   // Bagian 2: arus kas
   const kasRows: unknown[][] = [

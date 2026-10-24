@@ -5,6 +5,7 @@ import Link from "next/link";
 import { BranchPicker } from "../stok/branch-picker";
 import { SubmitButton } from "@/components/submit-button";
 import { DownloadLink } from "@/components/download-link";
+import { OPNAME_NOTE_PREFIX, opnameDeltaValue } from "@/lib/opname";
 
 export const metadata = { title: "Laporan" };
 
@@ -47,7 +48,7 @@ export default async function LaporanPage({
   const to = parseDateParam(params.to, true, bounds.to);
   const branchWhere = branchFilter ? { branchId: branchFilter } : {};
 
-  const [doneServices, payments, cashflows] = await Promise.all([
+  const [doneServices, payments, cashflows, opnameMoves] = await Promise.all([
     prisma.service.findMany({
       where: {
         ...branchWhere,
@@ -68,6 +69,14 @@ export default async function LaporanPage({
     prisma.cashflow.findMany({
       where: { ...branchWhere, createdAt: { gte: from, lte: to } },
     }),
+    prisma.stockMovement.findMany({
+      where: {
+        note: { startsWith: OPNAME_NOTE_PREFIX },
+        createdAt: { gte: from, lte: to },
+        ...(branchFilter ? { part: { branchId: branchFilter } } : {}),
+      },
+      include: { part: { select: { buyPrice: true } } },
+    }),
   ]);
 
   const scopedPayments = branchFilter
@@ -82,7 +91,17 @@ export default async function LaporanPage({
   });
   const totalRevenue = rows.reduce((sum, r) => sum + r.revenue, 0);
   const totalHpp = rows.reduce((sum, r) => sum + r.hpp, 0);
-  const totalLaba = totalRevenue - totalHpp;
+
+  // Selisih opname periode: OUT (hilang) = beban, IN (temuan) = untung.
+  // Divaluasi dengan buyPrice — harga jual part tidak ikut berubah.
+  const opnameDelta = opnameDeltaValue(
+    opnameMoves.map((m) => ({
+      type: m.type,
+      quantity: m.quantity,
+      unitCost: m.part.buyPrice,
+    })),
+  );
+  const totalLaba = totalRevenue - totalHpp + opnameDelta;
 
   const omzet = scopedPayments.reduce((sum, p) => sum + p.amount, 0);
   const kasMasuk = cashflows.filter((c) => c.type === "INCOME").reduce((s, c) => s + c.amount, 0);
@@ -101,7 +120,8 @@ export default async function LaporanPage({
 
   const summary = [
     { label: "Omzet (kas masuk bayar)", value: formatRupiah(omzet) },
-    { label: "Laba kotor (rev − HPP)", value: formatRupiah(totalLaba), accent: totalLaba >= 0 },
+    { label: "Laba kotor (rev − HPP ± opname)", value: formatRupiah(totalLaba), accent: totalLaba >= 0 },
+    { label: "Selisih opname (beban/temuan)", value: formatRupiah(opnameDelta), accent: opnameDelta >= 0 },
     { label: "Servis selesai", value: String(doneServices.length) },
     { label: "Saldo kas periode", value: formatRupiah(kasMasuk - kasKeluar) },
   ];
@@ -154,7 +174,7 @@ export default async function LaporanPage({
       </form>
 
       {/* Ringkasan */}
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
         {summary.map((s) => (
           <div key={s.label} className="rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
             <p className={`text-lg font-bold tabular-nums ${s.accent === false ? "text-danger" : s.accent ? "text-success" : ""}`}>
@@ -197,6 +217,7 @@ export default async function LaporanPage({
           <h2 className="text-sm font-semibold text-foreground">Laba per Servis</h2>
           <span className="text-xs text-muted-foreground">
             Rev {formatRupiah(totalRevenue)} · HPP {formatRupiah(totalHpp)}
+            {opnameDelta !== 0 && <> · Opname {formatRupiah(opnameDelta)}</>}
           </span>
         </div>
         {rows.length === 0 ? (
