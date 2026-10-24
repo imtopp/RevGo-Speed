@@ -24,7 +24,7 @@ export default async function CetakNotaPage({
       customer: { select: { name: true, phone: true } },
       vehicle: { select: { plateNumber: true, brand: true, model: true } },
       parts: { include: { part: { select: { name: true, unit: true } } } },
-      payments: { orderBy: { paidAt: "asc" } },
+      payments: { where: { voidedAt: null }, orderBy: { paidAt: "asc" } },
     },
   });
   if (!service) notFound();

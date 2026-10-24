@@ -25,6 +25,7 @@ export async function GET() {
     payments,
     cashflows,
     systemSettings,
+    auditLogs,
   ] = await Promise.all([
     prisma.branch.findMany(),
     prisma.user.findMany(),
@@ -38,6 +39,7 @@ export async function GET() {
     prisma.payment.findMany(),
     prisma.cashflow.findMany(),
     prisma.systemSetting.findMany(),
+    prisma.auditLog.findMany(),
   ]);
 
   const appName = await getAppName();
@@ -58,6 +60,7 @@ export async function GET() {
       payments,
       cashflows,
       systemSettings,
+      auditLogs,
     },
   };
 

@@ -1,8 +1,8 @@
 # PRD — RevGo Speed
 
-**Versi:** 1.1 (Rilis 1 selesai + audit konsistensi)
+**Versi:** 1.2 (Rilis 1 selesai + audit & anti-fraud)
 **Tanggal:** 24 Oktober 2026
-**Status:** ✅ Rilis 1 selesai — semua fase A–E terpasang, siap produksi
+**Status:** �o. Rilis 1 selesai �?" semua fase A�?"E terpasang, siap produksi; FR-11 (audit) terpasang, FR-12 menyusul
 
 **Riwayat:**
 - v0.1 — draft awal (4 modul rilis 1, multi-cabang, DP+lunas).
@@ -10,6 +10,7 @@
 - v0.3 — evaluasi gap vs praktik software bengkel (riset komparatif): tambah status **`CHECKED_IN` + pemeriksaan awal unit**, papan kerja, master **supplier**, sumber dana kas (**kantong uang**), menu **piutang**, snapshot **HPP per servis** (laba per job), backup DB; daftar fase 2 diperkaya (opname massal, shift kasir, PO, dsb.).
 - v1.0 — **rebrand RevLedger → RevGo Speed** (hostname & branding); migrasi SQLite → **Neon PostgreSQL**; deploy **Vercel** (production) + Neon (DB); semua fase A–E selesai.
 - v1.1 — audit konsistensi PRD ↔ implementasi: keputusan cakupan SysAdmin (risiko #6) & angka keuangan mekanik (risiko #5) **ditegakkan di kode**; detail disesuaikan dengan kode aktual (`CANCELLED` + `CHECKED_IN`, kategori kas bebas teks + label otomatis, parameter pengaturan +logo, cakupan laporan/cetak/pencarian, piutang urut tertua + kontak); dukungan **desktop responsif**, **design system**, aset logo.
+- v1.2 — **audit & anti-fraud (FR-11, terpasang):** AuditLog append-only (diff before→after, transaksi DB sama), **void pembayaran Owner-only** + reversal kas otomatis, halaman **Audit** (peringatan: void / jasa < katalog / part < jual / opname); semua Σ terbayar mengabaikan pembayaran void; auditLogs ikut backup. **FR-12 rekonsiliasi kas harian** & notifikasi event-driven (tanpa daemon Vercel) didefinisikan (fase 1.5).
 
 ---
 
@@ -54,11 +55,13 @@
 | Catat pembayaran (DP/lunas/piutang) | ✔ | – | ✔ | – | ✔ (bayar saat ambil) |
 | Stok part & supplier (CRUD, masuk/keluar) | ✔ | – | ✔ (cabangnya) | ✔ (pakai part) | – |
 | Catat kas manual | ✔ | – | ✔ (cabangnya) | – | – |
+| **Audit & void pembayaran** | ✔ (khusus) | – | – | – | – |
+| **Rekonsiliasi kas harian (FR-12)** | ✔ (review) | – | ✔ (hitung) | – | – |
 | Data sendiri (kendaraan, riwayat) | – | – | – | – | ✔ |
 
 **Scoping cabang:** owner & system administrator lintas cabang; admin & mekanik terikat 1 cabang; customer lintas cabang.
 
-**Menu adaptif:** SysAdmin: **Beranda** (tanpa angka keuangan/stok), **Katalog, Akun, Pengaturan, Backup**; Admin: **operasional + piutang**; Mekanik: **Beranda** (tanpa angka keuangan) + **Tugas Saya**.
+**Menu adaptif:** Owner: seluruh menu termasuk **Audit**; SysAdmin: **Beranda** (tanpa angka keuangan/stok), **Katalog, Akun, Pengaturan, Backup**; Admin: **operasional + piutang**; Mekanik: **Beranda** (tanpa angka keuangan) + **Tugas Saya**.
 
 ---
 
@@ -120,7 +123,7 @@ PENDING / WAITING_APPROVAL / CONFIRMED / CHECKED_IN ──(batal)→ CANCELLED (
       └→ otomatis catat Kas Keluar (kantong BANK/TUNAI sesuai cara bayar) jika harga beli diisi
 [Pakai di servis] otomatis stok keluar + SNAPSHOT harga beli saat itu (HPP per job)
 [Penyesuaian] opname koreksi per part (wajib alasan); opname massal periodik: fase 2
-[Peringatan] quantity ≤ minStock → banner "stok menipis" di dashboard
+[Peringatan] quantity ≤ minStock → kartu "stok menipis" di dashboard
 ```
 
 ### 3.3 Kas & Piutang
@@ -129,7 +132,7 @@ PENDING / WAITING_APPROVAL / CONFIRMED / CHECKED_IN ──(batal)→ CANCELLED (
 - **Manual:** admin/owner mencatat kas masuk/keluar lain (sewa, gaji, listrik) + memilih **sumber dana** (Tunai / Bank).
 - **Saldo tidak pernah diketik manual** — selalu hasil jumlah mutasi (prinsip buku kas yang bisa dipercaya).
 - **Piutang:** daftar servis dengan sisa tagihan (belum lunas) + total piutang, urut tertua, lengkap dengan kontak customer — halaman khusus di menu Kas.
-- Semua transaksi: jenis, kategori, nominal, kantong, cabang, pembuat, waktu — koreksi lewat transaksi baru (hapus dibatasi).
+- Semua transaksi: jenis, kategori, nominal, kantong, cabang, pembuat, waktu — **append-only** (tanpa ubah/hapus diam-diam): koreksi kas = **transaksi baru** (entri penyesuaian/reversal); koreksi pembayaran = **void ber-alaran oleh Owner** (reversal kas otomatis, FR-11). Setiap aksi kritikal tercatat di **AuditLog** (pelaku, waktu, diff before→after) — lihat FR-11.
 
 ---
 
@@ -175,10 +178,10 @@ PENDING / WAITING_APPROVAL / CONFIRMED / CHECKED_IN ──(batal)→ CANCELLED (
 - **Master supplier** (nama, HP, catatan) — dicatat di setiap stok masuk.
 - CRUD part per cabang: SKU unik per cabang, nama, kategori, satuan, qty, min. stok, harga beli & jual.
 - Stok masuk (+qty, otomatis Kas Keluar dgn kantong sesuai cara bayar); keluar via servis; penyesuaian per part (wajib alasan).
-- Riwayat pergerakan; banner stok menipis; nilai persediaan; **harga beli saat dipakai di-snapshot ke servis** (dasar laba per job).
+- Riwayat pergerakan; kartu stok menipis; nilai persediaan; **harga beli saat dipakai di-snapshot ke servis** (dasar laba per job).
 
 ### FR-7 Kas & piutang — **Rilis 1**
-- Daftar transaksi: filter tanggal/kategori/jenis/kantong/cabang; ringkasan hari-ini & bulan-ini.
+- Daftar transaksi (100 terakhir) dengan **filter cabang** + **ringkasan saldo per kantong** (Kas & Bank); filter tanggal/kategori/jenis & ringkasan harian/bulanan → §7.
 - Tambah manual + pilih **sumber dana** (Tunai/Bank); koreksi via transaksi baru.
 - Kategori: entri manual **bebas teks** (mis. Operasional, Sewa, Gaji, Lain-lain); entri otomatis memakai label tetap — `Pembayaran Servis`/`DP Servis` (pembayaran servis) dan `Pembelian Part` (stok masuk).
 - **Menu Piutang:** servis belum lunas → customer, kendaraan, tanggal DONE, sisa tagihan (urut tertua); total piutang; aksi cepat “catat pembayaran cicilan”.
@@ -203,6 +206,20 @@ Akses: **Owner + SysAdmin**; perubahan tercatat (siapa, kapan).
 - **Kelola akun staff:** buat akun Admin/Mekanik/SysAdmin, assign cabang, reset password, nonaktifkan.
 - **Backup data:** unduh salinan database (JSON export) — rutinitas SysAdmin.
 
+### FR-11 Audit & anti-fraud — **Rilis 1.5 (terpasang)**
+Akses: **Owner** (halaman Audit & void); log ditulis otomatis untuk semua peran.
+- **AuditLog append-only:** setiap aksi kritikal dicatat **dalam transaksi DB yang sama** dengan aksinya (aksi sukses ⇔ log ada — tidak ada log yatim, jejak tidak bisa hilang diam-diam). Isi: pelaku (id, nama, peran), aksi, entitas, cabang, ringkasan, **diff before→after (JSONB)**, waktu. Tanpa UI ubah/hapus; ikut ter-backup (FR-10).
+- **Aksi yang dicatat:** pembayaran (buat/void), kas manual, stok masuk (beli), penyesuaian stok, ubah harga part, servis (buat + **setiap transisi status** termasuk alasan batal), part servis (tambah/kembali), ubah pengaturan & cabang, kelola akun (buat/reset password/nonaktif/assign). Password **tidak pernah** masuk log.
+- **Void pembayaran (khusus Owner):** alasan wajib (min. 4 karakter); menandai `voidedAt`/`voidReason`/`voidedBy` **+ membuat entri kas reversal** (EXPENSE, kategori `Pembatalan Bayar`) dalam **1 transaksi DB**; semua Σ terbayar/laporan/cetak **mengabaikan** pembayaran void; baris void tetap tampil (coret + alasan) di detail servis & Audit.
+- **Halaman Audit (Owner):** kartu peringatan — pembayaran void, **jasa < harga katalog**, **part < harga jual**, stok disesuaikan — plus daftar log (filter per aksi, detail diff before→after).
+- **Kriteria:** owner bisa menelusuri "siapa, kapan, apa" untuk semua aksi uang dalam < 1 menit.
+
+### FR-12 Rekonsiliasi kas harian — **Rilis 1.5 (menyusul)**
+Akses: Admin/Owner (input hitung), Owner (review).
+- Saat tutup toko, petugas **mengetik saldo fisik** per kantong (KAS/BANK); sistem membandingkan dengan Σ mutasi — **saldo sistem tidak pernah diubah** oleh proses ini (tetap hasil mutasi).
+- Selisih wajib diberi alasan; selisih tercatat sebagai **temuan** (punya jejak, bukan angka suntingan) dan ditampilkan di halaman Audit.
+- Tujuan: kebocoran/pembukuan salah ketahuan dalam hitungan jam, bukan akhir bulan.
+
 ---
 
 ## 5. Status & Aturan Penting
@@ -219,6 +236,7 @@ Akses: **Owner + SysAdmin**; perubahan tercatat (siapa, kapan).
 **Integritas data (wajib):**
 - Stok tidak negatif; qty part di servis = stok keluar nyata; HPP part = snapshot saat dipakai.
 - Kas dari pembayaran/pembelian dibuat dalam transaksi DB yang sama; saldo selalu hasil mutasi (tidak bisa diketik).
+- Aksi uang & perubahan kritikal tercatat di **AuditLog** (append-only, FR-11); pembayaran hanya bisa di-**void Owner** (alaran wajib) + reversal kas otomatis.
 - Laporan hanya dari tabel transaksi (tidak ada angka manual terpisah).
 
 ---
@@ -226,7 +244,7 @@ Akses: **Owner + SysAdmin**; perubahan tercatat (siapa, kapan).
 ## 6. Kebutuhan Non-Fungsional
 - **Mobile-first:** target HP; diuji 360–430px; PWA installable; **responsif desktop** (sidebar md+, uji s.d. lebar xl).
 - **Offline:** hanya halaman cache untuk dibaca; mutasi butuh koneksi.
-- **Keamanan:** scrypt ✅; autorisasi server-side; query selalu ter-filter cabang/role.
+- **Keamanan:** scrypt ✅; autorisasi server-side; query selalu ter-filter cabang/role; **jejak audit append-only** (FR-11) untuk aksi uang & perubahan kritikal.
 - **Skala:** ratusan transaksi/hari/cabang — **Neon PostgreSQL** (production & staging via branch).
 - **Deploy:** **Vercel** (app) + **Neon** (Postgres, branch `production` sebagai default; koneksi `sslmode=verify-full`).
 - **Bahasa:** Indonesia; Rupiah (integer, format `Rp`).
@@ -237,13 +255,13 @@ Akses: **Owner + SysAdmin**; perubahan tercatat (siapa, kapan).
 ## 7. Di Luar Cakupan (fase 2+, kecuali dinaikkan)
 - **Purchasing:** PO & penerimaan berjenjang, retur pembelian, pembelian tempo → **hutang supplier**.
 - **Opname massal periodik** (MVP: penyesuaian per part); laporan part lambat laku/matian.
-- **Shift kasir + rekonsiliasi selisih kas fisik**; saldo awal akun; akun bank multi.
-- Notifikasi WA/push (status booking, “siap diambil”, pengingat servis berikutnya, garansi jasa).
+- **Shift kasir**; saldo awal akun; akun bank multi. *(Rekonsiliasi selisih kas fisik dinaikkan → FR-12.)*
+- **Notifikasi event-driven** — mekanisme: dikirim **dari dalam server action** setelah commit (kas manual/void/opname besar) via outbound Telegram Bot / WA Business Cloud API / email; rekap terjadwal via **Vercel Cron** (`vercel.json`) — **tanpa service latar belakang** (Vercel serverless tak punya daemon). Notifikasi = best-effort; **AuditLog tetap sumber kebenaran**. Konten menyusul: status booking, “siap diambil”, pengingat servis berikutnya, garansi jasa.
 - QC digital (checklist + foto), foto precheck/DVI, tanda tangan approval digital.
 - Approval estimasi **per-item** & change order di tengah pengerjaan; pekerjaan tertunda (declined → follow-up).
 - Eksekusi refund DP otomatis; **diskon** per item/nota; **PPN/pajak**.
 - Sublet (kerja keluar: spooring, cat, bubut); penjualan part over-the-counter (POS); transfer stok antar cabang; harga/katalog per cabang.
-- Laporan lanjutan: laba bersih per kategori, rincian piutang di laporan, DP vs pelunasan, durasi rata-rata, tingkat persetujuan estimasi, performa mekanik, part terlaris; **cetak estimasi & daftar piutang**; opsi agregat “Semua Cabang”; pencarian customer by nama/HP.
+- Laporan lanjutan: laba bersih per kategori, rincian piutang di laporan, DP vs pelunasan, durasi rata-rata, tingkat persetujuan estimasi, performa mekanik, part terlaris; **cetak estimasi & daftar piutang**; opsi agregat “Semua Cabang”; pencarian customer by nama/HP; filter transaksi kas (tanggal/kategori/jenis/kantong) & ringkasan harian/bulanan.
 - Grafik trend penjualan, aging piutang, komisi & payroll mekanik, absensi, CRM loyalitas/poin, slot jam booking, cetak via printer Bluetooth/thermal, multi-bahasa, SaaS, integrasi payment gateway, laporan akuntansi penuh (neraca/jurnal/PSAK).
 
 ---
@@ -260,6 +278,8 @@ Akses: **Owner + SysAdmin**; perubahan tercatat (siapa, kapan).
 
 Setiap fase selesai = fitur terpasang + role-guard teruji + `build`/`lint` hijau + smoke test alur utama.
 
+**Rilis 1.5 (berjalan):** FR-11 audit & anti-fraud ✓ terpasang + E2E teruji; FR-12 rekonsiliasi kas harian (menyusul); notifikasi event-driven (fase 2, mekanisme terdefinisi).
+
 ---
 
 ## 9. Kriteria Selesai & Sukses
@@ -270,18 +290,23 @@ Setiap fase selesai = fitur terpasang + role-guard teruji + `build`/`lint` hijau
 
 **Indikator awal:** stok tidak meleset setelah 2 minggu pemakaian; rekap harian owner < 1 menit; tidak ada nota piutang yang “lupa” (semua tampil terpusat).
 
+**Rilis 1.5 dianggap selesai jika:**
+1. Semua aksi uang (bayar/void/kas manual/beli part/opname) & transisi servis punya baris AuditLog dengan pelaku + diff (FR-11).
+2. Void pembayaran teruji end-to-end: reversal kas otomatis, total terbayar/piutang ikut terkoreksi, admin ditolak akses void.
+3. FR-12: hitung kas harian jalan, selisih wajib alasan, tampil sebagai temuan di Audit.
+
 ---
 
 ## 10. Risiko & Keputusan Terbuka
 | # | Item | Status |
 |---|---|---|
 | 1 | Kebijakan DP saat batal | ✅ konfigurasi (TANPA_REFUND/REFUND_PENUH); eksekusi manual di MVP |
-| 2 | Harga jasa dinegosiasi | Admin override, tercatat di riwayat |
+| 2 | Harga jasa dinegosiasi | Admin override, tercatat di riwayat **+ diflag di Audit bila < katalog (FR-11, v1.2)** |
 | 3 | Katalog jasa belum per-cabang | Global dulu; beda harga per cabang → fase 2 |
 | 4 | Jam operasional | ✅ konfigurasi per cabang (FR-10) |
 | 5 | Mekanik lihat laba? | ✅ ditegakkan (v1.1): menu Tugas + Beranda **tanpa angka keuangan** |
 | 6 | Cakupan SysAdmin | ✅ **Disetujui** + guard ditegakkan (v1.1): Beranda (tanpa angka keuangan/stok) + katalog + akun + pengaturan + backup + kelola cabang; **operasional (servis/stok/kas/piutang/laporan) = OWNER/ADMIN** |
-| 7 | Pengingat booking otomatis (SLA) | Fase 2 bersama notifikasi WA |
+| 7 | Pengingat booking otomatis (SLA) | Fase 2 bersama notifikasi — mekanisme event-driven + cron sudah didefinisikan (v1.2) |
 | 8 | Aturan penagihan piutang | ✅ **Disetujui**: diskresi admin + piutang terpantau; aturan keras → pengaturan rilis berikut |
 
 ---

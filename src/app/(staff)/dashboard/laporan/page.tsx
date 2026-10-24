@@ -52,7 +52,7 @@ export default async function LaporanPage({
       orderBy: { finishedAt: "asc" },
     }),
     prisma.payment.findMany({
-      where: { paidAt: { gte: from, lte: to } },
+      where: { voidedAt: null, paidAt: { gte: from, lte: to } },
       include: { service: { select: { branchId: true } } },
     }),
     prisma.cashflow.findMany({

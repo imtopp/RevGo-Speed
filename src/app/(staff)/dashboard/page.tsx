@@ -40,7 +40,7 @@ export default async function DashboardHome() {
             where: { ...branchWhere, status: { not: "CANCELLED" } },
             include: {
               parts: { select: { price: true, quantity: true } },
-              payments: { select: { amount: true } },
+              payments: { where: { voidedAt: null }, select: { amount: true } },
             },
           })
         : Promise.resolve([]),

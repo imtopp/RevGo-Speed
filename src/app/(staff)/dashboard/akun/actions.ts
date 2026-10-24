@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { isOwnerOrSysAdmin } from "@/lib/guard";
 import { hashPassword } from "@/lib/password";
+import { logAudit } from "@/lib/audit";
 import { revalidatePath } from "next/cache";
 
 export type StaffState = { error?: string; success?: string };
@@ -22,7 +23,7 @@ export async function createStaff(
   _prev: StaffState,
   formData: FormData,
 ): Promise<StaffState> {
-  await requireOwnerOrSysAdminAction();
+  const session = await requireOwnerOrSysAdminAction();
   const name = String(formData.get("name") ?? "").trim();
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const phone = String(formData.get("phone") ?? "").trim();
@@ -39,15 +40,25 @@ export async function createStaff(
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) return { error: "Email sudah terpakai." };
 
-  await prisma.user.create({
-    data: {
-      name,
-      email,
-      phone: phone || null,
-      passwordHash: hashPassword(password),
-      role: role as (typeof STAFF_ROLES)[number],
+  await prisma.$transaction(async (tx) => {
+    const created = await tx.user.create({
+      data: {
+        name,
+        email,
+        phone: phone || null,
+        passwordHash: hashPassword(password),
+        role: role as (typeof STAFF_ROLES)[number],
+        branchId: branchId || null,
+      },
+    });
+    await logAudit(tx, session.user, {
+      action: "ACCOUNT_CREATE",
+      entityType: "User",
+      entityId: created.id,
       branchId: branchId || null,
-    },
+      summary: `Akun ${name} (${email}) sebagai ${role} dibuat`,
+      after: { name, email, role, branchId: branchId || null },
+    });
   });
 
   revalidatePath("/dashboard/akun");
@@ -58,7 +69,7 @@ export async function resetPassword(
   _prev: StaffState,
   formData: FormData,
 ): Promise<StaffState> {
-  await requireOwnerOrSysAdminAction();
+  const session = await requireOwnerOrSysAdminAction();
   const id = String(formData.get("id") ?? "").trim();
   const password = String(formData.get("password") ?? "");
 
@@ -69,9 +80,18 @@ export async function resetPassword(
   if (!user) return { error: "User tidak ditemukan." };
   if (user.role === "OWNER") return { error: "Password owner tidak bisa direset dari sini." };
 
-  await prisma.user.update({
-    where: { id },
-    data: { passwordHash: hashPassword(password) },
+  await prisma.$transaction(async (tx) => {
+    await tx.user.update({
+      where: { id },
+      data: { passwordHash: hashPassword(password) },
+    });
+    await logAudit(tx, session.user, {
+      action: "ACCOUNT_RESET_PASSWORD",
+      entityType: "User",
+      entityId: id,
+      branchId: user.branchId,
+      summary: `Password ${user.name} (${user.email}) direset`,
+    });
   });
 
   revalidatePath("/dashboard/akun");
@@ -92,9 +112,20 @@ export async function toggleActive(
   if (!user) return { error: "User tidak ditemukan." };
   if (user.role === "OWNER") return { error: "Akun owner tidak bisa dinonaktifkan." };
 
-  await prisma.user.update({
-    where: { id },
-    data: { isActive: !user.isActive },
+  await prisma.$transaction(async (tx) => {
+    await tx.user.update({
+      where: { id },
+      data: { isActive: !user.isActive },
+    });
+    await logAudit(tx, session.user, {
+      action: "ACCOUNT_TOGGLE",
+      entityType: "User",
+      entityId: id,
+      branchId: user.branchId,
+      summary: `${user.name} (${user.email}) ${user.isActive ? "dinonaktifkan" : "diaktifkan"}`,
+      before: { isActive: user.isActive },
+      after: { isActive: !user.isActive },
+    });
   });
 
   revalidatePath("/dashboard/akun");
@@ -105,7 +136,7 @@ export async function assignBranch(
   _prev: StaffState,
   formData: FormData,
 ): Promise<StaffState> {
-  await requireOwnerOrSysAdminAction();
+  const session = await requireOwnerOrSysAdminAction();
   const id = String(formData.get("id") ?? "").trim();
   const branchId = String(formData.get("branchId") ?? "").trim();
 
@@ -117,9 +148,20 @@ export async function assignBranch(
     return { error: "Owner & SysAdmin lintas cabang, tidak di-assign." };
   }
 
-  await prisma.user.update({
-    where: { id },
-    data: { branchId: branchId || null },
+  await prisma.$transaction(async (tx) => {
+    await tx.user.update({
+      where: { id },
+      data: { branchId: branchId || null },
+    });
+    await logAudit(tx, session.user, {
+      action: "ACCOUNT_ASSIGN",
+      entityType: "User",
+      entityId: id,
+      branchId: branchId || null,
+      summary: `Cabang ${user.name} diubah`,
+      before: { branchId: user.branchId },
+      after: { branchId: branchId || null },
+    });
   });
 
   revalidatePath("/dashboard/akun");

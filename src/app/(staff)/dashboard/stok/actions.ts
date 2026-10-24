@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { getStaffBranchId } from "@/lib/guard";
+import { logAudit } from "@/lib/audit";
 import { revalidatePath } from "next/cache";
 import type { PaymentMethod } from "@db/prisma/client";
 
@@ -127,17 +128,34 @@ export async function updatePart(
     return { error: "Nilai tidak boleh negatif." };
   }
 
-  await prisma.part.update({
-    where: { id },
-    data: {
-      name,
-      category: category || null,
-      unit,
-      minStock,
-      buyPrice,
-      sellPrice,
-      supplierId: supplierId || null,
-    },
+  const prev = await prisma.part.findUnique({ where: { id } });
+  if (!prev) return { error: "Part tidak ditemukan." };
+
+  await prisma.$transaction(async (tx) => {
+    await tx.part.update({
+      where: { id },
+      data: {
+        name,
+        category: category || null,
+        unit,
+        minStock,
+        buyPrice,
+        sellPrice,
+        supplierId: supplierId || null,
+      },
+    });
+    const session = await auth();
+    if (session?.user) {
+      await logAudit(tx, session.user, {
+        action: "PART_UPDATE",
+        entityType: "Part",
+        entityId: id,
+        branchId: prev.branchId,
+        summary: `${name} · harga beli ${prev.buyPrice.toLocaleString("id-ID")} → ${buyPrice.toLocaleString("id-ID")}, harga jual ${prev.sellPrice.toLocaleString("id-ID")} → ${sellPrice.toLocaleString("id-ID")}`,
+        before: { buyPrice: prev.buyPrice, sellPrice: prev.sellPrice, name: prev.name, minStock: prev.minStock },
+        after: { buyPrice, sellPrice, name, minStock },
+      });
+    }
   });
   revalidatePath("/dashboard/stok");
   return { success: `Part "${name}" diperbarui.` };
@@ -170,12 +188,12 @@ export async function stockIn(
   const total = quantity * buyPrice;
 
   // Transaksi atomik: qty naik + update harga beli + movement + auto kas keluar
-  await prisma.$transaction([
-    prisma.part.update({
+  await prisma.$transaction(async (tx) => {
+    await tx.part.update({
       where: { id: partId },
       data: { quantity: { increment: quantity }, buyPrice },
-    }),
-    prisma.stockMovement.create({
+    });
+    await tx.stockMovement.create({
       data: {
         partId,
         type: "IN",
@@ -185,8 +203,8 @@ export async function stockIn(
         userId: session.user.id,
         supplierId: supplierId || null,
       },
-    }),
-    prisma.cashflow.create({
+    });
+    await tx.cashflow.create({
       data: {
         type: "EXPENSE",
         category: "Pembelian Part",
@@ -196,8 +214,17 @@ export async function stockIn(
         description: `${quantity} ${part.unit} ${part.name}${supplierId ? " (pembelian)" : ""}`,
         createdBy: session.user.id,
       },
-    }),
-  ]);
+    });
+    await logAudit(tx, session.user, {
+      action: "STOCK_IN",
+      entityType: "Part",
+      entityId: partId,
+      branchId: part.branchId,
+      summary: `Beli ${quantity} ${part.unit} ${part.name} @${buyPrice.toLocaleString("id-ID")} = ${total.toLocaleString("id-ID")} (${accountFromMethod(method)})`,
+      before: { buyPrice: part.buyPrice, quantity: part.quantity },
+      after: { buyPrice, quantity: part.quantity + quantity },
+    });
+  });
 
   revalidatePath("/dashboard/stok");
   return {
@@ -228,12 +255,12 @@ export async function adjustStock(
   const type = delta > 0 ? "IN" : "OUT";
   const absDelta = Math.abs(delta);
 
-  await prisma.$transaction([
-    prisma.part.update({
+  await prisma.$transaction(async (tx) => {
+    await tx.part.update({
       where: { id: partId },
       data: { quantity: { increment: delta } },
-    }),
-    prisma.stockMovement.create({
+    });
+    await tx.stockMovement.create({
       data: {
         partId,
         type,
@@ -241,8 +268,17 @@ export async function adjustStock(
         note: `Penyesuaian: ${reason}`,
         userId: session.user.id,
       },
-    }),
-  ]);
+    });
+    await logAudit(tx, session.user, {
+      action: "STOCK_ADJUST",
+      entityType: "Part",
+      entityId: partId,
+      branchId: part.branchId,
+      summary: `${part.name}: ${delta > 0 ? "+" : ""}${delta} → ${part.quantity + delta} — ${reason}`,
+      before: { quantity: part.quantity },
+      after: { quantity: part.quantity + delta, reason },
+    });
+  });
 
   revalidatePath("/dashboard/stok");
   return {

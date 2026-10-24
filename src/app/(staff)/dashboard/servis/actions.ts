@@ -2,6 +2,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+import { logAudit } from "@/lib/audit";
 import { revalidatePath } from "next/cache";
 import type { ServiceStatus } from "@db/prisma/client";
 
@@ -97,19 +98,36 @@ export async function createBooking(
   const code = await generateServiceCode(branchId);
   const scheduledAt = scheduledAtRaw ? new Date(scheduledAtRaw) : null;
 
-  await prisma.service.create({
-    data: {
-      code,
-      branchId,
-      source: "ADMIN",
-      catalogId: catalog?.id ?? null,
-      vehicleId: vehicle.id,
-      customerId: vehicle.ownerId,
-      status: "PENDING",
-      complaint: complaint || catalog?.nama || null,
-      estimate: catalog?.hargaDasar ?? 0,
-      scheduledAt,
-    },
+  await prisma.$transaction(async (tx) => {
+    const created = await tx.service.create({
+      data: {
+        code,
+        branchId,
+        source: "ADMIN",
+        catalogId: catalog?.id ?? null,
+        vehicleId: vehicle.id,
+        customerId: vehicle.ownerId,
+        status: "PENDING",
+        complaint: complaint || catalog?.nama || null,
+        estimate: catalog?.hargaDasar ?? 0,
+        scheduledAt,
+      },
+    });
+    const session = await auth();
+    if (session?.user) {
+      await logAudit(tx, session.user, {
+        action: "SERVICE_CREATE",
+        entityType: "Service",
+        entityId: created.id,
+        branchId,
+        summary: `${code} dibuat untuk ${plateNumber}`,
+        after: {
+          source: "ADMIN",
+          catalogId: catalog?.id ?? null,
+          estimate: catalog?.hargaDasar ?? 0,
+        },
+      });
+    }
   });
 
   revalidatePath("/dashboard/servis");
@@ -139,9 +157,24 @@ async function transition(
       `Status saat ini "${service.status}" tidak bisa diubah ke "${to}".`,
     );
   }
-  return prisma.service.update({
-    where: { id },
-    data: { status: to, ...extra },
+  return prisma.$transaction(async (tx) => {
+    const updated = await tx.service.update({
+      where: { id },
+      data: { status: to, ...extra },
+    });
+    const session = await auth();
+    if (session?.user) {
+      await logAudit(tx, session.user, {
+        action: "SERVICE_STATUS",
+        entityType: "Service",
+        entityId: id,
+        branchId: service.branchId,
+        summary: `${service.code}: ${service.status} → ${to}`,
+        before: { status: service.status },
+        after: { status: to, ...extra },
+      });
+    }
+    return updated;
   });
 }
 
@@ -362,8 +395,8 @@ export async function addServicePart(
   }
 
   // Transaksi atomik: tambah ServicePart + kurangi stok + catat movement
-  await prisma.$transaction([
-    prisma.servicePart.create({
+  await prisma.$transaction(async (tx) => {
+    const sp = await tx.servicePart.create({
       data: {
         serviceId,
         partId,
@@ -371,20 +404,31 @@ export async function addServicePart(
         price: part.sellPrice,
         cost: part.buyPrice,
       },
-    }),
-    prisma.part.update({
+    });
+    await tx.part.update({
       where: { id: partId },
       data: { quantity: { decrement: quantity } },
-    }),
-    prisma.stockMovement.create({
+    });
+    await tx.stockMovement.create({
       data: {
         partId,
         type: "OUT",
         quantity,
         note: `Terpakai di servis ${service.code}`,
       },
-    }),
-  ]);
+    });
+    const session = await auth();
+    if (session?.user) {
+      await logAudit(tx, session.user, {
+        action: "SERVICE_PART_ADD",
+        entityType: "ServicePart",
+        entityId: sp.id,
+        branchId: service.branchId,
+        summary: `${service.code} · +${quantity} ${part.unit} ${part.name} @${part.sellPrice.toLocaleString("id-ID")}`,
+        after: { partId, quantity, price: part.sellPrice, cost: part.buyPrice },
+      });
+    }
+  });
 
   revalidatePath(`/dashboard/servis/${serviceId}`);
   revalidatePath("/dashboard/tugas");
@@ -406,21 +450,32 @@ export async function removeServicePart(
     return { error: "Tidak bisa ubah part servis yang sudah selesai/dibatalkan." };
   }
 
-  await prisma.$transaction([
-    prisma.servicePart.delete({ where: { id } }),
-    prisma.part.update({
+  await prisma.$transaction(async (tx) => {
+    await tx.servicePart.delete({ where: { id } });
+    await tx.part.update({
       where: { id: sp.partId },
       data: { quantity: { increment: sp.quantity } },
-    }),
-    prisma.stockMovement.create({
+    });
+    await tx.stockMovement.create({
       data: {
         partId: sp.partId,
         type: "IN",
         quantity: sp.quantity,
         note: `Dikembalikan dari servis ${sp.service.code}`,
       },
-    }),
-  ]);
+    });
+    const session = await auth();
+    if (session?.user) {
+      await logAudit(tx, session.user, {
+        action: "SERVICE_PART_REMOVE",
+        entityType: "ServicePart",
+        entityId: id,
+        branchId: sp.service.branchId,
+        summary: `${sp.service.code} · −${sp.quantity} ${sp.part.unit} ${sp.part.name} dikembalikan ke stok`,
+        before: { partId: sp.partId, quantity: sp.quantity, price: sp.price },
+      });
+    }
+  });
 
   revalidatePath(`/dashboard/servis/${sp.serviceId}`);
   return { success: "Item dikembalikan ke stok." };

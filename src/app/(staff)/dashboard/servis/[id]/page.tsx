@@ -9,6 +9,7 @@ import {
   formatTanggal,
 } from "@/lib/service-status";
 import { ActionForms } from "./action-forms";
+import { VoidPaymentForm } from "./void-payment";
 import { PaymentForm } from "../../kas/payment-form";
 import { formatTanggalPendek } from "@/lib/service-status";
 
@@ -41,6 +42,7 @@ export default async function ServisDetailPage({
   if (!service) notFound();
 
   const isMechanic = session.user.role === "MECHANIC";
+  const isOwner = session.user.role === "OWNER";
   const isAssignedMechanic =
     isMechanic && service.mechanicId === session.user.id;
   const canAct = !isMechanic || isAssignedMechanic;
@@ -61,7 +63,9 @@ export default async function ServisDetailPage({
     0,
   );
   const totalTagihan = totalPartHarga + service.laborCost;
-  const totalPaid = service.payments.reduce((sum, p) => sum + p.amount, 0);
+  const totalPaid = service.payments
+    .filter((p) => !p.voidedAt)
+    .reduce((sum, p) => sum + p.amount, 0);
   const remaining = totalTagihan - totalPaid;
 
   const timeline = [
@@ -211,17 +215,37 @@ export default async function ServisDetailPage({
         ) : (
           <ul className="mt-2 divide-y divide-slate-100">
             {service.payments.map((p) => (
-              <li key={p.id} className="flex items-center justify-between py-2 text-sm">
-                <div>
+              <li
+                key={p.id}
+                className="flex items-center justify-between gap-3 py-2 text-sm"
+              >
+                <div className={p.voidedAt ? "opacity-60" : ""}>
                   <p>
                     {p.kind === "DP" ? "DP" : "Bayar"} · {p.method}
+                    {p.voidedAt && (
+                      <span className="ml-2 rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-medium text-red-600">
+                        DIBATALKAN
+                      </span>
+                    )}
                   </p>
                   <p className="text-xs text-slate-400">
                     {formatTanggalPendek(p.paidAt)}
                     {p.note ? ` · ${p.note}` : ""}
+                    {p.voidedAt ? ` · ${p.voidReason}` : ""}
                   </p>
                 </div>
-                <span className="font-medium">{formatRupiah(p.amount)}</span>
+                <div className="flex shrink-0 flex-col items-end gap-1">
+                  <span
+                    className={`font-medium ${
+                      p.voidedAt ? "text-slate-400 line-through" : ""
+                    }`}
+                  >
+                    {formatRupiah(p.amount)}
+                  </span>
+                  {isOwner && !p.voidedAt && (
+                    <VoidPaymentForm paymentId={p.id} />
+                  )}
+                </div>
               </li>
             ))}
           </ul>

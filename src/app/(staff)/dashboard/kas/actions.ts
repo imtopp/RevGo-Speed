@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { getStaffBranchId } from "@/lib/guard";
+import { logAudit } from "@/lib/audit";
 import { revalidatePath } from "next/cache";
 import type { PaymentKind, PaymentMethod, CashflowType, CashflowAccount } from "@db/prisma/client";
 
@@ -50,7 +51,7 @@ export async function addPayment(
     where: { id: serviceId },
     include: {
       parts: { select: { price: true, quantity: true } },
-      payments: { select: { amount: true } },
+      payments: { where: { voidedAt: null }, select: { amount: true } },
       customer: { select: { name: true } },
       branch: { select: { name: true } },
     },
@@ -68,8 +69,8 @@ export async function addPayment(
 
   const category = kind === "DP" ? "DP Servis" : "Pembayaran Servis";
 
-  await prisma.$transaction([
-    prisma.payment.create({
+  await prisma.$transaction(async (tx) => {
+    const payment = await tx.payment.create({
       data: {
         serviceId,
         amount,
@@ -78,8 +79,8 @@ export async function addPayment(
         note: note || null,
         receivedById: session.user.id,
       },
-    }),
-    prisma.cashflow.create({
+    });
+    await tx.cashflow.create({
       data: {
         type: "INCOME",
         category,
@@ -89,8 +90,16 @@ export async function addPayment(
         description: `${service.code} · ${service.customer.name}`,
         createdBy: session.user.id,
       },
-    }),
-  ]);
+    });
+    await logAudit(tx, session.user, {
+      action: "PAYMENT_CREATE",
+      entityType: "Payment",
+      entityId: payment.id,
+      branchId: service.branchId,
+      summary: `${service.code} · ${kind} ${amount.toLocaleString("id-ID")} (${method})`,
+      after: { amount, kind, method, account: accountFromMethod(method) },
+    });
+  });
 
   revalidatePath(`/dashboard/servis/${serviceId}`);
   revalidatePath("/dashboard/kas");
@@ -102,6 +111,71 @@ export async function addPayment(
       sisa === 0
         ? `Lunas! ${amount.toLocaleString("id-ID")} diterima (${accountFromMethod(method)}).`
         : `Terima ${amount.toLocaleString("id-ID")}. Sisa tagihan ${sisa.toLocaleString("id-ID")}.`,
+  };
+}
+
+// ─── Void Pembayaran (Owner-only, reversal kas otomatis) ──────────────
+
+export async function voidPayment(
+  _prev: BayarState,
+  formData: FormData,
+): Promise<BayarState> {
+  const session = await auth();
+  if (!session?.user) return { error: "Belum login." };
+  if (session.user.role !== "OWNER") {
+    return { error: "Hanya Owner yang bisa membatalkan pembayaran." };
+  }
+
+  const paymentId = String(formData.get("paymentId") ?? "").trim();
+  const reason = String(formData.get("reason") ?? "").trim();
+
+  if (!paymentId) return { error: "Pembayaran tidak valid." };
+  if (reason.length < 4) return { error: "Alasan pembatalan wajib diisi (min. 4 karakter)." };
+
+  const payment = await prisma.payment.findUnique({
+    where: { id: paymentId },
+    include: { service: { select: { id: true, code: true, branchId: true } } },
+  });
+  if (!payment) return { error: "Pembayaran tidak ditemukan." };
+  if (payment.voidedAt) return { error: "Pembayaran sudah pernah dibatalkan." };
+  if (!payment.service) return { error: "Pembayaran tidak terikat servis." };
+
+  const account = accountFromMethod(payment.method);
+  const service = payment.service;
+
+  await prisma.$transaction(async (tx) => {
+    await tx.cashflow.create({
+      data: {
+        type: "EXPENSE",
+        category: "Pembatalan Bayar",
+        amount: payment.amount,
+        account,
+        branchId: service.branchId,
+        description: `${service.code} · void: ${reason}`,
+        createdBy: session.user.id,
+      },
+    });
+    await tx.payment.update({
+      where: { id: paymentId },
+      data: { voidedAt: new Date(), voidReason: reason, voidedBy: session.user.id },
+    });
+    await logAudit(tx, session.user, {
+      action: "PAYMENT_VOID",
+      entityType: "Payment",
+      entityId: paymentId,
+      branchId: service.branchId,
+      summary: `${service.code} · void ${payment.amount.toLocaleString("id-ID")} (${payment.method}) — ${reason}`,
+      before: { amount: payment.amount, kind: payment.kind, method: payment.method, voidedAt: null },
+      after: { voidReason: reason, reversalAccount: account },
+    });
+  });
+
+  revalidatePath(`/dashboard/servis/${service.id}`);
+  revalidatePath("/dashboard/kas");
+  revalidatePath("/dashboard/piutang");
+  revalidatePath("/dashboard/audit");
+  return {
+    success: `Pembayaran ${payment.amount.toLocaleString("id-ID")} dibatalkan — kas ${account} dikembalikan.`,
   };
 }
 
@@ -126,17 +200,28 @@ export async function addManualCashflow(
   if (!["KAS", "BANK"].includes(account)) return { error: "Kantong tidak valid." };
 
   const session = await auth();
+  if (!session?.user) throw new Error("Belum login.");
 
-  await prisma.cashflow.create({
-    data: {
-      type,
-      category,
-      amount,
-      account,
+  await prisma.$transaction(async (tx) => {
+    const cashflow = await tx.cashflow.create({
+      data: {
+        type,
+        category,
+        amount,
+        account,
+        branchId,
+        description: description || null,
+        createdBy: session.user.id,
+      },
+    });
+    await logAudit(tx, session.user, {
+      action: "CASHFLOW_MANUAL",
+      entityType: "Cashflow",
+      entityId: cashflow.id,
       branchId,
-      description: description || null,
-      createdBy: session?.user?.id ?? null,
-    },
+      summary: `Kas ${type === "INCOME" ? "masuk" : "keluar"} ${amount.toLocaleString("id-ID")} (${account}) · ${category}`,
+      after: { type, category, amount, account, description: description || null },
+    });
   });
 
   revalidatePath("/dashboard/kas");

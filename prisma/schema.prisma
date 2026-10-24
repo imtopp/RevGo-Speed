@@ -70,12 +70,12 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  vehicles           Vehicle[]      @relation("VehicleOwner")
-  servicesAsCustomer Service[]      @relation("ServiceCustomer")
-  servicesAsMechanic Service[]      @relation("ServiceMechanic")
+  vehicles           Vehicle[]       @relation("VehicleOwner")
+  servicesAsCustomer Service[]       @relation("ServiceCustomer")
+  servicesAsMechanic Service[]       @relation("ServiceMechanic")
   stockMovements     StockMovement[]
   cashflows          Cashflow[]
-  paymentsReceived   Payment[]      @relation("PaymentReceivedBy")
+  paymentsReceived   Payment[]       @relation("PaymentReceivedBy")
 }
 
 model Branch {
@@ -181,31 +181,31 @@ model StockMovement {
 }
 
 model Service {
-  id           String         @id @default(cuid())
-  code         String         @unique
+  id           String          @id @default(cuid())
+  code         String          @unique
   branchId     String
-  branch       Branch         @relation(fields: [branchId], references: [id])
-  source       ServiceSource  @default(ADMIN)
+  branch       Branch          @relation(fields: [branchId], references: [id])
+  source       ServiceSource   @default(ADMIN)
   catalogId    String?
   catalog      ServiceCatalog? @relation(fields: [catalogId], references: [id])
   vehicleId    String
-  vehicle      Vehicle        @relation(fields: [vehicleId], references: [id])
+  vehicle      Vehicle         @relation(fields: [vehicleId], references: [id])
   customerId   String
-  customer     User           @relation("ServiceCustomer", fields: [customerId], references: [id])
+  customer     User            @relation("ServiceCustomer", fields: [customerId], references: [id])
   mechanicId   String?
-  mechanic     User?          @relation("ServiceMechanic", fields: [mechanicId], references: [id])
-  status       ServiceStatus  @default(PENDING)
+  mechanic     User?           @relation("ServiceMechanic", fields: [mechanicId], references: [id])
+  status       ServiceStatus   @default(PENDING)
   complaint    String?
   diagnosis    String?
-  estimate     Int            @default(0)
-  laborCost    Int            @default(0)
+  estimate     Int             @default(0)
+  laborCost    Int             @default(0)
   cancelReason String?
   scheduledAt  DateTime?
   checkedInAt  DateTime?
   startedAt    DateTime?
   finishedAt   DateTime?
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
 
   parts    ServicePart[]
   payments Payment[]
@@ -233,6 +233,9 @@ model Payment {
   note         String?
   receivedById String?
   receivedBy   User?         @relation("PaymentReceivedBy", fields: [receivedById], references: [id])
+  voidedAt     DateTime?
+  voidReason   String?
+  voidedBy     String?
   createdAt    DateTime      @default(now())
 }
 
@@ -248,4 +251,23 @@ model Cashflow {
   createdBy     String?
   createdByUser User?           @relation(fields: [createdBy], references: [id])
   createdAt     DateTime        @default(now())
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String?
+  actorName  String
+  actorRole  Role
+  action     String
+  entityType String
+  entityId   String?
+  branchId   String?
+  summary    String
+  before     Json?
+  after      Json?
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([action, createdAt])
+  @@index([entityType, entityId])
 }

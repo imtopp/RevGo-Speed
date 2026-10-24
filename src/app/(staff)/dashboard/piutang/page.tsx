@@ -28,7 +28,7 @@ export default async function PiutangPage({
       : { status: { not: "CANCELLED" } },
     include: {
       parts: { select: { price: true, quantity: true } },
-      payments: { select: { amount: true } },
+      payments: { where: { voidedAt: null }, select: { amount: true } },
       customer: { select: { name: true, phone: true } },
       vehicle: { select: { plateNumber: true } },
       branch: { select: { name: true } },

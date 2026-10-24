@@ -58,7 +58,9 @@ export default async function PesananPage() {
           </div>
         )}
         {services.map((s) => {
-          const totalDibayar = s.payments.reduce((sum, p) => sum + p.amount, 0);
+          const totalDibayar = s.payments
+            .filter((p) => !p.voidedAt)
+            .reduce((sum, p) => sum + p.amount, 0);
           return (
             <div
               key={s.id}

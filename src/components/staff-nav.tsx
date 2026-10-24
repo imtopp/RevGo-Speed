@@ -15,6 +15,7 @@ const BOTTOM_ITEMS = [
   { href: "/dashboard/stok", label: "Stok", roles: ADMIN_ROLES },
   { href: "/dashboard/kas", label: "Kas", roles: ADMIN_ROLES },
   { href: "/dashboard/laporan", label: "Laporan", roles: ADMIN_ROLES },
+  { href: "/dashboard/audit", label: "Audit", roles: ["OWNER"] as readonly Role[] },
 ] as const;
 
 const SIDEBAR_GROUPS: {
@@ -40,6 +41,7 @@ const SIDEBAR_GROUPS: {
       { href: "/dashboard/pengaturan", label: "Pengaturan", roles: OWNER_SYS },
       { href: "/dashboard/akun", label: "Akun", roles: OWNER_SYS },
       { href: "/dashboard/backup", label: "Backup", roles: OWNER_SYS },
+      { href: "/dashboard/audit", label: "Audit", roles: ["OWNER"] as readonly Role[] },
     ],
   },
 ];

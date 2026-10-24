@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { isOwnerOrSysAdmin } from "@/lib/guard";
+import { logAudit } from "@/lib/audit";
 import { revalidatePath } from "next/cache";
 
 export type SettingState = { error?: string; success?: string };
@@ -26,10 +27,22 @@ export async function updateSetting(
 
   if (!key) return { error: "Key wajib diisi." };
 
-  await prisma.systemSetting.upsert({
-    where: { key },
-    update: { value, updatedBy: session.user.id },
-    create: { key, value, updatedBy: session.user.id },
+  const prev = await prisma.systemSetting.findUnique({ where: { key } });
+
+  await prisma.$transaction(async (tx) => {
+    await tx.systemSetting.upsert({
+      where: { key },
+      update: { value, updatedBy: session.user.id },
+      create: { key, value, updatedBy: session.user.id },
+    });
+    await logAudit(tx, session.user, {
+      action: "SETTING_UPDATE",
+      entityType: "SystemSetting",
+      entityId: key,
+      summary: `Pengaturan "${key}" diubah`,
+      before: prev ? { value: prev.value } : undefined,
+      after: { value },
+    });
   });
 
   revalidatePath("/dashboard/pengaturan");
@@ -40,7 +53,7 @@ export async function createBranch(
   _prev: BranchState,
   formData: FormData,
 ): Promise<BranchState> {
-  await requireOwnerOrSysAdminAction();
+  const session = await requireOwnerOrSysAdminAction();
   const name = String(formData.get("name") ?? "").trim();
   const address = String(formData.get("address") ?? "").trim();
   const phone = String(formData.get("phone") ?? "").trim();
@@ -53,26 +66,37 @@ export async function createBranch(
   const existing = await prisma.branch.findFirst({ where: { name } });
   if (existing) return { error: "Nama cabang sudah dipakai." };
 
-  await prisma.branch.create({
-    data: {
-      name,
-      address: address || null,
-      phone: phone || null,
-      jamBuka,
-      jamTutup,
-      hariAktif,
-    },
+  const branch = await prisma.$transaction(async (tx) => {
+    const created = await tx.branch.create({
+      data: {
+        name,
+        address: address || null,
+        phone: phone || null,
+        jamBuka,
+        jamTutup,
+        hariAktif,
+      },
+    });
+    await logAudit(tx, session.user, {
+      action: "BRANCH_CREATE",
+      entityType: "Branch",
+      entityId: created.id,
+      branchId: created.id,
+      summary: `Cabang "${name}" dibuat`,
+      after: { name, jamBuka, jamTutup, hariAktif },
+    });
+    return created;
   });
 
   revalidatePath("/dashboard/pengaturan");
-  return { success: `Cabang "${name}" dibuat.` };
+  return { success: `Cabang "${branch.name}" dibuat.` };
 }
 
 export async function updateBranch(
   _prev: BranchState,
   formData: FormData,
 ): Promise<BranchState> {
-  await requireOwnerOrSysAdminAction();
+  const session = await requireOwnerOrSysAdminAction();
   const id = String(formData.get("id") ?? "").trim();
   const name = String(formData.get("name") ?? "").trim();
   const address = String(formData.get("address") ?? "").trim();
@@ -89,9 +113,23 @@ export async function updateBranch(
   });
   if (dup) return { error: "Nama cabang sudah dipakai cabang lain." };
 
-  await prisma.branch.update({
-    where: { id },
-    data: { name, address: address || null, phone: phone || null, jamBuka, jamTutup, hariAktif, aktif },
+  const prev = await prisma.branch.findUnique({ where: { id } });
+  if (!prev) return { error: "Cabang tidak ditemukan." };
+
+  await prisma.$transaction(async (tx) => {
+    await tx.branch.update({
+      where: { id },
+      data: { name, address: address || null, phone: phone || null, jamBuka, jamTutup, hariAktif, aktif },
+    });
+    await logAudit(tx, session.user, {
+      action: "BRANCH_UPDATE",
+      entityType: "Branch",
+      entityId: id,
+      branchId: id,
+      summary: `Cabang "${name}" diperbarui${prev.aktif !== aktif ? ` · ${aktif ? "diaktifkan" : "dinonaktifkan"}` : ""}`,
+      before: { name: prev.name, aktif: prev.aktif, jamBuka: prev.jamBuka, jamTutup: prev.jamTutup, hariAktif: prev.hariAktif },
+      after: { name, aktif, jamBuka, jamTutup, hariAktif },
+    });
   });
 
   revalidatePath("/dashboard/pengaturan");
