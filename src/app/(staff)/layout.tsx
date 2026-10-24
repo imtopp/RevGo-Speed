@@ -14,7 +14,7 @@ export default async function StaffLayout({ children }: { children: React.ReactN
   }
 
   const showSettings = isOwnerOrSysAdmin(session.user.role);
-  const showPiutang = ["OWNER", "SYS_ADMIN", "ADMIN"].includes(session.user.role);
+  const showPiutang = ["OWNER", "ADMIN"].includes(session.user.role);
 
   return (
     <div className="flex min-h-dvh">

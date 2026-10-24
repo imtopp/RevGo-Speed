@@ -10,7 +10,7 @@ function toCsv(rows: unknown[][]): string {
 }
 
 export async function GET(request: Request) {
-  await requireStaffRole(["OWNER", "SYS_ADMIN", "ADMIN"]);
+  await requireStaffRole(["OWNER", "ADMIN"]);
   const branchIdStaff = await getStaffBranchId();
   const url = new URL(request.url);
   const p = url.searchParams;

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { Role } from "@db/prisma/client";
 
-const ADMIN_ROLES: readonly Role[] = ["OWNER", "SYS_ADMIN", "ADMIN"];
+const ADMIN_ROLES: readonly Role[] = ["OWNER", "ADMIN"];
 const ALL_STAFF: readonly Role[] = ["OWNER", "SYS_ADMIN", "ADMIN", "MECHANIC"];
 const OWNER_SYS: readonly Role[] = ["OWNER", "SYS_ADMIN"];
 

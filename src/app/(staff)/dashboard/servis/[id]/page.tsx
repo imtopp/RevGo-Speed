@@ -21,7 +21,6 @@ export default async function ServisDetailPage({
 }) {
   const session = await requireStaffRole([
     "OWNER",
-    "SYS_ADMIN",
     "ADMIN",
     "MECHANIC",
   ]);

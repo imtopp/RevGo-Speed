@@ -34,7 +34,7 @@ export async function createBooking(
   _prev: ServisState,
   formData: FormData,
 ): Promise<ServisState> {
-  await requireStaffRole(["OWNER", "SYS_ADMIN", "ADMIN"]);
+  await requireStaffRole(["OWNER", "ADMIN"]);
   const branchId = String(formData.get("branchId") ?? "").trim();
   const plateNumber = String(formData.get("plateNumber") ?? "").trim().toUpperCase();
   const catalogId = String(formData.get("catalogId") ?? "").trim();
@@ -149,7 +149,7 @@ export async function submitEstimate(
   _prev: ServisState,
   formData: FormData,
 ): Promise<ServisState> {
-  await requireStaffRole(["OWNER", "SYS_ADMIN", "ADMIN"]);
+  await requireStaffRole(["OWNER", "ADMIN"]);
   const id = String(formData.get("id") ?? "").trim();
   const estimate = Number(formData.get("estimate") ?? 0);
   const laborCost = Number(formData.get("laborCost") ?? 0);
@@ -174,7 +174,7 @@ export async function approveInPerson(
   _prev: ServisState,
   formData: FormData,
 ): Promise<ServisState> {
-  await requireStaffRole(["OWNER", "SYS_ADMIN", "ADMIN"]);
+  await requireStaffRole(["OWNER", "ADMIN"]);
   const id = String(formData.get("id") ?? "").trim();
   await transition(id, ["PENDING", "WAITING_APPROVAL"], "CONFIRMED");
   revalidatePath("/dashboard/servis");
@@ -186,7 +186,7 @@ export async function checkInUnit(
   _prev: ServisState,
   formData: FormData,
 ): Promise<ServisState> {
-  await requireStaffRole(["OWNER", "SYS_ADMIN", "ADMIN", "MECHANIC"]);
+  await requireStaffRole(["OWNER", "ADMIN", "MECHANIC"]);
   const id = String(formData.get("id") ?? "").trim();
   const odometer = String(formData.get("odometer") ?? "").trim();
   const fuelLevel = String(formData.get("fuelLevel") ?? "").trim();
@@ -218,7 +218,7 @@ export async function startWork(
   _prev: ServisState,
   formData: FormData,
 ): Promise<ServisState> {
-  const session = await requireStaffRole(["OWNER", "SYS_ADMIN", "ADMIN", "MECHANIC"]);
+  const session = await requireStaffRole(["OWNER", "ADMIN", "MECHANIC"]);
   const id = String(formData.get("id") ?? "").trim();
   const service = await getServiceOrThrow(id);
 
@@ -241,7 +241,7 @@ export async function markWaitingParts(
   _prev: ServisState,
   formData: FormData,
 ): Promise<ServisState> {
-  await requireStaffRole(["OWNER", "SYS_ADMIN", "ADMIN", "MECHANIC"]);
+  await requireStaffRole(["OWNER", "ADMIN", "MECHANIC"]);
   const id = String(formData.get("id") ?? "").trim();
   await transition(id, ["IN_PROGRESS"], "WAITING_PARTS");
   revalidatePath("/dashboard/servis");
@@ -254,7 +254,7 @@ export async function resumeWork(
   _prev: ServisState,
   formData: FormData,
 ): Promise<ServisState> {
-  await requireStaffRole(["OWNER", "SYS_ADMIN", "ADMIN", "MECHANIC"]);
+  await requireStaffRole(["OWNER", "ADMIN", "MECHANIC"]);
   const id = String(formData.get("id") ?? "").trim();
   await transition(id, ["WAITING_PARTS"], "IN_PROGRESS");
   revalidatePath("/dashboard/servis");
@@ -267,7 +267,7 @@ export async function saveDiagnosis(
   _prev: ServisState,
   formData: FormData,
 ): Promise<ServisState> {
-  await requireStaffRole(["OWNER", "SYS_ADMIN", "ADMIN", "MECHANIC"]);
+  await requireStaffRole(["OWNER", "ADMIN", "MECHANIC"]);
   const id = String(formData.get("id") ?? "").trim();
   const diagnosis = String(formData.get("diagnosis") ?? "").trim();
   await prisma.service.update({ where: { id }, data: { diagnosis } });
@@ -280,7 +280,7 @@ export async function mechanicFinish(
   _prev: ServisState,
   formData: FormData,
 ): Promise<ServisState> {
-  const session = await requireStaffRole(["OWNER", "SYS_ADMIN", "ADMIN", "MECHANIC"]);
+  const session = await requireStaffRole(["OWNER", "ADMIN", "MECHANIC"]);
   const id = String(formData.get("id") ?? "").trim();
   const service = await getServiceOrThrow(id);
   if (
@@ -302,7 +302,7 @@ export async function qcDone(
   _prev: ServisState,
   formData: FormData,
 ): Promise<ServisState> {
-  await requireStaffRole(["OWNER", "SYS_ADMIN", "ADMIN"]);
+  await requireStaffRole(["OWNER", "ADMIN"]);
   const id = String(formData.get("id") ?? "").trim();
   await transition(id, ["IN_PROGRESS", "WAITING_PARTS"], "DONE", {
     finishedAt: new Date(),
@@ -316,7 +316,7 @@ export async function cancelService(
   _prev: ServisState,
   formData: FormData,
 ): Promise<ServisState> {
-  await requireStaffRole(["OWNER", "SYS_ADMIN", "ADMIN"]);
+  await requireStaffRole(["OWNER", "ADMIN"]);
   const id = String(formData.get("id") ?? "").trim();
   const reason = String(formData.get("reason") ?? "").trim();
   if (!reason) return { error: "Alasan pembatalan wajib diisi." };
@@ -338,7 +338,7 @@ export async function addServicePart(
   _prev: ServisState,
   formData: FormData,
 ): Promise<ServisState> {
-  await requireStaffRole(["OWNER", "SYS_ADMIN", "ADMIN", "MECHANIC"]);
+  await requireStaffRole(["OWNER", "ADMIN", "MECHANIC"]);
   const serviceId = String(formData.get("serviceId") ?? "").trim();
   const partId = String(formData.get("partId") ?? "").trim();
   const quantity = Number(formData.get("quantity") ?? 0);
@@ -395,7 +395,7 @@ export async function removeServicePart(
   _prev: ServisState,
   formData: FormData,
 ): Promise<ServisState> {
-  await requireStaffRole(["OWNER", "SYS_ADMIN", "ADMIN"]);
+  await requireStaffRole(["OWNER", "ADMIN"]);
   const id = String(formData.get("id") ?? "").trim();
   const sp = await prisma.servicePart.findUnique({
     where: { id },

@@ -13,7 +13,7 @@ export default async function CetakNotaPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  await requireStaffRole(["OWNER", "SYS_ADMIN", "ADMIN"]);
+  await requireStaffRole(["OWNER", "ADMIN"]);
   const { id } = await params;
   const appName = await getAppName();
 

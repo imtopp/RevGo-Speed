@@ -11,7 +11,7 @@ export default async function KasPage({
 }: {
   searchParams: Promise<{ branch?: string }>;
 }) {
-  await requireStaffRole(["OWNER", "SYS_ADMIN", "ADMIN"]);
+  await requireStaffRole(["OWNER", "ADMIN"]);
   const params = await searchParams;
   const branchIdStaff = await getStaffBranchId();
 

@@ -11,7 +11,9 @@ export default async function DashboardHome() {
   const session = await auth();
   if (!session?.user) redirect("/login");
 
-  const isCustomer = session.user.role === "CUSTOMER";
+  const role = session.user.role;
+  const isOperational = role === "OWNER" || role === "ADMIN";
+  const showStokStat = role !== "SYS_ADMIN";
   const branchIdStaff = await getStaffBranchId().catch(() => null);
   const branchWhere = branchIdStaff ? { branchId: branchIdStaff } : {};
 
@@ -26,22 +28,28 @@ export default async function DashboardHome() {
       prisma.service.count({
         where: { ...branchWhere, status: { in: ["PENDING", "WAITING_APPROVAL"] } },
       }),
-      prisma.cashflow.aggregate({
-        where: { ...branchWhere, type: "INCOME", createdAt: { gte: dayStart } },
-        _sum: { amount: true },
-      }),
+      isOperational
+        ? prisma.cashflow.aggregate({
+            where: { ...branchWhere, type: "INCOME", createdAt: { gte: dayStart } },
+            _sum: { amount: true },
+          })
+        : Promise.resolve(null),
       // Untuk hitung piutang: servis aktif/done belum batal
-      prisma.service.findMany({
-        where: { ...branchWhere, status: { not: "CANCELLED" } },
-        include: {
-          parts: { select: { price: true, quantity: true } },
-          payments: { select: { amount: true } },
-        },
-      }),
-      prisma.part.findMany({
-        where: branchWhere,
-        select: { quantity: true, minStock: true },
-      }),
+      isOperational
+        ? prisma.service.findMany({
+            where: { ...branchWhere, status: { not: "CANCELLED" } },
+            include: {
+              parts: { select: { price: true, quantity: true } },
+              payments: { select: { amount: true } },
+            },
+          })
+        : Promise.resolve([]),
+      showStokStat
+        ? prisma.part.findMany({
+            where: branchWhere,
+            select: { quantity: true, minStock: true },
+          })
+        : Promise.resolve([]),
     ]);
 
   const piutangTotal = openServices.reduce((sum, s) => {
@@ -55,9 +63,28 @@ export default async function DashboardHome() {
   const stats = [
     { label: "Servis Aktif", value: String(activeServices) },
     { label: "Booking Menunggu", value: String(waitingBookings) },
-    { label: "Omzet Hari Ini", value: formatRupiah(omzetHariIni._sum.amount ?? 0) },
-    { label: "Piutang Tertunggak", value: formatRupiah(piutangTotal), accent: piutangTotal > 0 },
-    { label: "Stok Menipis", value: String(stokMenipis), accent: stokMenipis > 0 },
+    ...(isOperational
+      ? [
+          {
+            label: "Omzet Hari Ini",
+            value: formatRupiah(omzetHariIni?._sum.amount ?? 0),
+          },
+          {
+            label: "Piutang Tertunggak",
+            value: formatRupiah(piutangTotal),
+            accent: piutangTotal > 0,
+          },
+        ]
+      : []),
+    ...(showStokStat
+      ? [
+          {
+            label: "Stok Menipis",
+            value: String(stokMenipis),
+            accent: stokMenipis > 0,
+          },
+        ]
+      : []),
   ];
 
   return (
@@ -87,7 +114,7 @@ export default async function DashboardHome() {
         ))}
       </div>
 
-      {!isCustomer && (
+      {isOperational && (
         <div className="grid max-w-xl grid-cols-2 gap-3">
           <Link
             href="/dashboard/servis?booking=1"

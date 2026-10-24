@@ -12,7 +12,7 @@ export default async function StokPage({
 }: {
   searchParams: Promise<{ tab?: string; branch?: string }>;
 }) {
-  await requireStaffRole(["OWNER", "SYS_ADMIN", "ADMIN"]);
+  await requireStaffRole(["OWNER", "ADMIN"]);
   const params = await searchParams;
   const tab = params.tab ?? "part";
   const branchIdStaff = await getStaffBranchId();

@@ -11,7 +11,7 @@ export default async function PiutangPage({
 }: {
   searchParams: Promise<{ branch?: string }>;
 }) {
-  await requireStaffRole(["OWNER", "SYS_ADMIN", "ADMIN"]);
+  await requireStaffRole(["OWNER", "ADMIN"]);
   const params = await searchParams;
   const branchIdStaff = await getStaffBranchId();
 
@@ -29,11 +29,11 @@ export default async function PiutangPage({
     include: {
       parts: { select: { price: true, quantity: true } },
       payments: { select: { amount: true } },
-      customer: { select: { name: true } },
+      customer: { select: { name: true, phone: true } },
       vehicle: { select: { plateNumber: true } },
       branch: { select: { name: true } },
     },
-    orderBy: { createdAt: "desc" },
+    orderBy: { createdAt: "asc" },
   });
 
   // Filter sisa tagihan > 0
@@ -76,7 +76,9 @@ export default async function PiutangPage({
                   {s.code}
                 </Link>
                 <p className="text-sm text-muted-foreground">
-                  {s.customer.name} · {s.vehicle.plateNumber}
+                  {s.customer.name}
+                  {s.customer.phone ? ` · ${s.customer.phone}` : ""} ·{" "}
+                  {s.vehicle.plateNumber}
                 </p>
                 <p className="text-xs text-slate-400">
                   {STATUS_LABEL[s.status]} · {s.branch.name}

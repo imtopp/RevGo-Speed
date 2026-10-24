@@ -18,7 +18,7 @@ const ACTIVE_MECHANIC_STATUSES: ServiceStatus[] = [
 ];
 
 export default async function TugasPage() {
-  const session = await requireStaffRole(["MECHANIC", "OWNER", "SYS_ADMIN", "ADMIN"]);
+  const session = await requireStaffRole(["MECHANIC", "OWNER", "ADMIN"]);
   const isMechanic = session.user.role === "MECHANIC";
 
   const where = isMechanic

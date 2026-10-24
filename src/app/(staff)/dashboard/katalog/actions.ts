@@ -9,7 +9,7 @@ export type KatalogState = { error?: string; success?: string };
 async function requireOwnerOrAdmin() {
   const session = await auth();
   if (!session?.user) throw new Error("Belum login.");
-  if (!["OWNER", "SYS_ADMIN", "ADMIN"].includes(session.user.role)) {
+  if (!["OWNER", "SYS_ADMIN"].includes(session.user.role)) {
     throw new Error("Tidak punya akses.");
   }
   return session;

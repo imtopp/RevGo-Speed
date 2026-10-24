@@ -30,7 +30,7 @@ export default async function ServisPage({
 }: {
   searchParams: Promise<{ status?: string; booking?: string }>;
 }) {
-  await requireStaffRole(["OWNER", "SYS_ADMIN", "ADMIN"]);
+  await requireStaffRole(["OWNER", "ADMIN"]);
   const params = await searchParams;
   const filter = params.status ?? "aktif";
   const showBooking = params.booking === "1";

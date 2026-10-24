@@ -1,6 +1,6 @@
 # PRD — RevGo Speed
 
-**Versi:** 1.0 (Rilis 1 selesai)
+**Versi:** 1.1 (Rilis 1 selesai + audit konsistensi)
 **Tanggal:** 24 Oktober 2026
 **Status:** ✅ Rilis 1 selesai — semua fase A–E terpasang, siap produksi
 
@@ -9,6 +9,7 @@
 - v0.2 — peran **System Administrator**; kebijakan DP/refund & jam operasional jadi **konfigurasi**; alur disesuaikan standar industri bengkel (approval estimasi, QC sebelum serah terima).
 - v0.3 — evaluasi gap vs praktik software bengkel (riset komparatif): tambah status **`CHECKED_IN` + pemeriksaan awal unit**, papan kerja, master **supplier**, sumber dana kas (**kantong uang**), menu **piutang**, snapshot **HPP per servis** (laba per job), backup DB; daftar fase 2 diperkaya (opname massal, shift kasir, PO, dsb.).
 - v1.0 — **rebrand RevLedger → RevGo Speed** (hostname & branding); migrasi SQLite → **Neon PostgreSQL**; deploy **Vercel** (production) + Neon (DB); semua fase A–E selesai.
+- v1.1 — audit konsistensi PRD ↔ implementasi: keputusan cakupan SysAdmin (risiko #6) & angka keuangan mekanik (risiko #5) **ditegakkan di kode**; detail disesuaikan dengan kode aktual (`CANCELLED` + `CHECKED_IN`, kategori kas bebas teks + label otomatis, parameter pengaturan +logo, cakupan laporan/cetak/pencarian, piutang urut tertua + kontak); dukungan **desktop responsif**, **design system**, aset logo.
 
 ---
 
@@ -45,19 +46,19 @@
 | Kelola akun staff | ✔ | ✔ | – | – | – |
 | Pengaturan sistem & **backup data** | ✔ | ✔ | – | – | – |
 | Kelola cabang | ✔ | ✔ | – | – | – |
-| Katalog & supplier | ✔ | – | ✔ (lihat) | – | – |
+| Katalog jasa (CRUD) | ✔ | ✔ | ✔ (lihat di form booking) | – | – |
 | Booking (input/konfirmasi/estimasi) | ✔ | – | ✔ (cabangnya) | – | ✔ (mandiri) |
 | Setujui/tolak estimasi | ✔ | – | ✔ | – | ✔ (pesanan saya) |
 | **Penerimaan unit (precheck)** | ✔ | – | ✔ | ✔ | – |
 | Proses servis & status | ✔ | – | ✔ | ✔ (tugas saya) | – |
 | Catat pembayaran (DP/lunas/piutang) | ✔ | – | ✔ | – | ✔ (bayar saat ambil) |
-| Stok part (CRUD, masuk/keluar) | ✔ | – | ✔ (cabangnya) | ✔ (pakai part) | – |
+| Stok part & supplier (CRUD, masuk/keluar) | ✔ | – | ✔ (cabangnya) | ✔ (pakai part) | – |
 | Catat kas manual | ✔ | – | ✔ (cabangnya) | – | – |
 | Data sendiri (kendaraan, riwayat) | – | – | – | – | ✔ |
 
 **Scoping cabang:** owner & system administrator lintas cabang; admin & mekanik terikat 1 cabang; customer lintas cabang.
 
-**Menu adaptif:** SysAdmin melihat **Akun, Pengaturan, Backup** (tanpa angka keuangan); Admin melihat operasional + piutang; Mekanik hanya **Tugas Saya**.
+**Menu adaptif:** SysAdmin: **Beranda** (tanpa angka keuangan/stok), **Katalog, Akun, Pengaturan, Backup**; Admin: **operasional + piutang**; Mekanik: **Beranda** (tanpa angka keuangan) + **Tugas Saya**.
 
 ---
 
@@ -84,7 +85,7 @@ Customer booking (app) ──┐                        ┌ Admin input (telepon
                                    ↓
                              serah terima unit
 
-PENDING / WAITING_APPROVAL / CONFIRMED ──(batal)→ CANCELLED (wajib alasan)
+PENDING / WAITING_APPROVAL / CONFIRMED / CHECKED_IN ──(batal)→ CANCELLED (wajib alasan)
 ```
 
 **Pemetaan ke tahapan bengkel umum:**
@@ -96,7 +97,7 @@ PENDING / WAITING_APPROVAL / CONFIRMED ──(batal)→ CANCELLED (wajib alasan)
 | Persetujuan pelanggan | Setujui/tolak di halaman Pesanan → `CONFIRMED` |
 | **Check-in / pemeriksaan unit** | `CHECKED_IN` + form precheck (km, BBM, kondisi, keluhan) |
 | Pengerjaan (work order) | `IN_PROGRESS` ⇄ `WAITING_PARTS`, part mengurangi stok |
-| Quality control | Prasyarat `DONE` — cek akhir admin/owner/kepala mekanik |
+| Quality control | Prasyarat `DONE` — cek akhir admin/owner |
 | Siap diambil & penagihan | `DONE` + pembayaran (lunas/DP/**piutang**) |
 | Serah terima & riwayat | Tercatat di riwayat servis kendaraan (lunas atau dengan sisa) |
 | Garansi & pengingat servis berikutnya | Fase 2 (lihat §7) |
@@ -140,11 +141,11 @@ PENDING / WAITING_APPROVAL / CONFIRMED ──(batal)→ CANCELLED (wajib alasan)
 
 ### FR-1 Multi-cabang — **Rilis 1**
 - Model **Cabang** (nama, alamat, telepon, jam operasional, aktif); owner & SysAdmin kelola; staff di-assign 1 cabang.
-- Data ter-scope: part, servis, kas, laporan; pemilih cabang di dashboard & laporan (lintas: “Semua Cabang”).
+- Data ter-scope per cabang; pemilih cabang di halaman laporan/kas/stok/piutang/servis (default cabang pertama — owner ganti per halaman; agregat “Semua Cabang” → §7). Dashboard owner menampilkan agregat semua cabang.
 - MVP jalan dengan 1 cabang aktif; struktur siap multi sejak awal.
 
 ### FR-2 Katalog jasa — **Rilis 1**
-- Jenis jasa: nama, deskripsi, harga dasar, flag **boleh DP**; CRUD owner (global, override per transaksi oleh admin).
+- Jenis jasa: nama, deskripsi, harga dasar, flag **boleh DP**; CRUD owner & SysAdmin (global; admin memakai saat booking & override harga per transaksi).
 
 ### FR-3 Booking & persetujuan estimasi — **Rilis 1**
 **Customer:**
@@ -154,14 +155,14 @@ PENDING / WAITING_APPROVAL / CONFIRMED ──(batal)→ CANCELLED (wajib alasan)
 
 **Admin:**
 - Daftar booking masuk (filter status/tanggal); isi/ubah estimasi + jadwal + mekanik → kirim (`WAITING_APPROVAL`).
-- **Pencarian cepat customer** by nama / no. HP / plat saat input booking manual (walk-in/telepon); daftar cepat customer + kendaraan baru bila belum ada.
+- **Booking manual (walk-in/telepon):** pencarian cepat **by plat** (kendaraan & customer otomatis ditemukan; bila belum ada, data baru diisi manual: nama/email/HP). Pencarian by nama/HP → §7.
 - Approve di tempat (catatan “disetujui langsung”) → `CONFIRMED`; batalkan dengan alasan sebelum pengerjaan.
 
 ### FR-4 Penerimaan, papan kerja & proses servis — **Rilis 1**
 - **Papan kerja admin:** servis aktif dikelompokkan per status (menunggu approval, dikonfirmasi, unit di tempat, dikerjakan, menunggu part, siap bayar) — satu layar antrian operasional.
 - **Penerimaan unit (precheck):** saat unit datang, admin/mekanik isi pemeriksaan awal (km, BBM, kondisi existing, keluhan disepakati) → `CHECKED_IN`. Wajib terisi sebelum `IN_PROGRESS`.
 - **Mekanik:** tugas saya; `IN_PROGRESS` (waktu mulai), diagnosis, catat part (dari stok cabang — keluar otomatis + snapshot HPP), biaya jasa, kerja selesai.
-- **QC:** verifikasi admin/owner/kepala mekanik sebelum `DONE` (manual dulu; checklist digital fase 2) → `DONE` = siap diambil.
+- **QC:** verifikasi admin/owner sebelum `DONE` (manual dulu; checklist digital fase 2) → `DONE` = siap diambil.
 - Riwayat servis lengkap: alur status, estimasi & approval, precheck, diagnosis, part, biaya, pembayaran, durasi (waktu mulai–selesai), pelaku.
 
 ### FR-5 Pembayaran (lunas, DP, piutang) — **Rilis 1**
@@ -179,27 +180,26 @@ PENDING / WAITING_APPROVAL / CONFIRMED ──(batal)→ CANCELLED (wajib alasan)
 ### FR-7 Kas & piutang — **Rilis 1**
 - Daftar transaksi: filter tanggal/kategori/jenis/kantong/cabang; ringkasan hari-ini & bulan-ini.
 - Tambah manual + pilih **sumber dana** (Tunai/Bank); koreksi via transaksi baru.
-- Kategori tetap: Pendapatan Servis, Penjualan Part, Pembelian Part, Operasional, Gaji, Lain-lain.
+- Kategori: entri manual **bebas teks** (mis. Operasional, Sewa, Gaji, Lain-lain); entri otomatis memakai label tetap — `Pembayaran Servis`/`DP Servis` (pembayaran servis) dan `Pembelian Part` (stok masuk).
 - **Menu Piutang:** servis belum lunas → customer, kendaraan, tanggal DONE, sisa tagihan (urut tertua); total piutang; aksi cepat “catat pembayaran cicilan”.
 - Entri otomatis: pembayaran servis & pembelian part (FR-5, FR-6).
 
 ### FR-8 Laporan owner & admin — **Rilis 1**
 - Periode (Hari ini / Bulan ini / Rentang custom) + filter cabang.
-- **Keuangan:** pemasukan, pengeluaran, laba bersih kas per kategori; **rekap per kantong (Tunai/Bank/QRIS)**; **total & rincian piutang**.
-- **Profitabilitas:** **laba kotor per servis** (pendapatan − HPP part ter-snapshot − …) + total laba kotor periode; pendapatan DP vs pelunasan.
-- **Operasional:** jumlah servis (selesai/batal/aktif), nilai rata-rata, tingkat persetujuan estimasi, **durasi rata-rata pengerjaan**.
-- **Performa:** servis selesai & pendapatan jasa per mekanik; part terlaris.
+- **Ringkasan:** omzet (kas masuk bayar), laba kotor (pendapatan − HPP ter-snapshot), jumlah servis selesai, saldo kas periode.
+- **Rekap per kantong** (Tunai/Bank) + **rincian laba per servis**.
 - **Export CSV** (ringkasan + detail kas per periode). Owner lintas cabang; Admin cabangnya.
+- Belum ada → §7: laba bersih per kategori, rincian piutang di laporan, DP vs pelunasan, durasi rata-rata, tingkat persetujuan estimasi, performa mekanik, part terlaris.
 
 ### FR-9 PWA, mobile & cetak — **Rilis 1**
-- Sudah ada: manifest, SW, ikon, bottom-nav. Wajib: semua halaman nyaman di HP, format Rupiah & tanggal Indonesia, navigasi tanpa dead-end.
-- **Halaman siap cetak** (print browser): estimasi/nota servis & daftar piutang.
+- Sudah ada: manifest, SW, ikon, bottom-nav; **responsif desktop (sidebar)**. Wajib: semua halaman nyaman di HP, format Rupiah & tanggal Indonesia, navigasi tanpa dead-end.
+- **Cetak:** halaman **nota servis** siap cetak (print browser). Cetak estimasi & daftar piutang → §7.
 
 ### FR-10 Pengaturan sistem — **Rilis 1**
 Akses: **Owner + SysAdmin**; perubahan tercatat (siapa, kapan).
 - **Jam operasional per cabang** (hari aktif, jam buka/tutup) → tampil saat booking; patokan tindak lanjut admin.
 - **Kebijakan DP & pembatalan:** `TANPA_REFUND` / `REFUND_PENUH` (MVP: panduan + eksekusi manual lewat kas; otomatis fase 2).
-- **Parameter:** nama tampilan aplikasi, default cabang aktif, **prefix kode servis** (mis. `SV-`).
+- **Parameter:** nama tampilan aplikasi, **logo** (URL), **prefix kode servis** (mis. `SV-`).
 - **Kelola akun staff:** buat akun Admin/Mekanik/SysAdmin, assign cabang, reset password, nonaktifkan.
 - **Backup data:** unduh salinan database (JSON export) — rutinitas SysAdmin.
 
@@ -207,7 +207,7 @@ Akses: **Owner + SysAdmin**; perubahan tercatat (siapa, kapan).
 
 ## 5. Status & Aturan Penting
 
-**Status servis:** `PENDING → WAITING_APPROVAL → CONFIRMED → CHECKED_IN → IN_PROGRESS ⇄ WAITING_PARTS → DONE`; `CANCELLED` dari PENDING/WAITING_APPROVAL/CONFIRMED (wajib alasan). Hanya maju, kecuali `WAITING_PARTS → IN_PROGRESS`.
+**Status servis:** `PENDING → WAITING_APPROVAL → CONFIRMED → CHECKED_IN → IN_PROGRESS ⇄ WAITING_PARTS → DONE`; `CANCELLED` dari PENDING/WAITING_APPROVAL/CONFIRMED/CHECKED_IN (wajib alasan). Hanya maju, kecuali `WAITING_PARTS → IN_PROGRESS`.
 
 **Aturan kunci:**
 - `CONFIRMED` = estimasi disetujui; `CHECKED_IN` = unit diterima + precheck terisi — keduanya gerbang wajib sebelum `IN_PROGRESS`.
@@ -224,11 +224,11 @@ Akses: **Owner + SysAdmin**; perubahan tercatat (siapa, kapan).
 ---
 
 ## 6. Kebutuhan Non-Fungsional
-- **Mobile-first:** target HP; diuji 360–430px; PWA installable.
+- **Mobile-first:** target HP; diuji 360–430px; PWA installable; **responsif desktop** (sidebar md+, uji s.d. lebar xl).
 - **Offline:** hanya halaman cache untuk dibaca; mutasi butuh koneksi.
 - **Keamanan:** scrypt ✅; autorisasi server-side; query selalu ter-filter cabang/role.
 - **Skala:** ratusan transaksi/hari/cabang — **Neon PostgreSQL** (production & staging via branch).
-- **Deploy:** **Vercel** (app) + **Neon** (Postgres, branch `production` sebagai default).
+- **Deploy:** **Vercel** (app) + **Neon** (Postgres, branch `production` sebagai default; koneksi `sslmode=verify-full`).
 - **Bahasa:** Indonesia; Rupiah (integer, format `Rp`).
 - **Backup:** unduh DB tersedia (FR-10); Neon menyediakan **PITR** (point-in-time restore) sebagai backup otomatis.
 
@@ -243,6 +243,7 @@ Akses: **Owner + SysAdmin**; perubahan tercatat (siapa, kapan).
 - Approval estimasi **per-item** & change order di tengah pengerjaan; pekerjaan tertunda (declined → follow-up).
 - Eksekusi refund DP otomatis; **diskon** per item/nota; **PPN/pajak**.
 - Sublet (kerja keluar: spooring, cat, bubut); penjualan part over-the-counter (POS); transfer stok antar cabang; harga/katalog per cabang.
+- Laporan lanjutan: laba bersih per kategori, rincian piutang di laporan, DP vs pelunasan, durasi rata-rata, tingkat persetujuan estimasi, performa mekanik, part terlaris; **cetak estimasi & daftar piutang**; opsi agregat “Semua Cabang”; pencarian customer by nama/HP.
 - Grafik trend penjualan, aging piutang, komisi & payroll mekanik, absensi, CRM loyalitas/poin, slot jam booking, cetak via printer Bluetooth/thermal, multi-bahasa, SaaS, integrasi payment gateway, laporan akuntansi penuh (neraca/jurnal/PSAK).
 
 ---
@@ -278,14 +279,14 @@ Setiap fase selesai = fitur terpasang + role-guard teruji + `build`/`lint` hijau
 | 2 | Harga jasa dinegosiasi | Admin override, tercatat di riwayat |
 | 3 | Katalog jasa belum per-cabang | Global dulu; beda harga per cabang → fase 2 |
 | 4 | Jam operasional | ✅ konfigurasi per cabang (FR-10) |
-| 5 | Mekanik lihat laba? | MVP: hanya tugas & biaya jasa miliknya |
-| 6 | Cakupan SysAdmin | ✅ **Disetujui**: akun + pengaturan + backup + kelola cabang (tanpa laporan/kas/stok) |
+| 5 | Mekanik lihat laba? | ✅ ditegakkan (v1.1): menu Tugas + Beranda **tanpa angka keuangan** |
+| 6 | Cakupan SysAdmin | ✅ **Disetujui** + guard ditegakkan (v1.1): Beranda (tanpa angka keuangan/stok) + katalog + akun + pengaturan + backup + kelola cabang; **operasional (servis/stok/kas/piutang/laporan) = OWNER/ADMIN** |
 | 7 | Pengingat booking otomatis (SLA) | Fase 2 bersama notifikasi WA |
 | 8 | Aturan penagihan piutang | ✅ **Disetujui**: diskresi admin + piutang terpantau; aturan keras → pengaturan rilis berikut |
 
 ---
 
-## App. A — Delta skema dari versi sekarang
+## App. A — Delta skema (baseline pra-Rilis 1)
 
 **Model baru:**
 - `Branch` — id, nama, alamat, telepon, jamBuka, jamTutup, hariAktif (`"1,2,3,4,5,6"`), aktif
