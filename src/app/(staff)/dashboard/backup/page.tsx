@@ -18,10 +18,10 @@ export default async function BackupPage() {
       </div>
 
       <section className="space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
-        <h2 className="text-sm font-semibold text-slate-700">
+        <h2 className="text-sm font-semibold text-foreground">
           Backup Otomatis (Neon)
         </h2>
-        <p className="text-sm text-slate-600">
+        <p className="text-sm text-muted-foreground">
           Database {appName} berjalan di <strong>Neon Postgres</strong>. Neon
           menyimpan backup otomatis harian dengan retensi beberapa hari serta
           mendukung <em>point-in-time restore</em> (PILIH titik waktu untuk
@@ -36,17 +36,17 @@ export default async function BackupPage() {
           href="https://console.neon.tech"
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-block rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 active:opacity-90"
+          className="inline-block rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-foreground active:opacity-90"
         >
           Buka Neon Console ↗
         </a>
       </section>
 
       <section className="space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
-        <h2 className="text-sm font-semibold text-slate-700">
+        <h2 className="text-sm font-semibold text-foreground">
           Export Data Manual (JSON)
         </h2>
-        <p className="text-sm text-slate-600">
+        <p className="text-sm text-muted-foreground">
           Unduh salinan seluruh data aplikasi (user, cabang, part, servis,
           pembayaran, kas, pengaturan) dalam format JSON. Berguna untuk arsip
           mandiri atau migrasi.

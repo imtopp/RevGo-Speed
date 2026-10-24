@@ -14,9 +14,9 @@ export function CatalogManager() {
       action={action}
       className="space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card"
     >
-      <p className="text-sm font-semibold text-slate-700">Tambah Jasa Baru</p>
+      <p className="text-sm font-semibold text-foreground">Tambah Jasa Baru</p>
       {state.error && (
-        <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
+        <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-danger">
           {state.error}
         </p>
       )}
@@ -26,16 +26,16 @@ export function CatalogManager() {
         </p>
       )}
       <div>
-        <label className="block text-sm font-medium text-slate-700">Nama Jasa</label>
+        <label className="block text-sm font-medium text-foreground">Nama Jasa</label>
         <input
           name="nama"
           required
-          placeholder="Servis Rutin 5.000 km"
+          placeholder="Servis Rutin 3.000 km"
           className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-base outline-none focus:border-slate-900"
         />
       </div>
       <div>
-        <label className="block text-sm font-medium text-slate-700">
+        <label className="block text-sm font-medium text-foreground">
           Deskripsi (opsional)
         </label>
         <input
@@ -46,7 +46,7 @@ export function CatalogManager() {
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="block text-sm font-medium text-slate-700">
+          <label className="block text-sm font-medium text-foreground">
             Harga Dasar (Rp)
           </label>
           <input
@@ -58,7 +58,7 @@ export function CatalogManager() {
           />
         </div>
         <div className="flex items-end pb-2">
-          <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
+          <label className="flex items-center gap-2 text-sm font-medium text-foreground">
             <input name="allowDp" type="checkbox" />
             Boleh DP
           </label>

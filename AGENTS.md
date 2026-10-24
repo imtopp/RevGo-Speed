@@ -2,7 +2,7 @@
 
 ## Proyek
 
-Aplikasi manajemen bengkel (PWA, mobile-first, bahasa Indonesia). White-label: multi-cabang, multi-tenant, branding via `SystemSetting`.
+Aplikasi manajemen bengkel **motor** (PWA, mobile-first, bahasa Indonesia). White-label: multi-cabang, multi-tenant, branding via `SystemSetting`.
 
 ## Tech Stack
 

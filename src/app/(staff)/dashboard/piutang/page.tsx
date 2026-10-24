@@ -85,7 +85,7 @@ export default async function PiutangPage({
                 </p>
               </div>
               <div className="shrink-0 text-right">
-                <p className="text-sm font-semibold text-red-600">
+                <p className="text-sm font-semibold text-danger">
                   {formatRupiah(s.remaining)}
                 </p>
                 <p className="text-xs text-slate-400">

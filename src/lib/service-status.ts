@@ -12,7 +12,7 @@ export const STATUS_LABEL: Record<ServiceStatus, string> = {
 };
 
 export const STATUS_COLOR: Record<ServiceStatus, string> = {
-  PENDING: "bg-slate-100 text-slate-700",
+  PENDING: "bg-slate-100 text-foreground",
   WAITING_APPROVAL: "bg-amber-100 text-amber-800",
   CONFIRMED: "bg-blue-100 text-blue-800",
   CHECKED_IN: "bg-cyan-100 text-cyan-800",
@@ -20,6 +20,18 @@ export const STATUS_COLOR: Record<ServiceStatus, string> = {
   WAITING_PARTS: "bg-orange-100 text-orange-800",
   DONE: "bg-emerald-100 text-emerald-800",
   CANCELLED: "bg-red-100 text-red-800",
+};
+
+/** Nama aksi berikutnya per status — dipakai sticky bar & panel aksi. */
+export const NEXT_ACTION_LABEL: Record<ServiceStatus, string> = {
+  PENDING: "Beri estimasi & jadwal",
+  WAITING_APPROVAL: "Setujui estimasi",
+  CONFIRMED: "Terima unit masuk",
+  CHECKED_IN: "Mulai kerja",
+  IN_PROGRESS: "Selesaikan pengerjaan",
+  WAITING_PARTS: "Lanjutkan pengerjaan",
+  DONE: "Servis selesai",
+  CANCELLED: "Servis dibatalkan",
 };
 
 /** Status yang masih terbuka (aktif dikerjakan / menunggu aksi). */

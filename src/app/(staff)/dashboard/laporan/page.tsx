@@ -107,7 +107,7 @@ export default async function LaporanPage({
         </div>
         <a
           href={exportUrl}
-          className="rounded-lg border border-slate-300 bg-surface px-3 py-2 text-sm font-medium text-slate-700"
+          className="rounded-lg border border-slate-300 bg-surface px-3 py-2 text-sm font-medium text-foreground"
         >
           Export CSV
         </a>
@@ -132,7 +132,7 @@ export default async function LaporanPage({
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         {summary.map((s) => (
           <div key={s.label} className="rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
-            <p className={`text-lg font-bold tabular-nums ${s.accent === false ? "text-red-600" : s.accent ? "text-success" : ""}`}>
+            <p className={`text-lg font-bold tabular-nums ${s.accent === false ? "text-danger" : s.accent ? "text-success" : ""}`}>
               {s.value}
             </p>
             <p className="mt-1 text-xs text-muted-foreground">{s.label}</p>
@@ -143,7 +143,7 @@ export default async function LaporanPage({
       {/* Rekap kantong + Laba per servis — 2 kolom di desktop */}
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
-          <h2 className="text-sm font-semibold text-slate-700">Rekap per Kantong</h2>
+          <h2 className="text-sm font-semibold text-foreground">Rekap per Kantong</h2>
         <table className="mt-2 w-full text-sm">
           <thead>
             <tr className="text-left text-xs text-muted-foreground">
@@ -158,7 +158,7 @@ export default async function LaporanPage({
               <tr key={k} className="border-t border-slate-100">
                 <td className="py-1.5 font-medium">{k}</td>
                 <td className="py-1.5 text-right text-success">{formatRupiah(rekap[k].masuk)}</td>
-                <td className="py-1.5 text-right text-red-600">{formatRupiah(rekap[k].keluar)}</td>
+                <td className="py-1.5 text-right text-danger">{formatRupiah(rekap[k].keluar)}</td>
                 <td className="py-1.5 text-right font-semibold">{formatRupiah(rekap[k].masuk - rekap[k].keluar)}</td>
               </tr>
             ))}
@@ -169,7 +169,7 @@ export default async function LaporanPage({
         {/* Laba per servis */}
         <div className="rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
         <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-slate-700">Laba per Servis</h2>
+          <h2 className="text-sm font-semibold text-foreground">Laba per Servis</h2>
           <span className="text-xs text-muted-foreground">
             Rev {formatRupiah(totalRevenue)} · HPP {formatRupiah(totalHpp)}
           </span>
@@ -190,7 +190,7 @@ export default async function LaporanPage({
                     </p>
                   </div>
                   <div className="shrink-0 text-right">
-                    <p className={`font-semibold ${laba >= 0 ? "text-success" : "text-red-600"}`}>
+                    <p className={`font-semibold ${laba >= 0 ? "text-success" : "text-danger"}`}>
                       {formatRupiah(laba)}
                     </p>
                     <p className="text-xs text-slate-400">

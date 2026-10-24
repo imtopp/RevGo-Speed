@@ -18,7 +18,7 @@
 
 **Masalah.** Bengkel kecil-menengah mengelola booking, stok part, dan arus kas lewat buku catatan/WhatsApp/Excel — data tercecer, stok sering meleset, piutang tidak terpantau, dan pemilik tidak punya gambaran keuangan harian.
 
-**Solusi.** RevGo Speed adalah aplikasi web (PWA, mobile-first) yang mengelola operasional bengkel terpadu: booking & proses servis, inventori suku cadang, pencatatan kas & piutang, dan laporan pemilik — dengan akses berbasis peran (owner, system administrator, admin, mekanik, customer). Bersifat **white-label**: nama & logo yang tampil ke customer dikonfigurasi System Administrator per bengkel (mis. "TBRT"), sehingga platform yang sama bisa dipakai banyak bengkel dengan identitas masing-masing.
+**Solusi.** RevGo Speed adalah aplikasi web (PWA, mobile-first) yang mengelola operasional bengkel motor terpadu: booking & proses servis, inventori suku cadang, pencatatan kas & piutang, dan laporan pemilik — dengan akses berbasis peran (owner, system administrator, admin, mekanik, customer). Bersifat **white-label**: nama & logo yang tampil ke customer dikonfigurasi System Administrator per bengkel (mis. "TBRT"), sehingga platform yang sama bisa dipakai banyak bengkel dengan identitas masing-masing.
 
 **Tujuan rilis 1:**
 - Satu siklus penuh jalan: booking → estimasi disetujui → pemeriksaan unit → pengerjaan → pembayaran (lunas/DP/piutang) → kas & laporan tercatat otomatis.

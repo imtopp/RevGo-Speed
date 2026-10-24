@@ -2,6 +2,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+import { normalizeMerek, normalizeTipe, modelTidakSesuaiMerek, MEREK_LAINNYA } from "@/lib/vehicle";
 import { revalidatePath } from "next/cache";
 
 export type CustomerState = { error?: string; success?: string };
@@ -93,12 +94,18 @@ export async function customerAddVehicle(
 ): Promise<CustomerState> {
   const session = await requireCustomer();
   const plateNumber = String(formData.get("plateNumber") ?? "").trim().toUpperCase();
-  const brand = String(formData.get("brand") ?? "").trim();
-  const model = String(formData.get("model") ?? "").trim();
+  const brandRaw = String(formData.get("brand") ?? "").trim();
+  const brand = normalizeMerek(
+    brandRaw === MEREK_LAINNYA ? String(formData.get("brandLain") ?? "") : brandRaw,
+  );
+  const model = normalizeTipe(String(formData.get("model") ?? ""));
   const yearRaw = String(formData.get("year") ?? "").trim();
 
   if (!plateNumber || !brand || !model) {
     return { error: "Plat, merek, dan tipe wajib diisi." };
+  }
+  if (modelTidakSesuaiMerek(brand, model)) {
+    return { error: `"${model}" bukan tipe merek ${brand}. Periksa pilihan merek/tipe.` };
   }
 
   const existing = await prisma.vehicle.findUnique({ where: { plateNumber } });
@@ -116,6 +123,72 @@ export async function customerAddVehicle(
 
   revalidatePath("/pesanan");
   return { success: `Kendaraan ${plateNumber} ditambahkan.` };
+}
+
+export async function customerUpdateVehicle(
+  _prev: CustomerState,
+  formData: FormData,
+): Promise<CustomerState> {
+  const session = await requireCustomer();
+  const id = String(formData.get("id") ?? "").trim();
+  const plateNumber = String(formData.get("plateNumber") ?? "").trim().toUpperCase();
+  const brandRaw = String(formData.get("brand") ?? "").trim();
+  const brand = normalizeMerek(
+    brandRaw === MEREK_LAINNYA ? String(formData.get("brandLain") ?? "") : brandRaw,
+  );
+  const model = normalizeTipe(String(formData.get("model") ?? ""));
+
+  if (!plateNumber || !brand || !model) {
+    return { error: "Plat, merek, dan tipe wajib diisi." };
+  }
+  if (modelTidakSesuaiMerek(brand, model)) {
+    return { error: `"${model}" bukan tipe merek ${brand}. Periksa pilihan merek/tipe.` };
+  }
+
+  const vehicle = await prisma.vehicle.findFirst({
+    where: { id, ownerId: session.user.id },
+  });
+  if (!vehicle) return { error: "Kendaraan tidak ditemukan." };
+
+  if (plateNumber !== vehicle.plateNumber) {
+    const dup = await prisma.vehicle.findUnique({
+      where: { plateNumber },
+      select: { id: true },
+    });
+    if (dup) return { error: "Plat nomor sudah terdaftar." };
+  }
+
+  await prisma.vehicle.update({
+    where: { id },
+    data: { plateNumber, brand, model, year: vehicle.year },
+  });
+
+  revalidatePath("/pesanan");
+  return { success: `Kendaraan ${plateNumber} diperbarui.` };
+}
+
+export async function customerDeleteVehicle(
+  _prev: CustomerState,
+  formData: FormData,
+): Promise<CustomerState> {
+  const session = await requireCustomer();
+  const id = String(formData.get("id") ?? "").trim();
+
+  const vehicle = await prisma.vehicle.findFirst({
+    where: { id, ownerId: session.user.id },
+  });
+  if (!vehicle) return { error: "Kendaraan tidak ditemukan." };
+
+  const jumlahServis = await prisma.service.count({ where: { vehicleId: id } });
+  if (jumlahServis > 0) {
+    return {
+      error: "Kendaraan ini punya riwayat servis — tidak bisa dihapus. Data plat bisa diubah bila salah ketik.",
+    };
+  }
+
+  await prisma.vehicle.delete({ where: { id } });
+  revalidatePath("/pesanan");
+  return { success: `Kendaraan ${vehicle.plateNumber} dihapus.` };
 }
 
 export async function customerRespondEstimate(

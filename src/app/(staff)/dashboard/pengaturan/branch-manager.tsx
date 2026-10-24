@@ -29,7 +29,7 @@ function BranchFields({ branch }: { branch?: Branch }) {
     <>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div>
-          <label className="block text-sm font-medium text-slate-700">Nama</label>
+          <label className="block text-sm font-medium text-foreground">Nama</label>
           <input
             name="name"
             required
@@ -38,7 +38,7 @@ function BranchFields({ branch }: { branch?: Branch }) {
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-slate-700">
+          <label className="block text-sm font-medium text-foreground">
             No. HP
           </label>
           <input
@@ -49,7 +49,7 @@ function BranchFields({ branch }: { branch?: Branch }) {
         </div>
       </div>
       <div>
-        <label className="block text-sm font-medium text-slate-700">
+        <label className="block text-sm font-medium text-foreground">
           Alamat
         </label>
         <input
@@ -60,7 +60,7 @@ function BranchFields({ branch }: { branch?: Branch }) {
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="block text-sm font-medium text-slate-700">
+          <label className="block text-sm font-medium text-foreground">
             Jam Buka
           </label>
           <input
@@ -71,7 +71,7 @@ function BranchFields({ branch }: { branch?: Branch }) {
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-slate-700">
+          <label className="block text-sm font-medium text-foreground">
             Jam Tutup
           </label>
           <input
@@ -83,7 +83,7 @@ function BranchFields({ branch }: { branch?: Branch }) {
         </div>
       </div>
       <div>
-        <span className="block text-sm font-medium text-slate-700">
+        <span className="block text-sm font-medium text-foreground">
           Hari Aktif
         </span>
         <div className="mt-1 flex flex-wrap gap-2">
@@ -109,7 +109,7 @@ function BranchFields({ branch }: { branch?: Branch }) {
         </div>
       </div>
       {branch && (
-        <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
+        <label className="flex items-center gap-2 text-sm font-medium text-foreground">
           <input
             type="checkbox"
             name="aktif"
@@ -140,7 +140,7 @@ export function BranchManager({ branches }: { branches: Branch[] }) {
       <button
         type="button"
         onClick={() => setShowCreate((v) => !v)}
-        className="rounded-lg border border-slate-300 bg-surface px-3 py-2 text-sm font-medium text-slate-700 active:opacity-90"
+        className="rounded-lg border border-slate-300 bg-surface px-3 py-2 text-sm font-medium text-foreground active:opacity-90"
       >
         {showCreate ? "Tutup" : "+ Tambah Cabang"}
       </button>
@@ -152,7 +152,7 @@ export function BranchManager({ branches }: { branches: Branch[] }) {
         >
           <BranchFields />
           {createState.error && (
-            <p className="text-sm text-red-600">{createState.error}</p>
+            <p className="text-sm text-danger">{createState.error}</p>
           )}
           {createState.success && (
             <p className="text-sm text-green-600">{createState.success}</p>
@@ -186,7 +186,7 @@ export function BranchManager({ branches }: { branches: Branch[] }) {
                 onClick={() =>
                   setEditingId(editingId === branch.id ? null : branch.id)
                 }
-                className="text-sm font-medium text-slate-700 underline underline-offset-2"
+                className="text-sm font-medium text-foreground underline underline-offset-2"
               >
                 {editingId === branch.id ? "Tutup" : "Ubah"}
               </button>
@@ -200,7 +200,7 @@ export function BranchManager({ branches }: { branches: Branch[] }) {
                 <input type="hidden" name="id" value={branch.id} />
                 <BranchFields branch={branch} />
                 {editState.error && (
-                  <p className="text-sm text-red-600">{editState.error}</p>
+                  <p className="text-sm text-danger">{editState.error}</p>
                 )}
                 {editState.success && (
                   <p className="text-sm text-green-600">{editState.success}</p>

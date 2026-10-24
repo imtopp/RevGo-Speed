@@ -21,7 +21,7 @@ export function SettingForm({
     <form action={action} className="flex flex-col gap-2 sm:flex-row sm:items-end">
       <input type="hidden" name="key" value={field.key} />
       <div className="flex-1">
-        <label className="block text-sm font-medium text-slate-700">
+        <label className="block text-sm font-medium text-foreground">
           {field.label}
         </label>
         <input
@@ -39,7 +39,7 @@ export function SettingForm({
         {pending ? "Simpan..." : "Simpan"}
       </button>
       {state.error && (
-        <p className="text-sm text-red-600 sm:w-full">{state.error}</p>
+        <p className="text-sm text-danger sm:w-full">{state.error}</p>
       )}
       {state.success && (
         <p className="text-sm text-green-600 sm:w-full">{state.success}</p>

@@ -37,14 +37,14 @@ export default async function AkunPage() {
       </div>
 
       <section className="space-y-3">
-        <h2 className="text-sm font-semibold text-slate-700">
+        <h2 className="text-sm font-semibold text-foreground">
           Akun Staff Baru
         </h2>
         <StaffForm branches={branches} />
       </section>
 
       <section className="space-y-3">
-        <h2 className="text-sm font-semibold text-slate-700">Semua Akun</h2>
+        <h2 className="text-sm font-semibold text-foreground">Semua Akun</h2>
         <UserList users={users} branches={branches} />
       </section>
     </div>

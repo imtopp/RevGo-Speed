@@ -76,7 +76,7 @@ function ActionPanel({
           <button
             type="submit"
             disabled={assignPending}
-            className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 active:opacity-90 disabled:opacity-60"
+            className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-foreground active:opacity-90 disabled:opacity-60"
           >
             {assignPending ? "..." : "Assign"}
           </button>
@@ -101,7 +101,7 @@ function ActionPanel({
           <button
             type="submit"
             disabled={resetPending}
-            className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 active:opacity-90 disabled:opacity-60"
+            className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-foreground active:opacity-90 disabled:opacity-60"
           >
             {resetPending ? "..." : "Reset"}
           </button>
@@ -116,7 +116,7 @@ function ActionPanel({
             disabled={togglePending}
             className={`w-full rounded-lg px-3 py-1.5 text-sm font-medium active:opacity-90 disabled:opacity-60 ${
               user.isActive
-                ? "bg-red-50 text-red-600 ring-1 ring-red-200"
+                ? "bg-red-50 text-danger ring-1 ring-red-200"
                 : "bg-green-50 text-green-700 ring-1 ring-green-200"
             }`}
           >
@@ -130,7 +130,7 @@ function ActionPanel({
       )}
 
       {(resetState.error || toggleState.error || assignState.error) && (
-        <p className="text-sm text-red-600">
+        <p className="text-sm text-danger">
           {resetState.error || toggleState.error || assignState.error}
         </p>
       )}
@@ -172,7 +172,7 @@ export function UserList({
             <button
               type="button"
               onClick={() => setOpenId(openId === user.id ? null : user.id)}
-              className="shrink-0 text-sm font-medium text-slate-700 underline underline-offset-2"
+              className="shrink-0 text-sm font-medium text-foreground underline underline-offset-2"
             >
               {openId === user.id ? "Tutup" : "Atur"}
             </button>

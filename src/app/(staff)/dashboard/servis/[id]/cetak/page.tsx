@@ -41,7 +41,7 @@ export default async function CetakNotaPage({
         <PrintButton />
         <Link
           href={`/dashboard/servis/${service.id}`}
-          className="rounded-lg border border-slate-300 bg-surface px-4 py-2.5 text-sm font-medium text-slate-700"
+          className="rounded-lg border border-slate-300 bg-surface px-4 py-2.5 text-sm font-medium text-foreground"
         >
           Kembali
         </Link>
@@ -51,26 +51,26 @@ export default async function CetakNotaPage({
       <div className="rounded-lg bg-surface p-5 text-sm text-black ring-1 ring-slate-200 shadow-card print:ring-0">
         <div className="text-center">
           <p className="text-lg font-bold">{service.branch.name}</p>
-          <p className="text-xs text-slate-600">{appName} · Bengkel</p>
+          <p className="text-xs text-muted-foreground">{appName} · Bengkel</p>
         </div>
 
         <div className="mt-3 border-t border-dashed border-slate-300 pt-3">
           <p className="font-mono text-xs">{service.code}</p>
-          <p className="text-xs text-slate-600">{formatTanggal(service.finishedAt ?? service.createdAt)}</p>
+          <p className="text-xs text-muted-foreground">{formatTanggal(service.finishedAt ?? service.createdAt)}</p>
         </div>
 
         <div className="mt-3 space-y-0.5 text-xs">
           <div className="flex justify-between">
-            <span className="text-slate-600">Customer</span>
+            <span className="text-muted-foreground">Customer</span>
             <span>{service.customer.name}</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-slate-600">Kendaraan</span>
+            <span className="text-muted-foreground">Kendaraan</span>
             <span>{service.vehicle.plateNumber} ({service.vehicle.brand} {service.vehicle.model})</span>
           </div>
           {service.customer.phone && (
             <div className="flex justify-between">
-              <span className="text-slate-600">HP</span>
+              <span className="text-muted-foreground">HP</span>
               <span>{service.customer.phone}</span>
             </div>
           )}
@@ -79,7 +79,7 @@ export default async function CetakNotaPage({
         <div className="mt-3 border-t border-dashed border-slate-300 pt-3">
           <table className="w-full text-xs">
             <thead>
-              <tr className="text-left text-slate-600">
+              <tr className="text-left text-muted-foreground">
                 <th className="pb-1">Item</th>
                 <th className="pb-1 text-right">Qty</th>
                 <th className="pb-1 text-right">Harga</th>
@@ -111,11 +111,11 @@ export default async function CetakNotaPage({
             <span>{formatRupiah(totalTagihan)}</span>
           </div>
           <div className="mt-1 flex justify-between">
-            <span className="text-slate-600">Dibayar</span>
+            <span className="text-muted-foreground">Dibayar</span>
             <span>{formatRupiah(totalPaid)}</span>
           </div>
           {sisa > 0 ? (
-            <div className="mt-0.5 flex justify-between font-semibold text-red-600">
+            <div className="mt-0.5 flex justify-between font-semibold text-danger">
               <span>Sisa</span>
               <span>{formatRupiah(sisa)}</span>
             </div>

@@ -9,6 +9,7 @@ import {
   ACTIVE_STATUSES,
 } from "@/lib/service-status";
 import { BookingForm } from "./booking-form";
+import { buildModelPerMerek } from "@/lib/vehicle";
 import type { ServiceStatus } from "@db/prisma/client";
 
 export const metadata = { title: "Servis" };
@@ -42,7 +43,7 @@ export default async function ServisPage({
         ? { status: { in: ACTIVE_STATUSES } }
         : { status: filter as ServiceStatus };
 
-  const [services, branches, catalog] = await Promise.all([
+  const [services, branches, catalog, modelRows] = await Promise.all([
     prisma.service.findMany({
       where,
       orderBy: { createdAt: "desc" },
@@ -56,6 +57,11 @@ export default async function ServisPage({
     prisma.serviceCatalog.findMany({
       where: { aktif: true },
       orderBy: { nama: "asc" },
+    }),
+    prisma.vehicle.findMany({
+      distinct: ["brand", "model"],
+      select: { brand: true, model: true },
+      orderBy: { model: "asc" },
     }),
   ]);
 
@@ -71,7 +77,7 @@ export default async function ServisPage({
         <div className="flex items-center gap-2">
           <Link
             href="/dashboard/katalog"
-            className="rounded-lg border border-slate-300 bg-surface px-3 py-2 text-sm font-medium text-slate-700 active:opacity-90"
+            className="rounded-lg border border-slate-300 bg-surface px-3 py-2 text-sm font-medium text-foreground active:opacity-90"
           >
             Katalog
           </Link>
@@ -84,7 +90,13 @@ export default async function ServisPage({
         </div>
       </div>
 
-      {showBooking && <BookingForm branches={branches} catalog={catalog} />}
+      {showBooking && (
+        <BookingForm
+          branches={branches}
+          catalog={catalog}
+          modelPerMerek={buildModelPerMerek(modelRows)}
+        />
+      )}
 
       {/* Filter tabs */}
       <div className="flex gap-1 overflow-x-auto pb-1">
@@ -97,7 +109,7 @@ export default async function ServisPage({
               className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-medium ${
                 active
                   ? "bg-primary text-white"
-                  : "bg-surface text-slate-600 ring-1 ring-slate-200 shadow-card"
+                  : "bg-surface text-muted-foreground ring-1 ring-slate-200 shadow-card"
               }`}
             >
               {f.label}
@@ -144,7 +156,7 @@ export default async function ServisPage({
               </div>
             </div>
             {s.estimate > 0 && (
-              <p className="mt-2 text-sm font-medium text-slate-700">
+              <p className="mt-2 text-sm font-medium text-foreground">
                 Est. {formatRupiah(s.estimate)}
               </p>
             )}

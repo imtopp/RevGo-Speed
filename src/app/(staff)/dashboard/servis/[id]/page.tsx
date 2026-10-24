@@ -5,6 +5,7 @@ import Link from "next/link";
 import {
   STATUS_LABEL,
   STATUS_COLOR,
+  NEXT_ACTION_LABEL,
   formatRupiah,
   formatTanggal,
 } from "@/lib/service-status";
@@ -88,7 +89,7 @@ export default async function ServisDetailPage({
         {!isMechanic && (
           <Link
             href={`/dashboard/servis/${service.id}/cetak`}
-            className="ml-3 text-sm font-medium text-slate-700 underline underline-offset-2"
+            className="ml-3 text-sm font-medium text-foreground underline underline-offset-2"
           >
             🖨 Cetak Nota
           </Link>
@@ -146,7 +147,7 @@ export default async function ServisDetailPage({
           {service.cancelReason && (
             <div className="col-span-2">
               <dt className="text-muted-foreground">Alasan Batal</dt>
-              <dd className="text-red-600">{service.cancelReason}</dd>
+              <dd className="text-danger">{service.cancelReason}</dd>
             </div>
           )}
         </dl>
@@ -154,11 +155,11 @@ export default async function ServisDetailPage({
 
       {/* Timeline */}
       <div className="rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
-        <h2 className="text-sm font-semibold text-slate-700">Riwayat</h2>
+        <h2 className="text-sm font-semibold text-foreground">Riwayat</h2>
         <ul className="mt-2 space-y-1.5">
           {timeline.map((t) => (
             <li key={t.label} className="flex justify-between text-sm">
-              <span className="text-slate-600">{t.label}</span>
+              <span className="text-muted-foreground">{t.label}</span>
               <span className="text-slate-400">{formatTanggal(t.at)}</span>
             </li>
           ))}
@@ -168,7 +169,7 @@ export default async function ServisDetailPage({
       {/* Part terpakai */}
       <div className="rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
         <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-slate-700">Part Terpakai</h2>
+          <h2 className="text-sm font-semibold text-foreground">Part Terpakai</h2>
           <span className="text-sm text-muted-foreground">
             {formatRupiah(totalPartHarga)}
           </span>
@@ -209,7 +210,7 @@ export default async function ServisDetailPage({
 
       {/* Pembayaran */}
       <div className="rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
-        <h2 className="text-sm font-semibold text-slate-700">Pembayaran</h2>
+        <h2 className="text-sm font-semibold text-foreground">Pembayaran</h2>
         {service.payments.length === 0 ? (
           <p className="mt-2 text-sm text-muted-foreground">Belum ada pembayaran.</p>
         ) : (
@@ -223,7 +224,7 @@ export default async function ServisDetailPage({
                   <p>
                     {p.kind === "DP" ? "DP" : "Bayar"} · {p.method}
                     {p.voidedAt && (
-                      <span className="ml-2 rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-medium text-red-600">
+                      <span className="ml-2 rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-medium text-danger">
                         DIBATALKAN
                       </span>
                     )}
@@ -257,7 +258,7 @@ export default async function ServisDetailPage({
           </div>
           <div
             className={`mt-1 flex justify-between font-semibold ${
-              remaining > 0 ? "text-red-600" : "text-success"
+              remaining > 0 ? "text-danger" : "text-success"
             }`}
           >
             <span>{remaining > 0 ? "Sisa tagihan" : "Status"}</span>
@@ -275,21 +276,37 @@ export default async function ServisDetailPage({
 
       {/* Aksi contextual */}
       {canAct && service.status !== "DONE" && service.status !== "CANCELLED" && (
-        <ActionForms
-          service={{
-            id: service.id,
-            status: service.status,
-            estimate: service.estimate,
-            laborCost: service.laborCost,
-            mechanicId: service.mechanicId,
-            scheduledAt: service.scheduledAt,
-            complaint: service.complaint,
-          }}
-          mechanics={mechanics}
-          parts={parts}
-          isMechanic={isMechanic}
-          isAssignedMechanic={isAssignedMechanic}
-        />
+        <>
+          <ActionForms
+            service={{
+              id: service.id,
+              status: service.status,
+              estimate: service.estimate,
+              laborCost: service.laborCost,
+              mechanicId: service.mechanicId,
+              scheduledAt: service.scheduledAt,
+              complaint: service.complaint,
+            }}
+            mechanics={mechanics}
+            parts={parts}
+            isMechanic={isMechanic}
+            isAssignedMechanic={isAssignedMechanic}
+          />
+          {/* Sticky action bar — mobile, zona jempol */}
+          <div className="sticky bottom-[45px] z-30 md:hidden">
+            <a
+              href="#aksi"
+              className="flex items-center justify-between gap-3 rounded-xl bg-secondary px-4 py-3 shadow-card"
+            >
+              <span className="min-w-0 truncate text-sm font-medium text-white">
+                {NEXT_ACTION_LABEL[service.status]}
+              </span>
+              <span className="shrink-0 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-white">
+                Buka Aksi ↓
+              </span>
+            </a>
+          </div>
+        </>
       )}
 
       {(service.status === "DONE" || service.status === "CANCELLED") && (

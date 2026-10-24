@@ -17,7 +17,7 @@ export function StaffForm({ branches }: { branches: Branch[] }) {
       className="space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card"
     >
       {state.error && (
-        <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
+        <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-danger">
           {state.error}
         </p>
       )}
@@ -29,7 +29,7 @@ export function StaffForm({ branches }: { branches: Branch[] }) {
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div>
-          <label className="block text-sm font-medium text-slate-700">
+          <label className="block text-sm font-medium text-foreground">
             Nama
           </label>
           <input
@@ -39,7 +39,7 @@ export function StaffForm({ branches }: { branches: Branch[] }) {
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-slate-700">
+          <label className="block text-sm font-medium text-foreground">
             Email
           </label>
           <input
@@ -53,7 +53,7 @@ export function StaffForm({ branches }: { branches: Branch[] }) {
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div>
-          <label className="block text-sm font-medium text-slate-700">
+          <label className="block text-sm font-medium text-foreground">
             No. HP (opsional)
           </label>
           <input
@@ -63,7 +63,7 @@ export function StaffForm({ branches }: { branches: Branch[] }) {
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-slate-700">
+          <label className="block text-sm font-medium text-foreground">
             Password
           </label>
           <input
@@ -78,7 +78,7 @@ export function StaffForm({ branches }: { branches: Branch[] }) {
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div>
-          <label className="block text-sm font-medium text-slate-700">
+          <label className="block text-sm font-medium text-foreground">
             Role
           </label>
           <select
@@ -92,7 +92,7 @@ export function StaffForm({ branches }: { branches: Branch[] }) {
           </select>
         </div>
         <div>
-          <label className="block text-sm font-medium text-slate-700">
+          <label className="block text-sm font-medium text-foreground">
             Cabang (Admin/Mekanik)
           </label>
           <select

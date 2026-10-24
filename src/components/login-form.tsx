@@ -24,7 +24,7 @@ function LoginFormInner() {
   return (
     <form onSubmit={handleSubmit} className="mt-6 space-y-4">
       {hasError && (
-        <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
+        <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-danger">
           Email atau password salah.
         </p>
       )}
@@ -36,7 +36,7 @@ function LoginFormInner() {
       <div>
         <label
           htmlFor="email"
-          className="block text-sm font-medium text-slate-700"
+          className="block text-sm font-medium text-foreground"
         >
           Email
         </label>
@@ -52,7 +52,7 @@ function LoginFormInner() {
       <div>
         <label
           htmlFor="password"
-          className="block text-sm font-medium text-slate-700"
+          className="block text-sm font-medium text-foreground"
         >
           Password
         </label>

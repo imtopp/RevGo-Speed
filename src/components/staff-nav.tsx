@@ -10,10 +10,11 @@ const OWNER_SYS: readonly Role[] = ["OWNER", "SYS_ADMIN"];
 
 const BOTTOM_ITEMS = [
   { href: "/dashboard", label: "Beranda", roles: ALL_STAFF },
-  { href: "/dashboard/tugas", label: "Tugas", roles: ["MECHANIC"] as readonly Role[] },
+  { href: "/dashboard/tugas", label: "Tugas Saya", roles: ["MECHANIC"] as readonly Role[] },
   { href: "/dashboard/servis", label: "Servis", roles: ADMIN_ROLES },
   { href: "/dashboard/stok", label: "Stok", roles: ADMIN_ROLES },
   { href: "/dashboard/kas", label: "Kas", roles: ADMIN_ROLES },
+  { href: "/dashboard/piutang", label: "Piutang", roles: ADMIN_ROLES },
   { href: "/dashboard/laporan", label: "Laporan", roles: ADMIN_ROLES },
   { href: "/dashboard/audit", label: "Audit", roles: ["OWNER"] as readonly Role[] },
 ] as const;
@@ -66,7 +67,9 @@ export function StaffNav({ role }: { role: Role }) {
             key={item.href}
             href={item.href}
             aria-current={active ? "page" : undefined}
-            className={`border-t-2 py-3 text-center text-sm transition-colors ${
+            className={`border-t-2 py-3 text-center transition-colors ${
+              items.length > 5 ? "text-xs" : "text-sm"
+            } ${
               active
                 ? "border-slate-900 font-semibold text-foreground"
                 : "border-transparent font-medium text-muted-foreground"
@@ -104,7 +107,7 @@ export function SidebarNav({ role }: { role: Role }) {
                     className={`block rounded-lg px-3 py-2 text-sm transition-colors ${
                       active
                         ? "bg-primary font-semibold text-white"
-                        : "font-medium text-slate-600 hover:bg-slate-100 hover:text-foreground"
+                        : "font-medium text-muted-foreground hover:bg-slate-100 hover:text-foreground"
                     }`}
                   >
                     {item.label}

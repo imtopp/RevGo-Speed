@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
+import { normalizeMerek, normalizeTipe, modelTidakSesuaiMerek, MEREK_LAINNYA } from "@/lib/vehicle";
 import { revalidatePath } from "next/cache";
 import type { ServiceStatus } from "@db/prisma/client";
 
@@ -43,8 +44,11 @@ export async function createBooking(
   const scheduledAtRaw = String(formData.get("scheduledAt") ?? "").trim();
 
   // Data kendaraan & customer baru (jika belum terdaftar)
-  const brand = String(formData.get("brand") ?? "").trim();
-  const model = String(formData.get("model") ?? "").trim();
+  const brandRaw = String(formData.get("brand") ?? "").trim();
+  const brand = normalizeMerek(
+    brandRaw === MEREK_LAINNYA ? String(formData.get("brandLain") ?? "") : brandRaw,
+  );
+  const model = normalizeTipe(String(formData.get("model") ?? ""));
   const customerName = String(formData.get("customerName") ?? "").trim();
   const customerEmail = String(formData.get("customerEmail") ?? "").trim().toLowerCase();
   const customerPhone = String(formData.get("customerPhone") ?? "").trim();
@@ -71,6 +75,9 @@ export async function createBooking(
         error:
           "Kendaraan belum terdaftar. Isi juga nama, email, merek, dan tipe customer untuk mendaftarkan.",
       };
+    }
+    if (modelTidakSesuaiMerek(brand, model)) {
+      return { error: `"${model}" bukan tipe merek ${brand}. Periksa pilihan merek/tipe.` };
     }
     let customer = await prisma.user.findUnique({ where: { email: customerEmail } });
     if (!customer) {

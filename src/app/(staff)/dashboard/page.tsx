@@ -104,7 +104,7 @@ export default async function DashboardHome() {
           >
             <p
               className={`text-xl font-bold tabular-nums ${
-                stat.accent ? "text-red-600" : ""
+                stat.accent ? "text-danger" : ""
               }`}
             >
               {stat.value}
@@ -124,7 +124,7 @@ export default async function DashboardHome() {
           </Link>
           <Link
             href="/dashboard/piutang"
-            className="rounded-xl bg-surface p-4 text-center text-sm font-medium text-slate-700 ring-1 ring-slate-200 shadow-card"
+            className="rounded-xl bg-surface p-4 text-center text-sm font-medium text-foreground ring-1 ring-slate-200 shadow-card"
           >
             Lihat Piutang
           </Link>

@@ -47,7 +47,7 @@ function useForm(action: (prev: ServisState, fd: FormData) => Promise<ServisStat
 function Msg({ state }: { state: ServisState }) {
   if (state.error)
     return (
-      <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
+      <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-danger">
         {state.error}
       </p>
     );
@@ -69,7 +69,7 @@ function Field({
 }) {
   return (
     <div>
-      <label className="block text-sm font-medium text-slate-700">{label}</label>
+      <label className="block text-sm font-medium text-foreground">{label}</label>
       {children}
     </div>
   );
@@ -80,9 +80,9 @@ const inputCls =
 const btnPrimary =
   "w-full rounded-lg bg-primary py-2.5 text-sm font-medium text-white active:opacity-90 disabled:opacity-60";
 const btnSecondary =
-  "w-full rounded-lg border border-slate-300 py-2.5 text-sm font-medium text-slate-700 active:opacity-90 disabled:opacity-60";
+  "w-full rounded-lg border border-slate-300 py-2.5 text-sm font-medium text-foreground active:opacity-90 disabled:opacity-60";
 const btnDanger =
-  "w-full rounded-lg bg-red-50 py-2.5 text-sm font-medium text-red-600 ring-1 ring-red-200 active:opacity-90 disabled:opacity-60";
+  "w-full rounded-lg bg-red-50 py-2.5 text-sm font-medium text-danger ring-1 ring-red-200 active:opacity-90 disabled:opacity-60";
 
 // ── Form-form aksi ────────────────────────────────────────────────────
 
@@ -97,7 +97,7 @@ function EstimateForm({
   return (
     <form action={formAction} className="space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
       <input type="hidden" name="id" value={service.id} />
-      <p className="text-sm font-semibold text-slate-700">Isi Estimasi</p>
+      <p className="text-sm font-semibold text-foreground">Isi Estimasi</p>
       <Msg state={state} />
       <div className="grid grid-cols-2 gap-3">
         <Field label="Estimasi Biaya (Rp)">
@@ -145,7 +145,7 @@ function CheckInForm({ service }: { service: ServiceInfo }) {
   return (
     <form action={formAction} className="space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
       <input type="hidden" name="id" value={service.id} />
-      <p className="text-sm font-semibold text-slate-700">
+      <p className="text-sm font-semibold text-foreground">
         Pemeriksaan Awal (Terima Unit)
       </p>
       <Msg state={state} />
@@ -164,7 +164,7 @@ function CheckInForm({ service }: { service: ServiceInfo }) {
         </Field>
       </div>
       <Field label="Kondisi yang sudah ada (goresan, penyok, dll)">
-        <input name="existingCondition" placeholder="Baret bemper depan kiri" className={inputCls} />
+        <input name="existingCondition" placeholder="Baret spion kanan" className={inputCls} />
       </Field>
       <Field label="Keluhan disepakati">
         <input name="agreedComplaint" defaultValue={service.complaint ?? ""} className={inputCls} />
@@ -194,7 +194,7 @@ function DiagnosisForm({ service }: { service: ServiceInfo }) {
   return (
     <form action={formAction} className="space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
       <input type="hidden" name="id" value={service.id} />
-      <p className="text-sm font-semibold text-slate-700">Diagnosis</p>
+      <p className="text-sm font-semibold text-foreground">Diagnosis</p>
       <Msg state={state} />
       <textarea name="diagnosis" rows={3} defaultValue={service.complaint ?? ""} className={inputCls} />
       <button type="submit" disabled={pending} className={btnSecondary}>
@@ -215,7 +215,7 @@ function AddPartForm({
   return (
     <form action={formAction} className="space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
       <input type="hidden" name="serviceId" value={serviceId} />
-      <p className="text-sm font-semibold text-slate-700">Catat Part Terpakai</p>
+      <p className="text-sm font-semibold text-foreground">Catat Part Terpakai</p>
       <Msg state={state} />
       <Field label="Part (stok cabang)">
         <select name="partId" required className={inputCls}>
@@ -240,7 +240,7 @@ function AddPartForm({
 function WaitingPartsForm({ service }: { service: ServiceInfo }) {
   const { state, formAction, pending } = useForm(markWaitingParts);
   return (
-    <form action={formAction} className="space-y-2">
+    <form action={formAction} className="space-y-2 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
       <input type="hidden" name="id" value={service.id} />
       <Msg state={state} />
       <button type="submit" disabled={pending} className={btnSecondary}>
@@ -253,7 +253,7 @@ function WaitingPartsForm({ service }: { service: ServiceInfo }) {
 function ResumeForm({ service }: { service: ServiceInfo }) {
   const { state, formAction, pending } = useForm(resumeWork);
   return (
-    <form action={formAction} className="space-y-2">
+    <form action={formAction} className="space-y-2 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
       <input type="hidden" name="id" value={service.id} />
       <Msg state={state} />
       <button type="submit" disabled={pending} className={btnPrimary}>
@@ -266,7 +266,7 @@ function ResumeForm({ service }: { service: ServiceInfo }) {
 function FinishForm({ service }: { service: ServiceInfo }) {
   const { state, formAction, pending } = useForm(mechanicFinish);
   return (
-    <form action={formAction} className="space-y-2">
+    <form action={formAction} className="space-y-2 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
       <input type="hidden" name="id" value={service.id} />
       <Msg state={state} />
       <button type="submit" disabled={pending} className={btnPrimary}>
@@ -300,7 +300,7 @@ function CancelForm({ service }: { service: ServiceInfo }) {
   return (
     <form action={formAction} className="space-y-2 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
       <input type="hidden" name="id" value={service.id} />
-      <p className="text-sm font-semibold text-red-600">Batalkan Servis</p>
+      <p className="text-sm font-semibold text-danger">Batalkan Servis</p>
       <Msg state={state} />
       <Field label="Alasan *">
         <input name="reason" required placeholder="Customer batal, dll" className={inputCls} />
@@ -313,6 +313,28 @@ function CancelForm({ service }: { service: ServiceInfo }) {
 }
 
 // ── Panel utama ───────────────────────────────────────────────────────
+
+function NextStep({ children }: { children: React.ReactNode }) {
+  return (
+    <div>
+      <p className="mb-2 inline-block rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary">
+        Langkah berikutnya
+      </p>
+      {children}
+    </div>
+  );
+}
+
+function OtherActions({ children }: { children: React.ReactNode }) {
+  return (
+    <details className="group">
+      <summary className="inline-block cursor-pointer rounded-lg border border-slate-300 bg-surface px-4 py-2 text-sm font-medium text-foreground active:opacity-90">
+        Aksi lainnya ▾
+      </summary>
+      <div className="mt-3 space-y-3">{children}</div>
+    </details>
+  );
+}
 
 export function ActionForms({
   service,
@@ -329,55 +351,67 @@ export function ActionForms({
 }) {
   const canAdmin = !isMechanic;
 
+  let primary: React.ReactNode = null;
+  let others: React.ReactNode[] = [];
+
+  switch (service.status) {
+    case "PENDING":
+      if (canAdmin) {
+        primary = <EstimateForm service={service} mechanics={mechanics} />;
+        others = [
+          <ApproveForm key="approve" service={service} />,
+          <CancelForm key="cancel" service={service} />,
+        ];
+      }
+      break;
+    case "WAITING_APPROVAL":
+      if (canAdmin) {
+        primary = <ApproveForm service={service} />;
+        others = [<CancelForm key="cancel" service={service} />];
+      }
+      break;
+    case "CONFIRMED":
+      primary = <CheckInForm service={service} />;
+      others = canAdmin ? [<CancelForm key="cancel" service={service} />] : [];
+      break;
+    case "CHECKED_IN":
+      primary = <StartWorkForm service={service} />;
+      others = canAdmin ? [<CancelForm key="cancel" service={service} />] : [];
+      break;
+    case "IN_PROGRESS":
+      primary =
+        isAssignedMechanic || canAdmin ? (
+          <FinishForm service={service} />
+        ) : null;
+      others = [
+        <DiagnosisForm key="dx" service={service} />,
+        <AddPartForm key="part" serviceId={service.id} parts={parts} />,
+        canAdmin && <WaitingPartsForm key="wp" service={service} />,
+        canAdmin && <QcForm key="qc" service={service} />,
+      ].filter(Boolean);
+      break;
+    case "WAITING_PARTS":
+      primary = canAdmin ? (
+        <ResumeForm service={service} />
+      ) : (
+        <AddPartForm serviceId={service.id} parts={parts} />
+      );
+      others = [
+        <DiagnosisForm key="dx" service={service} />,
+        canAdmin && <AddPartForm key="part" serviceId={service.id} parts={parts} />,
+        canAdmin && <QcForm key="qc" service={service} />,
+      ].filter(Boolean);
+      break;
+    default:
+      break;
+  }
+
+  if (!primary && others.length === 0) return null;
+
   return (
-    <div className="space-y-3">
-      {service.status === "PENDING" && (
-        <>
-          {canAdmin && <EstimateForm service={service} mechanics={mechanics} />}
-          {canAdmin && <ApproveForm service={service} />}
-        </>
-      )}
-
-      {service.status === "WAITING_APPROVAL" && canAdmin && (
-        <ApproveForm service={service} />
-      )}
-
-      {service.status === "CONFIRMED" && <CheckInForm service={service} />}
-
-      {service.status === "CHECKED_IN" && (
-        <>
-          <StartWorkForm service={service} />
-          {canAdmin && <CancelForm service={service} />}
-        </>
-      )}
-
-      {(service.status === "IN_PROGRESS" ||
-        service.status === "WAITING_PARTS") && (
-        <>
-          <DiagnosisForm service={service} />
-          <AddPartForm serviceId={service.id} parts={parts} />
-          {service.status === "IN_PROGRESS" && (
-            <>
-              {isAssignedMechanic || canAdmin ? (
-                <FinishForm service={service} />
-              ) : null}
-              {canAdmin && <WaitingPartsForm service={service} />}
-              {canAdmin && <QcForm service={service} />}
-            </>
-          )}
-          {service.status === "WAITING_PARTS" && (
-            <>
-              <ResumeForm service={service} />
-              {canAdmin && <QcForm service={service} />}
-            </>
-          )}
-        </>
-      )}
-
-      {(service.status === "PENDING" ||
-        service.status === "WAITING_APPROVAL" ||
-        service.status === "CONFIRMED") &&
-        canAdmin && <CancelForm service={service} />}
+    <div id="aksi" className="scroll-mt-20 space-y-3">
+      {primary && <NextStep>{primary}</NextStep>}
+      {others.length > 0 && <OtherActions>{others}</OtherActions>}
     </div>
   );
 }

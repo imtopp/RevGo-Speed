@@ -13,7 +13,7 @@ export default async function CustomerLayout({
 
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-none flex-col bg-background md:max-w-3xl">
-      <header className="flex items-center justify-between bg-secondary px-4 py-3 text-white">
+      <header className="sticky top-0 z-40 flex items-center justify-between bg-secondary px-4 py-3 text-white">
         <BrandMark />
         <div className="flex items-center gap-3">
           <span className="max-w-32 truncate text-sm text-slate-300">

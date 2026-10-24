@@ -94,7 +94,7 @@ export default async function StokPage({
             className={`rounded-full px-3 py-1.5 text-xs font-medium ${
               tab === t.key
                 ? "bg-primary text-white"
-                : "bg-surface text-slate-600 ring-1 ring-slate-200 shadow-card"
+                : "bg-surface text-muted-foreground ring-1 ring-slate-200 shadow-card"
             }`}
           >
             {t.label}

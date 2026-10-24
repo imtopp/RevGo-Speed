@@ -80,7 +80,7 @@ export default async function KasPage({
       </ToggleManualForm>
 
       <div>
-        <p className="mb-2 text-sm font-semibold text-slate-700">
+        <p className="mb-2 text-sm font-semibold text-foreground">
           Riwayat (100 terakhir)
         </p>
         <RiwayatList items={flows} />

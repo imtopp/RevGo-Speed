@@ -14,7 +14,6 @@ export default async function StaffLayout({ children }: { children: React.ReactN
   }
 
   const showSettings = isOwnerOrSysAdmin(session.user.role);
-  const showPiutang = ["OWNER", "ADMIN"].includes(session.user.role);
 
   return (
     <div className="flex min-h-dvh">
@@ -25,7 +24,7 @@ export default async function StaffLayout({ children }: { children: React.ReactN
         </div>
         <SidebarNav role={session.user.role} />
         <div className="border-t border-slate-200 px-5 py-4">
-          <p className="truncate text-sm font-medium text-slate-700">
+          <p className="truncate text-sm font-medium text-foreground">
             {session.user.name}
           </p>
           <form
@@ -35,7 +34,7 @@ export default async function StaffLayout({ children }: { children: React.ReactN
             }}
             className="mt-2"
           >
-            <button className="text-sm font-medium text-slate-700 underline underline-offset-2">
+            <button className="text-sm font-medium text-foreground underline underline-offset-2">
               Keluar
             </button>
           </form>
@@ -45,20 +44,12 @@ export default async function StaffLayout({ children }: { children: React.ReactN
       {/* Kolom konten */}
       <div className="flex min-h-dvh min-w-0 flex-1 flex-col">
         {/* Header — hanya mobile */}
-        <header className="flex items-center justify-between bg-secondary px-4 py-3 text-white md:hidden">
+        <header className="sticky top-0 z-40 flex items-center justify-between bg-secondary px-4 py-3 text-white md:hidden">
           <BrandMark />
           <div className="flex items-center gap-3">
             <span className="max-w-24 truncate text-sm text-slate-300">
               {session.user.name}
             </span>
-            {showPiutang && (
-              <Link
-                href="/dashboard/piutang"
-                className="text-sm font-medium text-slate-200 underline underline-offset-2"
-              >
-                Piutang
-              </Link>
-            )}
             {showSettings && (
               <Link
                 href="/dashboard/pengaturan"
@@ -85,7 +76,7 @@ export default async function StaffLayout({ children }: { children: React.ReactN
         </main>
 
         {/* Bottom nav — hanya mobile */}
-        <div className="md:hidden">
+        <div className="sticky bottom-0 z-40 md:hidden">
           <StaffNav role={session.user.role} />
         </div>
       </div>

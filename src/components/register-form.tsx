@@ -16,14 +16,14 @@ export function RegisterForm() {
   return (
     <form action={action} className="mt-6 space-y-4">
       {state.error && (
-        <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
+        <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-danger">
           {state.error}
         </p>
       )}
       <div>
         <label
           htmlFor="name"
-          className="block text-sm font-medium text-slate-700"
+          className="block text-sm font-medium text-foreground"
         >
           Nama
         </label>
@@ -39,7 +39,7 @@ export function RegisterForm() {
       <div>
         <label
           htmlFor="phone"
-          className="block text-sm font-medium text-slate-700"
+          className="block text-sm font-medium text-foreground"
         >
           No. HP (opsional)
         </label>
@@ -54,7 +54,7 @@ export function RegisterForm() {
       <div>
         <label
           htmlFor="email"
-          className="block text-sm font-medium text-slate-700"
+          className="block text-sm font-medium text-foreground"
         >
           Email
         </label>
@@ -70,7 +70,7 @@ export function RegisterForm() {
       <div>
         <label
           htmlFor="password"
-          className="block text-sm font-medium text-slate-700"
+          className="block text-sm font-medium text-foreground"
         >
           Password
         </label>

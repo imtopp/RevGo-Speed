@@ -41,7 +41,7 @@ export default async function PengaturanPage() {
       </div>
 
       <section className="space-y-3">
-        <h2 className="text-sm font-semibold text-slate-700">Umum</h2>
+        <h2 className="text-sm font-semibold text-foreground">Umum</h2>
         <div className="space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
           {SETTING_FIELDS.map((field) => (
             <SettingForm
@@ -54,12 +54,12 @@ export default async function PengaturanPage() {
       </section>
 
       <section className="space-y-3">
-        <h2 className="text-sm font-semibold text-slate-700">Cabang</h2>
+        <h2 className="text-sm font-semibold text-foreground">Cabang</h2>
         <BranchManager branches={branches} />
       </section>
 
       <section className="space-y-3">
-        <h2 className="text-sm font-semibold text-slate-700">Lainnya</h2>
+        <h2 className="text-sm font-semibold text-foreground">Lainnya</h2>
         <div className="grid grid-cols-3 gap-3">
           <Link
             href="/dashboard/akun"

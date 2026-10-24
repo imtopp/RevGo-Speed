@@ -40,7 +40,7 @@ type Branch = { id: string; name: string };
 
 function Msg({ state }: { state: StokState }) {
   if (state.error)
-    return <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{state.error}</p>;
+    return <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-danger">{state.error}</p>;
   if (state.success)
     return <p className="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700">{state.success}</p>;
   return null;
@@ -51,7 +51,7 @@ const inputCls =
 const btnPrimary =
   "w-full rounded-lg bg-primary py-2.5 text-sm font-medium text-white active:opacity-90 disabled:opacity-60";
 const btnSecondary =
-  "rounded-lg border border-slate-300 bg-surface px-3 py-2 text-sm font-medium text-slate-700 active:opacity-90";
+  "rounded-lg border border-slate-300 bg-surface px-3 py-2 text-sm font-medium text-foreground active:opacity-90";
 
 function PartForm({
   branches,
@@ -67,11 +67,11 @@ function PartForm({
   const [state, action, pending] = useActionState<StokState, FormData>(createPart, {});
   return (
     <form action={action} className="space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
-      <p className="text-sm font-semibold text-slate-700">Tambah Part Baru</p>
+      <p className="text-sm font-semibold text-foreground">Tambah Part Baru</p>
       <Msg state={state} />
       {!isLocked && (
         <div>
-          <label className="block text-sm font-medium text-slate-700">Cabang</label>
+          <label className="block text-sm font-medium text-foreground">Cabang</label>
           <select name="branchId" defaultValue={activeBranchId ?? ""} className={inputCls}>
             {branches.map((b) => (
               <option key={b.id} value={b.id}>{b.name}</option>
@@ -81,35 +81,35 @@ function PartForm({
       )}
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="block text-sm font-medium text-slate-700">SKU</label>
+          <label className="block text-sm font-medium text-foreground">SKU</label>
           <input name="sku" required placeholder="OLI-001" className={`${inputCls} uppercase`} />
         </div>
         <div>
-          <label className="block text-sm font-medium text-slate-700">Nama</label>
+          <label className="block text-sm font-medium text-foreground">Nama</label>
           <input name="name" required placeholder="Oli Mesin 1L" className={inputCls} />
         </div>
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="block text-sm font-medium text-slate-700">Kategori</label>
+          <label className="block text-sm font-medium text-foreground">Kategori</label>
           <input name="category" placeholder="Oli" className={inputCls} />
         </div>
         <div>
-          <label className="block text-sm font-medium text-slate-700">Satuan</label>
+          <label className="block text-sm font-medium text-foreground">Satuan</label>
           <input name="unit" defaultValue="pcs" className={inputCls} />
         </div>
       </div>
       <div className="grid grid-cols-3 gap-2">
         <div>
-          <label className="block text-sm font-medium text-slate-700">Stok Awal</label>
+          <label className="block text-sm font-medium text-foreground">Stok Awal</label>
           <input name="quantity" type="number" min={0} defaultValue={0} className={inputCls} />
         </div>
         <div>
-          <label className="block text-sm font-medium text-slate-700">Min. Stok</label>
+          <label className="block text-sm font-medium text-foreground">Min. Stok</label>
           <input name="minStock" type="number" min={0} defaultValue={0} className={inputCls} />
         </div>
         <div>
-          <label className="block text-sm font-medium text-slate-700">Supplier</label>
+          <label className="block text-sm font-medium text-foreground">Supplier</label>
           <select name="supplierId" defaultValue="" className={inputCls}>
             <option value="">—</option>
             {suppliers.filter((s) => s.aktif).map((s) => (
@@ -120,11 +120,11 @@ function PartForm({
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="block text-sm font-medium text-slate-700">Harga Beli (Rp)</label>
+          <label className="block text-sm font-medium text-foreground">Harga Beli (Rp)</label>
           <input name="buyPrice" type="number" min={0} defaultValue={0} className={inputCls} />
         </div>
         <div>
-          <label className="block text-sm font-medium text-slate-700">Harga Jual (Rp)</label>
+          <label className="block text-sm font-medium text-foreground">Harga Jual (Rp)</label>
           <input name="sellPrice" type="number" min={0} defaultValue={0} className={inputCls} />
         </div>
       </div>
@@ -139,10 +139,10 @@ function StockInForm({ parts, suppliers }: { parts: Part[]; suppliers: Supplier[
   const [state, action, pending] = useActionState<StokState, FormData>(stockIn, {});
   return (
     <form action={action} className="space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
-      <p className="text-sm font-semibold text-slate-700">Stok Masuk (Pembelian)</p>
+      <p className="text-sm font-semibold text-foreground">Stok Masuk (Pembelian)</p>
       <Msg state={state} />
       <div>
-        <label className="block text-sm font-medium text-slate-700">Part</label>
+        <label className="block text-sm font-medium text-foreground">Part</label>
         <select name="partId" required className={inputCls}>
           <option value="">— Pilih —</option>
           {parts.map((p) => (
@@ -154,17 +154,17 @@ function StockInForm({ parts, suppliers }: { parts: Part[]; suppliers: Supplier[
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="block text-sm font-medium text-slate-700">Jumlah</label>
+          <label className="block text-sm font-medium text-foreground">Jumlah</label>
           <input name="quantity" type="number" min={1} required className={inputCls} />
         </div>
         <div>
-          <label className="block text-sm font-medium text-slate-700">Harga Beli /unit (Rp)</label>
+          <label className="block text-sm font-medium text-foreground">Harga Beli /unit (Rp)</label>
           <input name="buyPrice" type="number" min={0} required className={inputCls} />
         </div>
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="block text-sm font-medium text-slate-700">Supplier</label>
+          <label className="block text-sm font-medium text-foreground">Supplier</label>
           <select name="supplierId" defaultValue="" className={inputCls}>
             <option value="">—</option>
             {suppliers.filter((s) => s.aktif).map((s) => (
@@ -173,7 +173,7 @@ function StockInForm({ parts, suppliers }: { parts: Part[]; suppliers: Supplier[
           </select>
         </div>
         <div>
-          <label className="block text-sm font-medium text-slate-700">Bayar</label>
+          <label className="block text-sm font-medium text-foreground">Bayar</label>
           <select name="method" defaultValue="CASH" className={inputCls}>
             <option value="CASH">Tunai (Kas)</option>
             <option value="TRANSFER">Transfer (Bank)</option>
@@ -182,7 +182,7 @@ function StockInForm({ parts, suppliers }: { parts: Part[]; suppliers: Supplier[
         </div>
       </div>
       <div>
-        <label className="block text-sm font-medium text-slate-700">Catatan</label>
+        <label className="block text-sm font-medium text-foreground">Catatan</label>
         <input name="note" placeholder="PO-001" className={inputCls} />
       </div>
       <p className="text-xs text-slate-400">
@@ -199,10 +199,10 @@ function AdjustForm({ parts }: { parts: Part[] }) {
   const [state, action, pending] = useActionState<StokState, FormData>(adjustStock, {});
   return (
     <form action={action} className="space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
-      <p className="text-sm font-semibold text-slate-700">Penyesuaian Stok</p>
+      <p className="text-sm font-semibold text-foreground">Penyesuaian Stok</p>
       <Msg state={state} />
       <div>
-        <label className="block text-sm font-medium text-slate-700">Part</label>
+        <label className="block text-sm font-medium text-foreground">Part</label>
         <select name="partId" required className={inputCls}>
           <option value="">— Pilih —</option>
           {parts.map((p) => (
@@ -213,13 +213,13 @@ function AdjustForm({ parts }: { parts: Part[] }) {
         </select>
       </div>
       <div>
-        <label className="block text-sm font-medium text-slate-700">
+        <label className="block text-sm font-medium text-foreground">
           Selisih (+ tambah / − kurang)
         </label>
         <input name="delta" type="number" required placeholder="-2" className={inputCls} />
       </div>
       <div>
-        <label className="block text-sm font-medium text-slate-700">Alasan *</label>
+        <label className="block text-sm font-medium text-foreground">Alasan *</label>
         <input name="reason" required placeholder="Opname fisik, rusak, hilang" className={inputCls} />
       </div>
       <button type="submit" disabled={pending} className={btnSecondary}>
@@ -236,19 +236,19 @@ function SupplierPanel({ suppliers }: { suppliers: Supplier[] }) {
   return (
     <div className="space-y-3">
       <form action={createAction} className="space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
-        <p className="text-sm font-semibold text-slate-700">Tambah Supplier</p>
+        <p className="text-sm font-semibold text-foreground">Tambah Supplier</p>
         <Msg state={createState} />
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <div>
-            <label className="block text-sm font-medium text-slate-700">Nama</label>
+            <label className="block text-sm font-medium text-foreground">Nama</label>
             <input name="nama" required className={inputCls} />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700">Telepon</label>
+            <label className="block text-sm font-medium text-foreground">Telepon</label>
             <input name="telepon" className={inputCls} />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700">Catatan</label>
+            <label className="block text-sm font-medium text-foreground">Catatan</label>
             <input name="catatan" className={inputCls} />
           </div>
         </div>
@@ -274,7 +274,7 @@ function SupplierPanel({ suppliers }: { suppliers: Supplier[] }) {
               <button
                 type="button"
                 onClick={() => setEditId(editId === s.id ? null : s.id)}
-                className="text-sm font-medium text-slate-700 underline underline-offset-2"
+                className="text-sm font-medium text-foreground underline underline-offset-2"
               >
                 {editId === s.id ? "Tutup" : "Ubah"}
               </button>
@@ -295,19 +295,19 @@ function SupplierEdit({ supplier }: { supplier: Supplier }) {
       <Msg state={state} />
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <div>
-          <label className="block text-sm font-medium text-slate-700">Nama</label>
+          <label className="block text-sm font-medium text-foreground">Nama</label>
           <input name="nama" defaultValue={supplier.nama} required className={inputCls} />
         </div>
         <div>
-          <label className="block text-sm font-medium text-slate-700">Telepon</label>
+          <label className="block text-sm font-medium text-foreground">Telepon</label>
           <input name="telepon" defaultValue={supplier.telepon ?? ""} className={inputCls} />
         </div>
         <div>
-          <label className="block text-sm font-medium text-slate-700">Catatan</label>
+          <label className="block text-sm font-medium text-foreground">Catatan</label>
           <input name="catatan" defaultValue={supplier.catatan ?? ""} className={inputCls} />
         </div>
       </div>
-      <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
+      <label className="flex items-center gap-2 text-sm font-medium text-foreground">
         <input type="checkbox" name="aktif" defaultChecked={supplier.aktif} />
         Aktif
       </label>
@@ -340,7 +340,7 @@ function PartRow({ part }: { part: Part }) {
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
-          className="shrink-0 text-sm font-medium text-slate-700 underline underline-offset-2"
+          className="shrink-0 text-sm font-medium text-foreground underline underline-offset-2"
         >
           {open ? "Tutup" : "Ubah"}
         </button>
@@ -358,31 +358,31 @@ function PartEdit({ part }: { part: Part }) {
       <Msg state={state} />
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="block text-sm font-medium text-slate-700">Nama</label>
+          <label className="block text-sm font-medium text-foreground">Nama</label>
           <input name="name" defaultValue={part.name} required className={inputCls} />
         </div>
         <div>
-          <label className="block text-sm font-medium text-slate-700">Kategori</label>
+          <label className="block text-sm font-medium text-foreground">Kategori</label>
           <input name="category" defaultValue={part.category ?? ""} className={inputCls} />
         </div>
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="block text-sm font-medium text-slate-700">Satuan</label>
+          <label className="block text-sm font-medium text-foreground">Satuan</label>
           <input name="unit" defaultValue={part.unit} className={inputCls} />
         </div>
         <div>
-          <label className="block text-sm font-medium text-slate-700">Min. Stok</label>
+          <label className="block text-sm font-medium text-foreground">Min. Stok</label>
           <input name="minStock" type="number" min={0} defaultValue={part.minStock} className={inputCls} />
         </div>
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="block text-sm font-medium text-slate-700">Harga Beli</label>
+          <label className="block text-sm font-medium text-foreground">Harga Beli</label>
           <input name="buyPrice" type="number" min={0} defaultValue={part.buyPrice} className={inputCls} />
         </div>
         <div>
-          <label className="block text-sm font-medium text-slate-700">Harga Jual</label>
+          <label className="block text-sm font-medium text-foreground">Harga Jual</label>
           <input name="sellPrice" type="number" min={0} defaultValue={part.sellPrice} className={inputCls} />
         </div>
       </div>
@@ -431,7 +431,7 @@ export function StokPanels({
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
                 <p className="text-sm font-medium">
-                  <span className={m.type === "IN" ? "text-success" : "text-red-600"}>
+                  <span className={m.type === "IN" ? "text-success" : "text-danger"}>
                     {m.type === "IN" ? "+" : "−"}
                     {m.quantity}
                   </span>{" "}

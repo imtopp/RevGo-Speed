@@ -17,7 +17,7 @@ export function VoidPaymentForm({ paymentId }: { paymentId: string }) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="text-xs font-medium text-red-600 underline underline-offset-2"
+        className="text-xs font-medium text-danger underline underline-offset-2"
       >
         Batalkan
       </button>
@@ -36,7 +36,7 @@ export function VoidPaymentForm({ paymentId }: { paymentId: string }) {
         className="w-full rounded-lg border border-slate-300 px-2.5 py-1.5 text-xs outline-none focus:border-red-500"
       />
       {state.error && (
-        <p className="text-xs text-red-600">{state.error}</p>
+        <p className="text-xs text-danger">{state.error}</p>
       )}
       <div className="flex gap-2">
         <button
@@ -49,7 +49,7 @@ export function VoidPaymentForm({ paymentId }: { paymentId: string }) {
         <button
           type="button"
           onClick={() => setOpen(false)}
-          className="rounded-lg border border-slate-200 bg-surface px-3 py-1.5 text-xs text-slate-600"
+          className="rounded-lg border border-slate-200 bg-surface px-3 py-1.5 text-xs text-muted-foreground"
         >
           Batal
         </button>

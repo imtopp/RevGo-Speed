@@ -10,7 +10,7 @@ const btnPrimary =
 
 function Msg({ state }: { state: BayarState }) {
   if (state.error)
-    return <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{state.error}</p>;
+    return <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-danger">{state.error}</p>;
   if (state.success)
     return <p className="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700">{state.success}</p>;
   return null;
@@ -39,7 +39,7 @@ export function PaymentForm({
     >
       <input type="hidden" name="serviceId" value={serviceId} />
       <div className="flex items-center justify-between">
-        <p className="text-sm font-semibold text-slate-700">Terima Bayar</p>
+        <p className="text-sm font-semibold text-foreground">Terima Bayar</p>
         <p className="text-xs text-muted-foreground">
           Sisa {remaining.toLocaleString("id-ID")}
         </p>
@@ -47,11 +47,11 @@ export function PaymentForm({
       <Msg state={state} />
       <div className="grid grid-cols-2 gap-2">
         <div>
-          <label className="block text-sm font-medium text-slate-700">Jumlah (Rp)</label>
+          <label className="block text-sm font-medium text-foreground">Jumlah (Rp)</label>
           <input name="amount" type="number" min={1} max={remaining} required className={inputCls} />
         </div>
         <div>
-          <label className="block text-sm font-medium text-slate-700">Jenis</label>
+          <label className="block text-sm font-medium text-foreground">Jenis</label>
           <select name="kind" defaultValue={remaining > 0 ? "PELUNASAN" : "DP"} className={inputCls}>
             <option value="DP">DP</option>
             <option value="PELUNASAN">Bayar</option>
@@ -60,7 +60,7 @@ export function PaymentForm({
       </div>
       <div className="grid grid-cols-2 gap-2">
         <div>
-          <label className="block text-sm font-medium text-slate-700">Metode</label>
+          <label className="block text-sm font-medium text-foreground">Metode</label>
           <select name="method" defaultValue="CASH" className={inputCls}>
             <option value="CASH">Tunai (Kas)</option>
             <option value="QRIS">QRIS (Bank)</option>
@@ -68,7 +68,7 @@ export function PaymentForm({
           </select>
         </div>
         <div>
-          <label className="block text-sm font-medium text-slate-700">Catatan</label>
+          <label className="block text-sm font-medium text-foreground">Catatan</label>
           <input name="note" placeholder="opsional" className={inputCls} />
         </div>
       </div>

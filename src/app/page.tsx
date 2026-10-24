@@ -29,7 +29,7 @@ export default async function Home() {
           height={750}
           className="mt-3 h-36 w-auto md:h-44"
         />
-        <p className="mt-3 leading-relaxed text-slate-600">
+        <p className="mt-3 leading-relaxed text-muted-foreground">
           Booking, pantau, dan bayar servis kendaraan kamu — tanpa perlu
           antre atau menelepon. Semua bisa dilakukan dari HP.
         </p>
@@ -39,7 +39,7 @@ export default async function Home() {
         {features.map((feature) => (
           <li
             key={feature}
-            className="flex items-center gap-3 rounded-xl bg-surface px-4 py-3 text-sm font-medium text-slate-700 ring-1 ring-slate-200 shadow-card"
+            className="flex items-center gap-3 rounded-xl bg-surface px-4 py-3 text-sm font-medium text-foreground ring-1 ring-slate-200 shadow-card"
           >
             <span
               aria-hidden

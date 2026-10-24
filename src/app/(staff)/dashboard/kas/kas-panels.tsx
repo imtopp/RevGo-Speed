@@ -20,11 +20,11 @@ const inputCls =
 const btnPrimary =
   "w-full rounded-lg bg-primary py-2.5 text-sm font-medium text-white active:opacity-90 disabled:opacity-60";
 const btnSecondary =
-  "rounded-lg border border-slate-300 bg-surface px-3 py-2 text-sm font-medium text-slate-700 active:opacity-90";
+  "rounded-lg border border-slate-300 bg-surface px-3 py-2 text-sm font-medium text-foreground active:opacity-90";
 
 function Msg({ state }: { state: BayarState }) {
   if (state.error)
-    return <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{state.error}</p>;
+    return <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-danger">{state.error}</p>;
   if (state.success)
     return <p className="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700">{state.success}</p>;
   return null;
@@ -42,28 +42,28 @@ export function ManualCashflowForm({
   const [state, action, pending] = useActionState<BayarState, FormData>(addManualCashflow, {});
   return (
     <form action={action} className="space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
-      <p className="text-sm font-semibold text-slate-700">Entri Kas Manual</p>
+      <p className="text-sm font-semibold text-foreground">Entri Kas Manual</p>
       <Msg state={state} />
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="block text-sm font-medium text-slate-700">Tipe</label>
+          <label className="block text-sm font-medium text-foreground">Tipe</label>
           <select name="type" defaultValue="INCOME" className={inputCls}>
             <option value="INCOME">Masuk</option>
             <option value="EXPENSE">Keluar</option>
           </select>
         </div>
         <div>
-          <label className="block text-sm font-medium text-slate-700">Kategori</label>
+          <label className="block text-sm font-medium text-foreground">Kategori</label>
           <input name="category" required placeholder="Operasional, Sewa, Lain" className={inputCls} />
         </div>
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="block text-sm font-medium text-slate-700">Jumlah (Rp)</label>
+          <label className="block text-sm font-medium text-foreground">Jumlah (Rp)</label>
           <input name="amount" type="number" min={1} required className={inputCls} />
         </div>
         <div>
-          <label className="block text-sm font-medium text-slate-700">Kantong</label>
+          <label className="block text-sm font-medium text-foreground">Kantong</label>
           <select name="account" defaultValue="KAS" className={inputCls}>
             <option value="KAS">Kas</option>
             <option value="BANK">Bank</option>
@@ -71,12 +71,12 @@ export function ManualCashflowForm({
         </div>
       </div>
       <div>
-        <label className="block text-sm font-medium text-slate-700">Keterangan</label>
+        <label className="block text-sm font-medium text-foreground">Keterangan</label>
         <input name="description" placeholder="opsional" className={inputCls} />
       </div>
       {!isLocked && (
         <div>
-          <label className="block text-sm font-medium text-slate-700">Cabang</label>
+          <label className="block text-sm font-medium text-foreground">Cabang</label>
           <select name="branchId" defaultValue={activeBranchId ?? ""} className={inputCls}>
             {branches.map((b) => (
               <option key={b.id} value={b.id}>{b.name}</option>
@@ -105,11 +105,11 @@ export function RiwayatList({ items }: { items: Cashflow[] }) {
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
               <p className="text-sm font-medium">
-                <span className={c.type === "INCOME" ? "text-success" : "text-red-600"}>
+                <span className={c.type === "INCOME" ? "text-success" : "text-danger"}>
                   {c.type === "INCOME" ? "+" : "−"}
                   {formatRupiah(c.amount)}
                 </span>{" "}
-                <span className="text-slate-600">{c.category}</span>
+                <span className="text-muted-foreground">{c.category}</span>
               </p>
               <p className="text-xs text-muted-foreground">
                 {c.description ?? "—"} · {c.account}

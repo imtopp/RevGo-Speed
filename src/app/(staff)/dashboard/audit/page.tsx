@@ -59,17 +59,17 @@ function AlertCard({
   return (
     <div className="rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-sm font-semibold text-slate-700">{title}</p>
+        <p className="text-sm font-semibold text-foreground">{title}</p>
         <span
           className={`text-lg font-bold ${
-            count > 0 ? "text-red-600" : "text-success"
+            count > 0 ? "text-danger" : "text-success"
           }`}
         >
           {count}
         </span>
       </div>
       {count > 0 && children && (
-        <ul className="mt-2 space-y-1 text-xs text-slate-600">{children}</ul>
+        <ul className="mt-2 space-y-1 text-xs text-muted-foreground">{children}</ul>
       )}
     </div>
   );
@@ -193,7 +193,7 @@ export default async function AuditPage({
               className={`rounded-full px-3 py-1 text-xs font-medium ring-1 ${
                 active
                   ? "bg-primary text-white ring-primary"
-                  : "bg-surface text-slate-600 ring-slate-200"
+                  : "bg-surface text-muted-foreground ring-slate-200"
               }`}
             >
               {c.label}
@@ -205,7 +205,7 @@ export default async function AuditPage({
       {/* Log */}
       <div className="rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
         <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-slate-700">
+          <h2 className="text-sm font-semibold text-foreground">
             Log aksi {filterAction ? `· ${ACTION_LABEL[filterAction]}` : ""}
           </h2>
           <span className="text-xs text-muted-foreground">
@@ -224,23 +224,23 @@ export default async function AuditPage({
                   <span className="text-xs text-slate-400">
                     {fmtWaktu(l.createdAt)}
                   </span>
-                  <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">
+                  <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
                     {ACTION_LABEL[l.action] ?? l.action}
                   </span>
-                  <span className="text-xs font-medium text-slate-700">
+                  <span className="text-xs font-medium text-foreground">
                     {l.actorName}
                   </span>
                   <span className="text-[11px] text-slate-400">
                     ({l.actorRole})
                   </span>
                 </div>
-                <p className="mt-0.5 text-sm text-slate-700">{l.summary}</p>
+                <p className="mt-0.5 text-sm text-foreground">{l.summary}</p>
                 {(l.before || l.after) && (
                   <details className="mt-1">
                     <summary className="cursor-pointer text-xs text-muted-foreground">
                       Detail perubahan
                     </summary>
-                    <pre className="mt-1 overflow-x-auto rounded-lg bg-slate-50 p-2 text-[11px] leading-relaxed text-slate-600">
+                    <pre className="mt-1 overflow-x-auto rounded-lg bg-slate-50 p-2 text-[11px] leading-relaxed text-muted-foreground">
                       {JSON.stringify(
                         {
                           ...(l.before ? { before: l.before } : {}),
