@@ -3,6 +3,7 @@
 import { useActionState, useState } from "react";
 import {
   submitEstimate,
+  changeSchedule,
   approveInPerson,
   checkInUnit,
   startWork,
@@ -17,7 +18,7 @@ import {
 } from "../actions";
 import { SubmitButton } from "@/components/submit-button";
 import { SlotPicker } from "@/components/slot-picker";
-import { formatRupiah } from "@/lib/service-status";
+import { formatRupiah, formatTanggalWIB } from "@/lib/service-status";
 import type { ServiceStatus } from "@db/prisma/client";
 
 type ServiceInfo = {
@@ -107,7 +108,6 @@ function EstimateForm({
   catalog: Catalog[];
 }) {
   const { state, formAction } = useForm(submitEstimate);
-  const [jadwal, setJadwal] = useState("");
   const [catalogId, setCatalogId] = useState(service.catalogId ?? "");
   const pilihAwal = catalog.find((c) => c.id === (service.catalogId ?? ""));
   const [estimate, setEstimate] = useState(
@@ -181,16 +181,38 @@ function EstimateForm({
           ))}
         </select>
       </Field>
-      <Field label="Ubah Jadwal Kedatangan (opsional)">
-        <SlotPicker
-          branchId={service.branchId}
-          value={jadwal}
-          onChange={setJadwal}
-          pakaiLeadTime={false}
-        />
-      </Field>
       <SubmitButton pendingText="Mengirim..." className={btnPrimary}>
         Kirim Estimasi
+      </SubmitButton>
+    </form>
+  );
+}
+
+function RescheduleForm({ service }: { service: ServiceInfo }) {
+  const { state, formAction } = useForm(changeSchedule);
+  const [jadwal, setJadwal] = useState("");
+  return (
+    <form action={formAction} className="space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
+      <input type="hidden" name="id" value={service.id} />
+      <p className="text-sm font-semibold text-foreground">Ubah Jadwal Kedatangan</p>
+      <p className="text-xs text-warning">
+        Hanya ubah atas permintaan customer — setelah diubah, beri tahu customer
+        tentang jadwal barunya.
+      </p>
+      <Msg state={state} />
+      {service.scheduledAt && (
+        <p className="text-xs text-slate-400">
+          Jadwal saat ini: {formatTanggalWIB(service.scheduledAt)}
+        </p>
+      )}
+      <SlotPicker
+        branchId={service.branchId}
+        value={jadwal}
+        onChange={setJadwal}
+        pakaiLeadTime={false}
+      />
+      <SubmitButton pendingText="Menyimpan..." className={btnSecondary}>
+        Simpan Jadwal Baru
       </SubmitButton>
     </form>
   );
@@ -417,6 +439,7 @@ export function ActionForms({
         primary = <EstimateForm service={service} mechanics={mechanics} catalog={catalog} />;
         others = [
           <ApproveForm key="approve" service={service} />,
+          <RescheduleForm key="jadwal" service={service} />,
           <CancelForm key="cancel" service={service} />,
         ];
       }

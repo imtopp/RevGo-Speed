@@ -16,7 +16,7 @@ import {
   pesanDitolak,
 } from "@/lib/availability";
 import { revalidatePath } from "next/cache";
-import { formatRupiah } from "@/lib/service-status";
+import { formatRupiah, formatTanggalWIB } from "@/lib/service-status";
 import type { Prisma, ServiceStatus } from "@db/prisma/client";
 
 export type ServisState = { error?: string; success?: string };
@@ -325,7 +325,6 @@ export async function submitEstimate(
   const estimate = Number(formData.get("estimate") ?? 0);
   const laborCost = Number(formData.get("laborCost") ?? 0);
   const mechanicId = String(formData.get("mechanicId") ?? "").trim();
-  const scheduledAtRaw = String(formData.get("scheduledAt") ?? "").trim();
   const catalogId = String(formData.get("catalogId") ?? "").trim();
 
   if (
@@ -349,32 +348,11 @@ export async function submitEstimate(
 
   const service = await prisma.service.findUnique({
     where: { id },
-    select: { status: true, branchId: true, estimasiMenit: true },
+    select: { status: true },
   });
   if (!service) return { error: "Servis tidak ditemukan." };
   if (service.status !== "PENDING") {
     return { error: "Servis tidak dalam tahap Booking." };
-  }
-
-  let scheduledAt: Date | undefined;
-  let lock: { branchId: string; epoch: number } | undefined;
-  let validasi: ((tx: Prisma.TransactionClient) => Promise<string | null>) | undefined;
-  if (scheduledAtRaw) {
-    const epoch = parseJadwal(scheduledAtRaw);
-    if (epoch === null) return { error: "Jadwal tidak valid." };
-    scheduledAt = new Date(epoch);
-    lock = { branchId: service.branchId, epoch };
-    validasi = async (tx) => {
-      const cek = await cekSlotTersedia({
-        branchId: service.branchId,
-        epoch,
-        durasiMenit: service.estimasiMenit ?? DURASI_DEFAULT_MENIT,
-        excludeId: id,
-        pakaiLeadTime: false,
-        db: tx,
-      });
-      return cek.ok ? null : pesanDitolak(cek);
-    };
   }
 
   try {
@@ -386,10 +364,8 @@ export async function submitEstimate(
         estimate,
         laborCost,
         mechanicId: mechanicId || null,
-        scheduledAt,
         catalogId: catalogId || null,
       },
-      { lock, validasi },
     );
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Gagal menyimpan estimasi." };
@@ -398,6 +374,59 @@ export async function submitEstimate(
   revalidatePath("/dashboard/servis");
   revalidatePath(`/dashboard/servis/${id}`);
   return { success: "Estimasi dikirim — menunggu persetujuan pelanggan." };
+}
+
+export async function changeSchedule(
+  _prev: ServisState,
+  formData: FormData,
+): Promise<ServisState> {
+  await requireStaffRole(["OWNER", "ADMIN"]);
+  const id = String(formData.get("id") ?? "").trim();
+  const scheduledAtRaw = String(formData.get("scheduledAt") ?? "").trim();
+
+  if (!scheduledAtRaw) return { error: "Pilih jadwal baru dulu." };
+  const epoch = parseJadwal(scheduledAtRaw);
+  if (epoch === null) return { error: "Jadwal tidak valid." };
+
+  const service = await prisma.service.findUnique({
+    where: { id },
+    select: { status: true, branchId: true, estimasiMenit: true },
+  });
+  if (!service) return { error: "Servis tidak ditemukan." };
+  if (service.status !== "PENDING") {
+    return { error: "Servis tidak dalam tahap Booking." };
+  }
+
+  try {
+    await transition(
+      id,
+      ["PENDING"],
+      "PENDING",
+      { scheduledAt: new Date(epoch) },
+      {
+        lock: { branchId: service.branchId, epoch },
+        validasi: async (tx) => {
+          const cek = await cekSlotTersedia({
+            branchId: service.branchId,
+            epoch,
+            durasiMenit: service.estimasiMenit ?? DURASI_DEFAULT_MENIT,
+            excludeId: id,
+            pakaiLeadTime: false,
+            db: tx,
+          });
+          return cek.ok ? null : pesanDitolak(cek);
+        },
+      },
+    );
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Gagal mengubah jadwal." };
+  }
+
+  revalidatePath("/dashboard/servis");
+  revalidatePath(`/dashboard/servis/${id}`);
+  return {
+    success: `Jadwal diubah ke ${formatTanggalWIB(new Date(epoch))}. Beri tahu customer tentang perubahan ini.`,
+  };
 }
 
 export async function approveInPerson(
