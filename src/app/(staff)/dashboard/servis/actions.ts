@@ -861,7 +861,9 @@ export async function removeServicePart(
   _prev: ServisState,
   formData: FormData,
 ): Promise<ServisState> {
-  await requireStaffRole(["OWNER", "ADMIN"]);
+  // MECHANIC ikut boleh: koreksi salah pilih/jumlah saat mencatat (sepadan
+  // dengan addServicePart) — stok kembali masuk, teraudit, servis DONE diblokir.
+  await requireStaffRole(["OWNER", "ADMIN", "MECHANIC"]);
   const id = String(formData.get("id") ?? "").trim();
   const sp = await prisma.servicePart.findUnique({
     where: { id },

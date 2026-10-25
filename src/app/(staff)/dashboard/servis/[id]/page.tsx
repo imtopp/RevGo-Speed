@@ -14,6 +14,7 @@ import {
 } from "@/lib/service-status";
 import { ActionForms } from "./action-forms";
 import { VoidPaymentForm } from "./void-payment";
+import { RemovePartButton } from "./remove-part-button";
 import { PaymentForm } from "../../kas/payment-form";
 import { formatTanggalPendek } from "@/lib/service-status";
 
@@ -54,6 +55,8 @@ export default async function ServisDetailPage({
   const isAssignedMechanic =
     isMechanic && service.mechanicId === session.user.id;
   const canAct = !isMechanic || isAssignedMechanic;
+  const bolehHapusPart =
+    canAct && service.status !== "DONE" && service.status !== "CANCELLED";
 
   const mechanics = await prisma.user.findMany({
     where: { role: "MECHANIC", isActive: true, branchId: service.branchId },
@@ -220,17 +223,20 @@ export default async function ServisDetailPage({
             {service.parts.map((sp) => (
               <li
                 key={sp.id}
-                className="flex items-center justify-between py-2 text-sm"
+                className="flex items-center justify-between gap-2 py-2 text-sm"
               >
-                <div>
-                  <p>{sp.part.name}</p>
+                <div className="min-w-0">
+                  <p className="truncate">{sp.part.name}</p>
                   <p className="text-xs text-slate-400">
                     {sp.quantity} {sp.part.unit} × {formatRupiah(sp.price)}
                   </p>
                 </div>
-                <span className="font-medium">
-                  {formatRupiah(sp.price * sp.quantity)}
-                </span>
+                <div className="flex shrink-0 items-center gap-3">
+                  <span className="font-medium">
+                    {formatRupiah(sp.price * sp.quantity)}
+                  </span>
+                  {bolehHapusPart && <RemovePartButton servicePartId={sp.id} />}
+                </div>
               </li>
             ))}
           </ul>
