@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState, useId } from "react";
+import { useActionState, useState, useId, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   createPart,
@@ -580,6 +580,7 @@ export function StokPanels({
   const [showForms, setShowForms] = useState(false);
   const [aksi, setAksi] = useState<"part" | "masuk" | "opname">("part");
   const router = useRouter();
+  const [isPending, startTransition] = useTransition();
 
   if (tab === "supplier") {
     return <SupplierPanel suppliers={suppliers} />;
@@ -595,12 +596,19 @@ export function StokPanels({
           </label>
           <select
             value={riwayatPart?.id ?? ""}
-            onChange={(e) =>
-              router.push(
-                `/dashboard/stok?tab=riwayat${e.target.value ? `&part=${e.target.value}` : ""}${branchQ}`,
-              )
-            }
-            className="mt-1 w-full rounded-lg border border-slate-300 bg-surface px-3 py-2 text-base outline-none"
+            disabled={isPending}
+            aria-busy={isPending}
+            onChange={(e) => {
+              const value = e.target.value;
+              startTransition(() => {
+                router.push(
+                  `/dashboard/stok?tab=riwayat${value ? `&part=${value}` : ""}${branchQ}`,
+                );
+              });
+            }}
+            className={`mt-1 w-full rounded-lg border border-slate-300 bg-surface px-3 py-2 text-base outline-none disabled:opacity-60 ${
+              isPending ? "animate-pulse" : ""
+            }`}
           >
             <option value="">Semua part</option>
             {parts.map((p) => (

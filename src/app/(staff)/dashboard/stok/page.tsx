@@ -3,7 +3,7 @@ import { requireStaffRole, getStaffBranchId } from "@/lib/guard";
 import { formatRupiah } from "@/lib/service-status";
 import { StokPanels } from "./stok-panels";
 import { BranchPicker } from "./branch-picker";
-import Link from "next/link";
+import { PendingLink } from "@/components/pending-link";
 
 export const metadata = { title: "Stok" };
 
@@ -128,7 +128,7 @@ export default async function StokPage({
           { key: "riwayat", label: "Riwayat" },
           { key: "supplier", label: "Supplier" },
         ].map((t) => (
-          <Link
+          <PendingLink
             key={t.key}
             href={`/dashboard/stok?tab=${t.key}${branchFilter ? `&branch=${branchFilter}` : ""}`}
             className={`rounded-full px-3 py-1.5 text-xs font-medium ${
@@ -138,7 +138,7 @@ export default async function StokPage({
             }`}
           >
             {t.label}
-          </Link>
+          </PendingLink>
         ))}
       </div>
 

@@ -9,7 +9,7 @@ import {
   ACTIVE_STATUSES,
 } from "@/lib/service-status";
 import { BookingForm } from "./booking-form";
-import { BookingToggle } from "./booking-toggle";
+import { PendingLink } from "@/components/pending-link";
 import { buildModelPerMerek } from "@/lib/vehicle";
 import type { ServiceStatus } from "@db/prisma/client";
 
@@ -90,7 +90,12 @@ export default async function ServisPage({
             Kelola katalog →
           </Link>
         </div>
-        <BookingToggle showBooking={showBooking} />
+        <PendingLink
+          href={showBooking ? "/dashboard/servis" : "/dashboard/servis?booking=1"}
+          className="rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white active:opacity-90"
+        >
+          {showBooking ? "Tutup Booking Servis" : "+ Booking Servis"}
+        </PendingLink>
       </div>
 
       {showBooking && (
@@ -106,7 +111,7 @@ export default async function ServisPage({
         {FILTERS.map((f) => {
           const active = filter === f.key;
           return (
-            <Link
+            <PendingLink
               key={f.key}
               href={`/dashboard/servis?status=${f.key}${showBooking ? "&booking=1" : ""}`}
               className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-medium ${
@@ -116,7 +121,7 @@ export default async function ServisPage({
               }`}
             >
               {f.label}
-            </Link>
+            </PendingLink>
           );
         })}
       </div>
