@@ -14,6 +14,7 @@ import {
 } from "./actions";
 import { formatRupiah, formatTanggalPendek } from "@/lib/service-status";
 import { SubmitButton } from "@/components/submit-button";
+import { PartPicker } from "@/components/part-picker";
 
 type Part = {
   id: string;
@@ -218,14 +219,7 @@ function StockInForm({ parts, suppliers }: { parts: Part[]; suppliers: Supplier[
       <Msg state={state} />
       <div>
         <label className="block text-sm font-medium text-foreground">Part</label>
-        <select name="partId" required className={inputCls}>
-          <option value="">— Pilih —</option>
-          {parts.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name} (stok: {p.quantity})
-            </option>
-          ))}
-        </select>
+        <PartPicker parts={parts} allowHabis />
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
@@ -278,14 +272,7 @@ function AdjustForm({ parts }: { parts: Part[] }) {
       <Msg state={state} />
       <div>
         <label className="block text-sm font-medium text-foreground">Part</label>
-        <select name="partId" required className={inputCls}>
-          <option value="">— Pilih —</option>
-          {parts.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name} (stok: {p.quantity})
-            </option>
-          ))}
-        </select>
+        <PartPicker parts={parts} allowHabis />
       </div>
       <div>
         <label className="block text-sm font-medium text-foreground">

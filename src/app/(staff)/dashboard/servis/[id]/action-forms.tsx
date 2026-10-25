@@ -19,6 +19,7 @@ import {
 } from "../actions";
 import { SubmitButton } from "@/components/submit-button";
 import { SlotPicker } from "@/components/slot-picker";
+import { PartPicker } from "@/components/part-picker";
 import { formatRupiah, formatTanggalWIB } from "@/lib/service-status";
 import type { ServiceStatus } from "@db/prisma/client";
 
@@ -45,6 +46,8 @@ type Catalog = {
 type Part = {
   id: string;
   name: string;
+  sku: string;
+  category: string | null;
   unit: string;
   quantity: number;
   sellPrice: number;
@@ -354,14 +357,7 @@ function AddPartForm({
       <p className="text-sm font-semibold text-foreground">Catat Part Terpakai</p>
       <Msg state={state} />
       <Field label="Part (stok cabang)">
-        <select name="partId" required className={inputCls}>
-          <option value="">— Pilih —</option>
-          {parts.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name} (stok: {p.quantity})
-            </option>
-          ))}
-        </select>
+        <PartPicker parts={parts} />
       </Field>
       <Field label="Jumlah">
         <input name="quantity" type="number" min={1} defaultValue={1} className={inputCls} />

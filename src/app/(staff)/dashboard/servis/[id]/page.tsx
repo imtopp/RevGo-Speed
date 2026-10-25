@@ -76,7 +76,15 @@ export default async function ServisDetailPage({
   const parts = await prisma.part.findMany({
     where: { branchId: service.branchId },
     orderBy: { name: "asc" },
-    select: { id: true, name: true, unit: true, quantity: true, sellPrice: true },
+    select: {
+      id: true,
+      name: true,
+      sku: true,
+      category: true,
+      unit: true,
+      quantity: true,
+      sellPrice: true,
+    },
   });
   const catalogList = await prisma.serviceCatalog.findMany({
     where: { aktif: true },
