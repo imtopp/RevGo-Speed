@@ -55,8 +55,12 @@ export default async function ServisDetailPage({
   const isAssignedMechanic =
     isMechanic && service.mechanicId === session.user.id;
   const canAct = !isMechanic || isAssignedMechanic;
+  // Hapus part = wewenang owner/admin saja (mekanik memegang part fisik —
+  // tidak boleh menghapus jejaknya di sistem sendirian).
   const bolehHapusPart =
-    canAct && service.status !== "DONE" && service.status !== "CANCELLED";
+    !isMechanic &&
+    service.status !== "DONE" &&
+    service.status !== "CANCELLED";
 
   const mechanics = await prisma.user.findMany({
     where: { role: "MECHANIC", isActive: true, branchId: service.branchId },
