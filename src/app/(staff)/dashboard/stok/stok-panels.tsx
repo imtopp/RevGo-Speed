@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useState, useId } from "react";
 import { useRouter } from "next/navigation";
 import {
   createPart,
@@ -65,16 +65,50 @@ const btnPrimary =
 const btnSecondary =
   "rounded-lg border border-slate-300 bg-surface px-3 py-2 text-sm font-medium text-foreground active:opacity-90";
 
+/**
+ * Input kategori dengan saran dari kategori yang sudah ada (datalist) —
+ * pengguna tetap bebas menulis baru, tapi typo beda kapital jarang terjadi.
+ */
+function KategoriInput({
+  kategoris,
+  placeholder,
+  defaultValue,
+}: {
+  kategoris: string[];
+  placeholder?: string;
+  defaultValue?: string;
+}) {
+  const id = useId();
+  return (
+    <>
+      <input
+        name="category"
+        list={id}
+        placeholder={placeholder}
+        defaultValue={defaultValue}
+        className={inputCls}
+      />
+      <datalist id={id}>
+        {kategoris.map((k) => (
+          <option key={k} value={k} />
+        ))}
+      </datalist>
+    </>
+  );
+}
+
 function PartForm({
   branches,
   suppliers,
   activeBranchId,
   isLocked,
+  kategoris,
 }: {
   branches: Branch[];
   suppliers: Supplier[];
   activeBranchId: string | null;
   isLocked: boolean;
+  kategoris: string[];
 }) {
   const [state, action] = useActionState<StokState, FormData>(createPart, {});
   return (
@@ -104,7 +138,7 @@ function PartForm({
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="block text-sm font-medium text-foreground">Kategori</label>
-          <input name="category" placeholder="Oli" className={inputCls} />
+          <KategoriInput kategoris={kategoris} placeholder="Oli" />
         </div>
         <div>
           <label className="block text-sm font-medium text-foreground">Satuan</label>
@@ -326,7 +360,7 @@ function SupplierEdit({ supplier }: { supplier: Supplier }) {
   );
 }
 
-function PartRow({ part }: { part: Part }) {
+function PartRow({ part, kategoris }: { part: Part; kategoris: string[] }) {
   const [open, setOpen] = useState(false);
   const low = part.quantity <= part.minStock;
   return (
@@ -353,12 +387,12 @@ function PartRow({ part }: { part: Part }) {
           {open ? "Tutup" : "Ubah"}
         </button>
       </div>
-      {open && <PartEdit part={part} />}
+      {open && <PartEdit part={part} kategoris={kategoris} />}
     </div>
   );
 }
 
-function PartEdit({ part }: { part: Part }) {
+function PartEdit({ part, kategoris }: { part: Part; kategoris: string[] }) {
   const [state, action] = useActionState<StokState, FormData>(updatePart, {});
   return (
     <form action={action} className="mt-3 space-y-3 border-t border-slate-200 pt-3">
@@ -371,7 +405,7 @@ function PartEdit({ part }: { part: Part }) {
         </div>
         <div>
           <label className="block text-sm font-medium text-foreground">Kategori</label>
-          <input name="category" defaultValue={part.category ?? ""} className={inputCls} />
+          <KategoriInput kategoris={kategoris} defaultValue={part.category ?? ""} />
         </div>
       </div>
       <div className="grid grid-cols-2 gap-3">
@@ -493,6 +527,7 @@ export function StokPanels({
   activeBranchId,
   isLockedBranch,
   riwayatPart,
+  kategoris,
 }: {
   tab: string;
   parts: Part[];
@@ -502,6 +537,7 @@ export function StokPanels({
   activeBranchId: string | null;
   isLockedBranch: boolean;
   riwayatPart: RiwayatPart;
+  kategoris: string[];
 }) {
   const [showForms, setShowForms] = useState(false);
   const [aksi, setAksi] = useState<"part" | "masuk" | "opname">("part");
@@ -612,6 +648,7 @@ export function StokPanels({
               suppliers={suppliers}
               activeBranchId={activeBranchId}
               isLocked={isLockedBranch}
+              kategoris={kategoris}
             />
           )}
           {aksi === "masuk" && <StockInForm parts={parts} suppliers={suppliers} />}
@@ -628,7 +665,7 @@ export function StokPanels({
           </div>
         )}
         {parts.map((p) => (
-          <PartRow key={p.id} part={p} />
+          <PartRow key={p.id} part={p} kategoris={kategoris} />
         ))}
       </div>
     </div>

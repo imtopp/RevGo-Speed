@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { getStaffBranchId } from "@/lib/guard";
 import { logAudit } from "@/lib/audit";
+import { samakanKategori } from "@/lib/category";
 import { revalidatePath } from "next/cache";
 import {
   movingAverageBuyPrice,
@@ -34,6 +35,16 @@ async function requireStokRole() {
 /** Kantong kas: TUNAI → KAS, TRANSFER/QRIS → BANK. */
 function accountFromMethod(method: PaymentMethod): "KAS" | "BANK" {
   return method === "CASH" ? "KAS" : "BANK";
+}
+
+/** Kategori part yang sudah dipakai (lintas cabang) — dasar normalisasi input. */
+async function kategoriPartExisting(): Promise<string[]> {
+  const rows = await prisma.part.findMany({
+    where: { category: { not: null } },
+    distinct: ["category"],
+    select: { category: true },
+  });
+  return rows.map((r) => r.category).filter((c): c is string => !!c);
 }
 
 // ─── Supplier ─────────────────────────────────────────────────────────
@@ -87,7 +98,10 @@ export async function createPart(
   const branchId = branchIdStaff || String(formData.get("branchId") ?? "").trim() || "";
   const sku = String(formData.get("sku") ?? "").trim().toUpperCase();
   const name = String(formData.get("name") ?? "").trim();
-  const category = String(formData.get("category") ?? "").trim();
+  const category = samakanKategori(
+    String(formData.get("category") ?? ""),
+    await kategoriPartExisting(),
+  );
   const unit = String(formData.get("unit") ?? "pcs").trim();
   const quantity = Number(formData.get("quantity") ?? 0);
   const minStock = Number(formData.get("minStock") ?? 0);
@@ -160,7 +174,10 @@ export async function updatePart(
   await requireStokRole();
   const id = String(formData.get("id") ?? "").trim();
   const name = String(formData.get("name") ?? "").trim();
-  const category = String(formData.get("category") ?? "").trim();
+  const category = samakanKategori(
+    String(formData.get("category") ?? ""),
+    await kategoriPartExisting(),
+  );
   const unit = String(formData.get("unit") ?? "pcs").trim();
   const minStock = Number(formData.get("minStock") ?? 0);
   const sellPrice = Number(formData.get("sellPrice") ?? 0);

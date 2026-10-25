@@ -32,6 +32,17 @@ export default async function StokPage({
     include: { supplier: { select: { nama: true } } },
   });
 
+  // Saran kategori (lintas cabang) untuk datalist form tambah/edit part.
+  const kategoriRows = await prisma.part.findMany({
+    where: { category: { not: null } },
+    distinct: ["category"],
+    select: { category: true },
+  });
+  const kategoris = kategoriRows
+    .map((r) => r.category)
+    .filter((c): c is string => !!c)
+    .sort((a, b) => a.localeCompare(b, "id"));
+
   const selectedPart = params.part
     ? parts.find((p) => p.id === params.part) ?? null
     : null;
@@ -140,6 +151,7 @@ export default async function StokPage({
         activeBranchId={branchFilter}
         isLockedBranch={!!branchIdStaff}
         riwayatPart={riwayatPart}
+        kategoris={kategoris}
       />
     </div>
   );
