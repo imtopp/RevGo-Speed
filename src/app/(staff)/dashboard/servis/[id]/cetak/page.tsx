@@ -65,16 +65,16 @@ export default async function CetakNotaPage({
         <div className="mt-3 space-y-0.5 text-xs">
           <div className="flex justify-between">
             <span className="text-muted-foreground">Customer</span>
-            <span>{service.customer.name}</span>
+            <span>{service.customerName ?? service.customer?.name ?? "—"}</span>
           </div>
           <div className="flex justify-between">
             <span className="text-muted-foreground">Kendaraan</span>
             <span>{service.vehicle.plateNumber} ({service.vehicle.brand} {service.vehicle.model})</span>
           </div>
-          {service.customer.phone && (
+          {(service.customerPhone ?? service.customer?.phone) && (
             <div className="flex justify-between">
               <span className="text-muted-foreground">HP</span>
-              <span>{service.customer.phone}</span>
+              <span>{service.customerPhone ?? service.customer?.phone}</span>
             </div>
           )}
         </div>

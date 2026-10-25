@@ -148,7 +148,7 @@ export default async function ServisPage({
                   {s.vehicle.plateNumber} · {s.vehicle.brand} {s.vehicle.model}
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  {s.customer.name}
+                  {s.customerName ?? s.customer?.name ?? "—"}
                   {s.mechanic ? ` · ${s.mechanic.name}` : ""}
                 </p>
                 {s.catalog?.nama && (

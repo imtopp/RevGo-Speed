@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { neon } from "@neondatabase/serverless";
+import { auth } from "@/lib/auth";
 import { ruleFor, windowStartFor, isOverLimit } from "@/lib/rate-limit";
 
 /**
@@ -69,8 +70,23 @@ async function sharedHit(
     return null;
   }
 }
-
 export async function proxy(request: NextRequest) {
+  // Paksa ganti password sebelum halaman apa pun — berlaku selama flag
+  // mustChange ada di token (dihapus saat ganti password + login ulang).
+  // Cek di sini, sebelum rate-limit: path tanpa rule tetap harus kena.
+  const session = await auth();
+  const path = request.nextUrl.pathname;
+  if (
+    session?.user?.mustChange &&
+    !path.startsWith("/ganti-password") &&
+    !path.startsWith("/api/auth")
+  ) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/ganti-password";
+    url.search = "";
+    return NextResponse.redirect(url);
+  }
+
   const ip =
     request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
   const rule = ruleFor(request.nextUrl.pathname, request.method);

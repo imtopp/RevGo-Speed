@@ -28,6 +28,12 @@ export default async function StaffLayout({ children }: { children: React.ReactN
           <p className="truncate text-sm font-medium text-foreground">
             {session.user.name}
           </p>
+          <Link
+            href="/ganti-password"
+            className="mt-1 block text-sm font-medium text-muted-foreground underline underline-offset-2"
+          >
+            Ganti Password
+          </Link>
           <form
             action={async () => {
               "use server";
@@ -62,6 +68,12 @@ export default async function StaffLayout({ children }: { children: React.ReactN
                 Atur
               </Link>
             )}
+            <Link
+              href="/ganti-password"
+              className="text-sm font-medium text-slate-200 underline underline-offset-2"
+            >
+              Sandi
+            </Link>
             <form
               action={async () => {
                 "use server";

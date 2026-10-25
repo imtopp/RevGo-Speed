@@ -76,8 +76,10 @@ export default async function PiutangPage({
                   {s.code}
                 </Link>
                 <p className="text-sm text-muted-foreground">
-                  {s.customer.name}
-                  {s.customer.phone ? ` · ${s.customer.phone}` : ""} ·{" "}
+                  {s.customerName ?? s.customer?.name ?? "—"}
+                  {(s.customerPhone ?? s.customer?.phone)
+                    ? ` · ${s.customerPhone ?? s.customer?.phone}`
+                    : ""} ·{" "}
                   {s.vehicle.plateNumber}
                 </p>
                 <p className="text-xs text-slate-400">

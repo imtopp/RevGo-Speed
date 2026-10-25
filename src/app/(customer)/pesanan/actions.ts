@@ -89,6 +89,7 @@ export async function customerBooking(
         catalogId: catalog?.id ?? null,
         vehicleId,
         customerId: session.user.id,
+        customerName: session.user.name,
         status: "PENDING",
         complaint: complaint || catalog?.nama || null,
         estimate: catalog?.hargaDasar ?? 0,

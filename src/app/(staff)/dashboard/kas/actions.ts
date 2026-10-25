@@ -112,7 +112,7 @@ export async function addPayment(
         amount,
         account: accountFromMethod(method),
         branchId: service.branchId,
-        description: `${service.code} · ${service.customer.name}`,
+        description: `${service.code} · ${service.customerName ?? service.customer?.name ?? "Tanpa nama"}`,
         createdBy: session.user.id,
       },
     });

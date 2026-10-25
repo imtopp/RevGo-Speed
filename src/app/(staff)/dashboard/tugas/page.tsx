@@ -71,7 +71,9 @@ export default async function TugasPage() {
                 <p className="font-medium">
                   {s.vehicle.plateNumber} · {s.vehicle.brand} {s.vehicle.model}
                 </p>
-                <p className="text-sm text-muted-foreground">{s.customer.name}</p>
+                <p className="text-sm text-muted-foreground">
+                  {s.customerName ?? s.customer?.name ?? "—"}
+                </p>
                 {s.complaint && (
                   <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
                     {s.complaint}

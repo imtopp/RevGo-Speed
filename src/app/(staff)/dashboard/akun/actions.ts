@@ -50,6 +50,8 @@ export async function createStaff(
         email,
         phone: phone || null,
         passwordHash: hashPassword(password),
+        // Password dipilih orang lain → wajib ganti saat login pertama.
+        mustChangePassword: true,
         role: role as (typeof STAFF_ROLES)[number],
         branchId: branchId || null,
       },
@@ -86,7 +88,7 @@ export async function resetPassword(
   await prisma.$transaction(async (tx) => {
     await tx.user.update({
       where: { id },
-      data: { passwordHash: hashPassword(password) },
+      data: { passwordHash: hashPassword(password), mustChangePassword: true },
     });
     await logAudit(tx, session.user, {
       action: "ACCOUNT_RESET_PASSWORD",

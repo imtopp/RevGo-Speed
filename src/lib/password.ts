@@ -13,3 +13,10 @@ export function verifyPassword(password: string, stored: string): boolean {
   const actual = scryptSync(password, salt, 64);
   return actual.length === expected.length && timingSafeEqual(actual, expected);
 }
+
+/** Validasi password baru (ganti password). null = lolos. */
+export function validasiPasswordBaru(baru: string, konfirmasi: string): string | null {
+  if (baru.length < 6) return "Password baru minimal 6 karakter.";
+  if (baru !== konfirmasi) return "Konfirmasi password tidak cocok.";
+  return null;
+}

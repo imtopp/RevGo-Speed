@@ -233,7 +233,7 @@ export default async function LaporanPage({
                       {s.code}
                     </Link>
                     <p className="text-xs text-muted-foreground">
-                      {s.customer.name} · {s.vehicle.plateNumber} · {formatTanggalPendek(s.finishedAt)}
+                      {s.customerName ?? s.customer?.name ?? "—"} · {s.vehicle.plateNumber} · {formatTanggalPendek(s.finishedAt)}
                     </p>
                   </div>
                   <div className="shrink-0 text-right">

@@ -74,7 +74,8 @@ export async function GET(request: Request) {
     const hpp = s.parts.reduce((x, p) => x + p.cost * p.quantity, 0);
     totRev += revenue; totHpp += hpp;
     servisRows.push([
-      s.code, s.branch.name, s.customer.name, s.vehicle.plateNumber,
+      s.code, s.branch.name, s.customerName ?? s.customer?.name ?? "",
+      s.vehicle.plateNumber,
       s.finishedAt ? new Date(s.finishedAt).toLocaleDateString("id-ID") : "",
       revenue, hpp, revenue - hpp,
     ]);

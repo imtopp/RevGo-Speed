@@ -11,6 +11,7 @@ function LoginFormInner() {
   // ?error= dari redirect NextAuth (mis. sesi kedaluwarsa) — pesan generik.
   const redirectedWithError = searchParams.get("error");
   const registered = searchParams.get("registered");
+  const gantiBerhasil = searchParams.get("ganti-password");
   const error =
     state.error ??
     (redirectedWithError ? "Email atau password salah." : null);
@@ -25,6 +26,11 @@ function LoginFormInner() {
       {registered && !error && (
         <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
           Pendaftaran berhasil, silakan masuk.
+        </p>
+      )}
+      {gantiBerhasil === "berhasil" && !error && (
+        <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+          Password berhasil diganti. Silakan masuk dengan password baru.
         </p>
       )}
       <div>

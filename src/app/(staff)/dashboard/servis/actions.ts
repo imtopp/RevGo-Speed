@@ -144,8 +144,8 @@ export async function createBooking(
 
     if (!vehicle) {
       // Kendaraan baru → butuh data customer + merek/tipe.
-      // Email opsional: tanpa email, customer tetap tercatat tapi tidak
-      // dibuatkan akun login (cocok untuk walk-in yang tidak mau daftar).
+      // Tanpa email: TIDAK ada row User sama sekali — nama & telp pemilik
+      // disimpan langsung di Vehicle, tanpa akun login.
       if (!brand || !model || !customerName) {
         return {
           ok: false as const,
@@ -162,33 +162,31 @@ export async function createBooking(
       let customer = customerEmail
         ? await tx.user.findUnique({ where: { email: customerEmail } })
         : null;
-      if (!customer) {
-        if (customerEmail) {
-          const { hashPassword } = await import("@/lib/password");
-          const { randomBytes } = await import("node:crypto");
-          // Password acak per akun — jangan pernah pakai default publik.
-          passwordSementara = randomBytes(8).toString("hex");
-          customer = await tx.user.create({
-            data: {
-              name: customerName,
-              email: customerEmail,
-              phone: customerPhone || null,
-              passwordHash: hashPassword(passwordSementara),
-              role: "CUSTOMER",
-            },
-          });
-        } else {
-          customer = await tx.user.create({
-            data: {
-              name: customerName,
-              phone: customerPhone || null,
-              role: "CUSTOMER",
-            },
-          });
-        }
+      if (customerEmail && !customer) {
+        const { hashPassword } = await import("@/lib/password");
+        const { randomBytes } = await import("node:crypto");
+        // Password acak per akun — jangan pernah pakai default publik.
+        passwordSementara = randomBytes(8).toString("hex");
+        customer = await tx.user.create({
+          data: {
+            name: customerName,
+            email: customerEmail,
+            phone: customerPhone || null,
+            passwordHash: hashPassword(passwordSementara),
+            mustChangePassword: true,
+            role: "CUSTOMER",
+          },
+        });
       }
       vehicle = await tx.vehicle.create({
-        data: { plateNumber, brand, model, ownerId: customer.id },
+        data: {
+          plateNumber,
+          brand,
+          model,
+          ownerId: customer?.id ?? null,
+          ownerName: customer?.name ?? customerName,
+          ownerPhone: customer?.phone ?? (customerPhone || null),
+        },
         include: { owner: true },
       });
     }
@@ -225,6 +223,8 @@ export async function createBooking(
         catalogId: catalog?.id ?? null,
         vehicleId: vehicle.id,
         customerId: vehicle.ownerId,
+        customerName: vehicle.owner?.name ?? vehicle.ownerName,
+        customerPhone: vehicle.owner?.phone ?? vehicle.ownerPhone,
         status: "PENDING",
         complaint: complaint || catalog?.nama || null,
         estimate: catalog?.hargaDasar ?? 0,

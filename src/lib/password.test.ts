@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { hashPassword, verifyPassword } from "./password";
+import {
+  hashPassword,
+  verifyPassword,
+  validasiPasswordBaru,
+} from "./password";
 
 describe("hashPassword", () => {
   it("format salt:hash — salt 32 hex, hash 128 hex", () => {
@@ -41,6 +45,22 @@ describe("verifyPassword", () => {
     );
     expect(verifyPassword("rahasia123", `${salt}:${"0".repeat(128)}`)).toBe(
       false,
+    );
+  });
+});
+
+describe("validasiPasswordBaru", () => {
+  it("lolos kalau ≥6 karakter dan konfirmasi cocok", () => {
+    expect(validasiPasswordBaru("rahasia123", "rahasia123")).toBeNull();
+  });
+
+  it("tolak password baru <6 karakter", () => {
+    expect(validasiPasswordBaru("abc12", "abc12")).toMatch(/minimal 6/);
+  });
+
+  it("tolak konfirmasi tidak cocok", () => {
+    expect(validasiPasswordBaru("rahasia123", "rahasia124")).toMatch(
+      /tidak cocok/,
     );
   });
 });

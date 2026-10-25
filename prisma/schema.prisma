@@ -66,6 +66,8 @@ model User {
   passwordHash String?
   role         Role     @default(CUSTOMER)
   isActive     Boolean  @default(true)
+  /// Dipaksa ganti password saat login pertama (akun dibuat/reset orang lain).
+  mustChangePassword Boolean @default(false)
   branchId     String?
   branch       Branch?  @relation(fields: [branchId], references: [id])
   createdAt    DateTime @default(now())
@@ -135,13 +137,17 @@ model SystemSetting {
 }
 
 model Vehicle {
-  id          String   @id @default(cuid())
-  plateNumber String   @unique
+  id          String  @id @default(cuid())
+  plateNumber String  @unique
   brand       String
   model       String
   year        Int?
-  ownerId     String
-  owner       User     @relation("VehicleOwner", fields: [ownerId], references: [id])
+  /// Null = kendaraan walk-in tanpa akun login.
+  ownerId     String?
+  owner       User?   @relation("VehicleOwner", fields: [ownerId], references: [id])
+  /// Nama & telp pemilik tercatat — tetap ada walau tanpa akun.
+  ownerName   String?
+  ownerPhone  String?
   createdAt   DateTime @default(now())
 
   services Service[]
@@ -211,8 +217,12 @@ model Service {
   catalog      ServiceCatalog? @relation(fields: [catalogId], references: [id])
   vehicleId    String
   vehicle      Vehicle         @relation(fields: [vehicleId], references: [id])
-  customerId   String
-  customer     User            @relation("ServiceCustomer", fields: [customerId], references: [id])
+  /// Null = customer walk-in tanpa akun login.
+  customerId   String?
+  customer     User?           @relation("ServiceCustomer", fields: [customerId], references: [id])
+  /// Snapshot nama/ttp penitip — sumber tampilan utama (berdiri sendiri tanpa akun).
+  customerName String?
+  customerPhone String?
   mechanicId   String?
   mechanic     User?           @relation("ServiceMechanic", fields: [mechanicId], references: [id])
   status       ServiceStatus   @default(PENDING)

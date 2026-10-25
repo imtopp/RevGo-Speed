@@ -146,7 +146,7 @@ export default async function ServisDetailPage({
             </h1>
             <p className="text-sm text-muted-foreground">
               {service.vehicle.brand} {service.vehicle.model} ·{" "}
-              {service.customer.name}
+              {service.customerName ?? service.customer?.name ?? "—"}
             </p>
           </div>
           <span

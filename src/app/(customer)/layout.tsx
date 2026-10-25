@@ -2,6 +2,7 @@ import { auth, signOut } from "@/lib/auth";
 import { BrandMark } from "@/components/brand-mark";
 import { SubmitButton } from "@/components/submit-button";
 import { redirect } from "next/navigation";
+import Link from "next/link";
 
 export default async function CustomerLayout({
   children,
@@ -20,6 +21,12 @@ export default async function CustomerLayout({
           <span className="max-w-32 truncate text-sm text-slate-300">
             {session.user.name}
           </span>
+          <Link
+            href="/ganti-password"
+            className="text-sm font-medium text-slate-200 underline underline-offset-2"
+          >
+            Sandi
+          </Link>
           <form
             action={async () => {
               "use server";
