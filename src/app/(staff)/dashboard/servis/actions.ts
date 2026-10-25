@@ -16,6 +16,7 @@ import {
   pesanDitolak,
 } from "@/lib/availability";
 import { revalidatePath } from "next/cache";
+import { formatRupiah } from "@/lib/service-status";
 import type { Prisma, ServiceStatus } from "@db/prisma/client";
 
 export type ServisState = { error?: string; success?: string };
@@ -256,7 +257,12 @@ export async function createBooking(
 async function getServiceOrThrow(id: string) {
   const service = await prisma.service.findUnique({
     where: { id },
-    include: { vehicle: { include: { owner: true } }, mechanic: true, branch: true },
+    include: {
+      vehicle: { include: { owner: true } },
+      mechanic: true,
+      branch: true,
+      catalog: { select: { hargaDasar: true } },
+    },
   });
   if (!service) throw new Error("Servis tidak ditemukan.");
   return service;
@@ -400,10 +406,32 @@ export async function approveInPerson(
 ): Promise<ServisState> {
   await requireStaffRole(["OWNER", "ADMIN"]);
   const id = String(formData.get("id") ?? "").trim();
-  await transition(id, ["PENDING", "WAITING_APPROVAL"], "CONFIRMED");
+  const service = await getServiceOrThrow(id);
+
+  // Dari PENDING biaya jasa belum pernah diisi form → isi harga katalog
+  // agar tagihan/omzet tidak jatuh ke Rp0. Dari WAITING_APPROVAL hormati
+  // angka yang sudah dikirim lewat form (termasuk 0 = gratis).
+  const laborOtomatis =
+    service.status === "PENDING" &&
+    service.laborCost === 0 &&
+    service.catalog
+      ? service.catalog.hargaDasar
+      : null;
+
+  await transition(
+    id,
+    ["PENDING", "WAITING_APPROVAL"],
+    "CONFIRMED",
+    laborOtomatis === null ? {} : { laborCost: laborOtomatis },
+  );
   revalidatePath("/dashboard/servis");
   revalidatePath(`/dashboard/servis/${id}`);
-  return { success: "Disetujui di tempat → Dikonfirmasi." };
+  return {
+    success:
+      laborOtomatis === null
+        ? "Disetujui di tempat → Dikonfirmasi."
+        : `Disetujui di tempat → Dikonfirmasi · biaya jasa mengikuti katalog (${formatRupiah(laborOtomatis)}).`,
+  };
 }
 
 export async function checkInUnit(

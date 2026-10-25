@@ -109,7 +109,13 @@ function EstimateForm({
   const { state, formAction } = useForm(submitEstimate);
   const [jadwal, setJadwal] = useState("");
   const [catalogId, setCatalogId] = useState(service.catalogId ?? "");
-  const [estimate, setEstimate] = useState(service.estimate);
+  const pilihAwal = catalog.find((c) => c.id === (service.catalogId ?? ""));
+  const [estimate, setEstimate] = useState(
+    service.estimate || pilihAwal?.hargaDasar || 0,
+  );
+  const [laborCost, setLaborCost] = useState(
+    service.laborCost || pilihAwal?.hargaDasar || 0,
+  );
   const pilih = catalog.find((c) => c.id === catalogId);
   return (
     <form action={formAction} className="space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
@@ -123,7 +129,10 @@ function EstimateForm({
           onChange={(e) => {
             setCatalogId(e.target.value);
             const c = catalog.find((x) => x.id === e.target.value);
-            if (c) setEstimate(c.hargaDasar);
+            if (c) {
+              setEstimate(c.hargaDasar);
+              setLaborCost(c.hargaDasar);
+            }
           }}
           className={inputCls}
         >
@@ -132,9 +141,13 @@ function EstimateForm({
             <option key={c.id} value={c.id}>{c.nama}</option>
           ))}
         </select>
-        {pilih && (
+        {pilih ? (
           <p className="mt-1 text-xs text-slate-400">
             Harga katalog: {formatRupiah(pilih.hargaDasar)} · ± {pilih.estimasiMenit} menit pengerjaan
+          </p>
+        ) : (
+          <p className="mt-1 text-xs text-slate-400">
+            Pilih jenis jasa untuk mengisi biaya otomatis.
           </p>
         )}
       </Field>
@@ -150,7 +163,14 @@ function EstimateForm({
           />
         </Field>
         <Field label="Biaya Jasa (Rp)">
-          <input name="laborCost" type="number" min={0} defaultValue={service.laborCost} className={inputCls} />
+          <input
+            name="laborCost"
+            type="number"
+            min={0}
+            value={laborCost}
+            onChange={(e) => setLaborCost(Number(e.target.value))}
+            className={inputCls}
+          />
         </Field>
       </div>
       <Field label="Mekanik">
