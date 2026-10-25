@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { requireStaffRole, getStaffBranchId } from "@/lib/guard";
 import { OPNAME_NOTE_PREFIX, opnameDeltaValue } from "@/lib/opname";
+import { totalPenjualan } from "@/lib/sale";
 
 /** Parse param tanggal YYYY-MM-DD ketat — nilai aneh jangan pernah jadi Invalid Date. */
 function parseDateParam(s: string | null, endOfDay: boolean, fallback: Date): Date {
@@ -39,7 +40,7 @@ export async function GET(request: Request) {
   const branchFilter = branchIdStaff ?? p.get("branch") ?? null;
   const branchWhere = branchFilter ? { branchId: branchFilter } : {};
 
-  const [doneServices, cashflows, opnameMoves] = await Promise.all([
+  const [doneServices, cashflows, opnameMoves, partSales] = await Promise.all([
     prisma.service.findMany({
       where: { ...branchWhere, status: "DONE", finishedAt: { gte: from, lte: to } },
       include: {
@@ -61,6 +62,11 @@ export async function GET(request: Request) {
         ...(branchFilter ? { part: { branchId: branchFilter } } : {}),
       },
       include: { part: { select: { buyPrice: true } } },
+    }),
+    prisma.partSale.findMany({
+      where: { ...branchWhere, soldAt: { gte: from, lte: to } },
+      include: { items: { select: { quantity: true, price: true, cost: true } } },
+      orderBy: { soldAt: "asc" },
     }),
   ]);
 
@@ -92,9 +98,31 @@ export async function GET(request: Request) {
     })),
   );
   servisRows.push(["SELISIH OPNAME", "", "", "", "", "", "", opnameDelta]);
-  servisRows.push(["LABA BERSIH", "", "", "", "", "", "", totRev - totHpp + opnameDelta]);
 
-  // Bagian 2: arus kas
+  // Bagian 2: penjualan part tanpa servis
+  const jualRows: unknown[][] = [
+    ["Kode", "Tanggal", "Item", "Pendapatan", "HPP", "Laba"],
+  ];
+  let totJual = 0, totHppJual = 0;
+  for (const sale of partSales) {
+    const rev = totalPenjualan(sale.items);
+    const hpp = sale.items.reduce((x, i) => x + i.cost * i.quantity, 0);
+    totJual += rev; totHppJual += hpp;
+    jualRows.push([
+      sale.code,
+      new Date(sale.soldAt).toLocaleDateString("id-ID"),
+      sale.items.length,
+      rev, hpp, rev - hpp,
+    ]);
+  }
+  jualRows.push(["TOTAL", "", "", totJual, totHppJual, totJual - totHppJual]);
+  const labaJualPart = totJual - totHppJual;
+  servisRows.push([
+    "LABA BERSIH", "", "", "", "", "", "",
+    totRev - totHpp + opnameDelta + labaJualPart,
+  ]);
+
+  // Bagian 3: arus kas
   const kasRows: unknown[][] = [
     ["Tanggal", "Tipe", "Kategori", "Kantong", "Jumlah", "Keterangan"],
   ];
@@ -109,6 +137,10 @@ export async function GET(request: Request) {
     `LAPORAN SERVIS (${from.toLocaleDateString("id-ID")} - ${to.toLocaleDateString("id-ID")})`,
     "",
     toCsv(servisRows),
+    "",
+    "PENJUALAN PART (TANPA SERVIS)",
+    "",
+    toCsv(jualRows),
     "",
     "ARUS KAS",
     "",

@@ -11,7 +11,12 @@ import {
   estimateAvgAfterCostCorrection,
   correctedServiceCost,
   cekHargaRugi,
+  allocateFifo,
 } from "@/lib/inventory";
+import {
+  validasiItemJual,
+  kodePenjualanPart,
+} from "@/lib/sale";
 import type { PaymentMethod } from "@db/prisma/client";
 
 export type StokState = { error?: string; success?: string };
@@ -342,6 +347,173 @@ export async function stockIn(
   };
 }
 
+// ─── Jual Part (tanpa servis/booking) ────────────────────────────────
+
+/**
+ * Penjualan part tunai tanpa servis: stok OUT + alokasi FIFO batch +
+ * PartSaleItem + Payment (cabang eksplisit) + kas INCOME — atomik 1 transaksi.
+ * Balance: omzet Σ payment = kas cashflow = Σ(price−cost)×qty laba penjualan.
+ */
+export async function sellPart(
+  _prev: StokState,
+  formData: FormData,
+): Promise<StokState> {
+  const session = await requireStokRole();
+  const partId = String(formData.get("partId") ?? "").trim();
+  const quantity = Number(formData.get("quantity") ?? 0);
+  const price = Number(formData.get("price") ?? 0);
+  const method = String(formData.get("method") ?? "CASH") as PaymentMethod;
+  const note = String(formData.get("note") ?? "").trim();
+
+  if (!partId) return { error: "Part belum dipilih — pilih satu dari daftar saran." };
+  const itemError = validasiItemJual(quantity, price);
+  if (itemError) return { error: itemError };
+  if (!["CASH", "TRANSFER", "QRIS"].includes(method)) {
+    return { error: "Metode bayar tidak valid." };
+  }
+
+  const part = await prisma.part.findUnique({ where: { id: partId } });
+  if (!part) return { error: "Part tidak ditemukan." };
+  const branchIdStaff = await getStaffBranchId();
+  if (branchIdStaff && part.branchId !== branchIdStaff) {
+    return { error: "Part bukan di cabang Anda." };
+  }
+  if (part.quantity < quantity) {
+    return { error: `Stok ${part.name} kurang (tersisa ${part.quantity}).` };
+  }
+  const rugi = cekHargaRugi({
+    buyPrice: part.buyPrice,
+    sellPrice: price,
+    konfirmasi: konfirmasiRugi(formData),
+  });
+  if (rugi) return { error: `${rugi} Centang konfirmasi bila memang disengaja.` };
+
+  const total = quantity * price;
+
+  await prisma.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT id FROM "Part" WHERE id = ${partId} FOR UPDATE`;
+    // Guard atomik anti-race: decrement hanya bila stok masih mencukupi di DB.
+    const updated = await tx.part.updateMany({
+      where: { id: partId, quantity: { gte: quantity } },
+      data: { quantity: { decrement: quantity } },
+    });
+    if (updated.count === 0) throw new Error(`Stok ${part.name} kurang.`);
+
+    // Baca ulang SETELAH baris terkunci — HPP FIFO dari angka terkini.
+    const partF = await tx.part.findUnique({ where: { id: partId } });
+    if (!partF) throw new Error("Part tidak ditemukan.");
+
+    // Alokasi FIFO per-unit (sama dgn servis) — jejak di PartBatchUsage.saleItemId.
+    const movements = await tx.stockMovement.findMany({
+      where: { partId, type: "IN" },
+      orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+      select: { id: true, quantity: true, cost: true },
+    });
+    const usedAgg = await tx.partBatchUsage.groupBy({
+      by: ["movementId"],
+      where: { movementId: { in: movements.map((m) => m.id) } },
+      _sum: { quantity: true },
+    });
+    const usedMap = new Map(
+      usedAgg.map((u) => [u.movementId, u._sum?.quantity ?? 0]),
+    );
+    const openBatches = movements.map((m) => ({
+      movementId: m.id,
+      remaining: m.quantity - (usedMap.get(m.id) ?? 0),
+      cost: m.cost,
+    }));
+    const { allocations, cost } = allocateFifo(
+      quantity,
+      openBatches,
+      partF.buyPrice,
+    );
+
+    const branch = await tx.branch.findUnique({
+      where: { id: partF.branchId },
+      select: { name: true },
+    });
+    const year = new Date().getFullYear();
+    const urut = await tx.partSale.count({
+      where: {
+        branchId: partF.branchId,
+        soldAt: { gte: new Date(year, 0, 1) },
+      },
+    });
+    const code = kodePenjualanPart(branch?.name ?? "", year, urut + 1);
+
+    const sale = await tx.partSale.create({
+      data: {
+        code,
+        branchId: partF.branchId,
+        method,
+        note: note || null,
+        createdBy: session.user.id,
+      },
+    });
+    const item = await tx.partSaleItem.create({
+      data: { saleId: sale.id, partId, quantity, price, cost },
+    });
+    for (const a of allocations) {
+      await tx.partBatchUsage.create({
+        data: {
+          movementId: a.movementId,
+          saleItemId: item.id,
+          quantity: a.quantity,
+        },
+      });
+    }
+    await tx.stockMovement.create({
+      data: {
+        partId,
+        type: "OUT",
+        quantity,
+        note: `Dijual ${sale.code}`,
+        userId: session.user.id,
+      },
+    });
+    // Kas masuk hanya bila ada nilai — penjualan gratis cukup stok + audit.
+    if (total > 0) {
+      await tx.payment.create({
+        data: {
+          saleId: sale.id,
+          branchId: partF.branchId,
+          amount: total,
+          kind: "PELUNASAN",
+          method,
+          note: `Penjualan ${sale.code}${note ? ` · ${note}` : ""}`,
+          receivedById: session.user.id,
+        },
+      });
+      await tx.cashflow.create({
+        data: {
+          type: "INCOME",
+          category: "Penjualan Part",
+          amount: total,
+          account: accountFromMethod(method),
+          branchId: partF.branchId,
+          description: `${quantity} ${partF.unit} ${partF.name} · ${sale.code}`,
+          createdBy: session.user.id,
+        },
+      });
+    }
+    await logAudit(tx, session.user, {
+      action: "PART_SALE",
+      entityType: "PartSale",
+      entityId: sale.id,
+      branchId: partF.branchId,
+      summary: `${sale.code} · jual ${quantity} ${partF.unit} ${partF.name} @${price.toLocaleString("id-ID")} = ${total.toLocaleString("id-ID")} (${accountFromMethod(method)}) — HPP/unit ${cost.toLocaleString("id-ID")}`,
+      after: { quantity, price, cost, total, method },
+    });
+  });
+
+  revalidatePath("/dashboard/stok");
+  revalidatePath("/dashboard/kas");
+  revalidatePath("/dashboard/laporan");
+  return {
+    success: `Penjualan ${quantity} ${part.unit} ${part.name} tercatat — stok berkurang, kas masuk ${total.toLocaleString("id-ID")}.`,
+  };
+}
+
 // ─── Penyesuaian ──────────────────────────────────────────────────────
 
 export async function adjustStock(
@@ -480,6 +652,7 @@ export async function correctStockCost(
   let kasDelta = 0;
   let kasTercatat = false;
   let serviceCount = 0;
+  let saleCount = 0;
 
   // Kunci baris part (pola FOR UPDATE sama dengan addPayment) — serialisasi
   // dengan stok masul/servis/koreksi paralel; semua baca ulang dilakukan SETELAH
@@ -499,22 +672,34 @@ export async function correctStockCost(
     }
     costLama = mvF.cost;
 
-    // Jejak unit servis dari batch ini → x: batas koreksi HPP, tidak melebar.
+    // Jejak unit terpakai dari batch ini → x: batas koreksi HPP, tidak melebar.
+    // Unit bisa terikat servis (servicePart) atau penjualan part (saleItem).
     const usages = await tx.partBatchUsage.findMany({
       where: { movementId },
-      include: { servicePart: true },
+      include: { servicePart: true, saleItem: true },
     });
     x = usages.reduce((s, u) => s + u.quantity, 0);
     const perSp = new Map<
       string,
-      { qty: number; sp: (typeof usages)[number]["servicePart"] }
+      { qty: number; sp: NonNullable<(typeof usages)[number]["servicePart"]> }
+    >();
+    const perItem = new Map<
+      string,
+      { qty: number; item: NonNullable<(typeof usages)[number]["saleItem"]> }
     >();
     for (const u of usages) {
-      const cur = perSp.get(u.servicePartId);
-      if (cur) cur.qty += u.quantity;
-      else perSp.set(u.servicePartId, { qty: u.quantity, sp: u.servicePart });
+      if (u.servicePartId && u.servicePart) {
+        const cur = perSp.get(u.servicePartId);
+        if (cur) cur.qty += u.quantity;
+        else perSp.set(u.servicePartId, { qty: u.quantity, sp: u.servicePart });
+      } else if (u.saleItemId && u.saleItem) {
+        const cur = perItem.get(u.saleItemId);
+        if (cur) cur.qty += u.quantity;
+        else perItem.set(u.saleItemId, { qty: u.quantity, item: u.saleItem });
+      }
     }
     serviceCount = perSp.size;
+    saleCount = perItem.size;
 
     // 1. Riwayat batch
     await tx.stockMovement.update({
@@ -547,6 +732,22 @@ export async function correctStockCost(
         await tx.servicePart.update({
           where: { id: sp.id },
           data: { cost: newSpCost },
+        });
+      }
+    }
+    // 3b. HPP penjualan part terdampak — formula sama, unit terbatas jejak batch.
+    for (const [, { qty, item }] of perItem) {
+      const newCostItem = correctedServiceCost(
+        item.cost,
+        item.quantity,
+        qty,
+        costLama,
+        newCost,
+      );
+      if (newCostItem !== item.cost) {
+        await tx.partSaleItem.update({
+          where: { id: item.id },
+          data: { cost: newCostItem },
         });
       }
     }
@@ -586,12 +787,13 @@ export async function correctStockCost(
       entityType: "StockMovement",
       entityId: movementId,
       branchId: part.branchId,
-      summary: `${part.name}: batch ${mvF.quantity} @${costLama} → @${newCost} · ${perSp.size} servis / ${x} unit terdampak · kas ${kasDelta === 0 ? "±0" : kasTercatat ? `${kasDelta > 0 ? "+" : "−"}${Math.abs(kasDelta)}` : "dilewati (bukan pembelian)"} · rata-rata → ${avgBaru}`,
+      summary: `${part.name}: batch ${mvF.quantity} @${costLama} → @${newCost} · ${perSp.size} servis / ${perItem.size} penjualan / ${x} unit terdampak · kas ${kasDelta === 0 ? "±0" : kasTercatat ? `${kasDelta > 0 ? "+" : "−"}${Math.abs(kasDelta)}` : "dilewati (bukan pembelian)"} · rata-rata → ${avgBaru}`,
       before: { cost: costLama, buyPrice: partF.buyPrice },
       after: {
         cost: newCost,
         buyPrice: avgBaru,
         affectedServices: perSp.size,
+        affectedSales: perItem.size,
         affectedUnits: x,
       },
     });
@@ -605,6 +807,7 @@ export async function correctStockCost(
     `rata-rata → ${avgBaru}`,
   ];
   if (serviceCount > 0) efek.push(`${serviceCount} servis (${x} unit) ikut dikoreksi`);
+  if (saleCount > 0) efek.push(`${saleCount} penjualan part ikut dikoreksi`);
   if (kasDelta !== 0) {
     efek.push(
       kasTercatat

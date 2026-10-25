@@ -55,7 +55,7 @@ enum PaymentMethod {
 enum PaymentKind {
   DP
   PELUNASAN
-  /// Pengembalian kelebihan bayar (amount negatif � dikurangi dari total bayar).
+  /// Pengembalian kelebihan bayar (amount negatif � dikurangi dari total bayar).
   REFUND
 }
 
@@ -81,6 +81,7 @@ model User {
   stockMovements     StockMovement[]
   cashflows          Cashflow[]
   paymentsReceived   Payment[]       @relation("PaymentReceivedBy")
+  partSalesCreated   PartSale[]      @relation("PartSaleCreatedBy")
 }
 
 model Branch {
@@ -101,6 +102,7 @@ model Branch {
   parts     Part[]
   services  Service[]
   cashflows Cashflow[]
+  partSales PartSale[]
 }
 
 model ServiceCatalog {
@@ -174,6 +176,7 @@ model Part {
 
   movements    StockMovement[]
   serviceParts ServicePart[]
+  saleItems    PartSaleItem[]
 
   @@unique([branchId, sku])
 }
@@ -197,16 +200,22 @@ model StockMovement {
 
 /// Alokasi FIFO: jejak unit servis yang diambil dari batch pembelian tertentu.
 model PartBatchUsage {
-  id            String        @id @default(cuid())
+  id            String         @id @default(cuid())
   movementId    String
-  movement      StockMovement @relation(fields: [movementId], references: [id], onDelete: Cascade)
-  servicePartId String
-  servicePart   ServicePart   @relation(fields: [servicePartId], references: [id], onDelete: Cascade)
+  movement      StockMovement  @relation(fields: [movementId], references: [id], onDelete: Cascade)
+  /// Exactly-one: unit terpakai oleh servis ATAU oleh penjualan part (nullable dua-duanya).
+  servicePartId String?
+  servicePart   ServicePart?   @relation(fields: [servicePartId], references: [id], onDelete: Cascade)
+  saleItemId    String?
+  saleItem      PartSaleItem?  @relation(fields: [saleItemId], references: [id], onDelete: Cascade)
   quantity      Int
-  createdAt     DateTime      @default(now())
+  createdAt     DateTime       @default(now())
 
   @@index([movementId])
   @@index([servicePartId])
+  @@index([saleItemId])
+  // Exactly-one (servicePartId XOR saleItemId) dijaga di application layer —
+  // Prisma 7.10 belum mendukung attribute @@check.
 }
 
 model Service {
@@ -261,8 +270,14 @@ model ServicePart {
 
 model Payment {
   id           String        @id @default(cuid())
+  /// Pembayaran servis — nullable (penjualan part punya saleId).
   serviceId    String?
   service      Service?      @relation(fields: [serviceId], references: [id])
+  /// Penjualan part tanpa servis — nullable, exactly-one dengan serviceId.
+  saleId       String?
+  sale         PartSale?     @relation(fields: [saleId], references: [id])
+  /// Cabang eksplisit (dari sale; payment servis baca service.branchId).
+  branchId     String?
   amount       Int
   kind         PaymentKind   @default(PELUNASAN)
   method       PaymentMethod @default(CASH)
@@ -274,6 +289,43 @@ model Payment {
   voidReason   String?
   voidedBy     String?
   createdAt    DateTime      @default(now())
+
+  @@index([branchId])
+  @@index([saleId])
+}
+
+/// Penjualan part tunai tanpa servis/booking — 1 baris = 1 transaksi kasir.
+model PartSale {
+  id           String        @id @default(cuid())
+  code         String        @unique
+  branchId     String
+  branch       Branch        @relation(fields: [branchId], references: [id])
+  method       PaymentMethod @default(CASH)
+  /// Pembayaran penjualan utk pendukung riwayat (amount = total penjualan).
+  payments     Payment[]
+  note         String?
+  soldAt       DateTime      @default(now())
+  createdBy    String?
+  createdByUser User?        @relation("PartSaleCreatedBy", fields: [createdBy], references: [id])
+
+  items        PartSaleItem[]
+}
+
+/// Satu baris per part terjual — price = harga jual, cost = HPP FIFO saat transaksi.
+model PartSaleItem {
+  id       String    @id @default(cuid())
+  saleId   String
+  sale     PartSale  @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  partId   String
+  part     Part      @relation(fields: [partId], references: [id])
+  quantity Int
+  price    Int
+  cost     Int
+
+  batchUsages PartBatchUsage[]
+
+  @@index([saleId])
+  @@index([partId])
 }
 
 model Cashflow {

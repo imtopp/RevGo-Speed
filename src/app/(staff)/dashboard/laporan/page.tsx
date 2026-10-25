@@ -6,6 +6,7 @@ import { BranchPicker } from "../stok/branch-picker";
 import { SubmitButton } from "@/components/submit-button";
 import { DownloadLink } from "@/components/download-link";
 import { OPNAME_NOTE_PREFIX, opnameDeltaValue } from "@/lib/opname";
+import { totalPenjualan, labaPenjualan } from "@/lib/sale";
 
 export const metadata = { title: "Laporan" };
 
@@ -48,39 +49,51 @@ export default async function LaporanPage({
   const to = parseDateParam(params.to, true, bounds.to);
   const branchWhere = branchFilter ? { branchId: branchFilter } : {};
 
-  const [doneServices, payments, cashflows, opnameMoves] = await Promise.all([
-    prisma.service.findMany({
-      where: {
-        ...branchWhere,
-        status: "DONE",
-        finishedAt: { gte: from, lte: to },
-      },
-      include: {
-        parts: { select: { price: true, quantity: true, cost: true } },
-        customer: { select: { name: true } },
-        vehicle: { select: { plateNumber: true } },
-      },
-      orderBy: { finishedAt: "asc" },
-    }),
-    prisma.payment.findMany({
-      where: { voidedAt: null, paidAt: { gte: from, lte: to } },
-      include: { service: { select: { branchId: true } } },
-    }),
-    prisma.cashflow.findMany({
-      where: { ...branchWhere, createdAt: { gte: from, lte: to } },
-    }),
-    prisma.stockMovement.findMany({
-      where: {
-        note: { startsWith: OPNAME_NOTE_PREFIX },
-        createdAt: { gte: from, lte: to },
-        ...(branchFilter ? { part: { branchId: branchFilter } } : {}),
-      },
-      include: { part: { select: { buyPrice: true } } },
-    }),
-  ]);
+  const [doneServices, payments, cashflows, opnameMoves, partSales] =
+    await Promise.all([
+      prisma.service.findMany({
+        where: {
+          ...branchWhere,
+          status: "DONE",
+          finishedAt: { gte: from, lte: to },
+        },
+        include: {
+          parts: { select: { price: true, quantity: true, cost: true } },
+          customer: { select: { name: true } },
+          vehicle: { select: { plateNumber: true } },
+        },
+        orderBy: { finishedAt: "asc" },
+      }),
+      prisma.payment.findMany({
+        where: { voidedAt: null, paidAt: { gte: from, lte: to } },
+        include: { service: { select: { branchId: true } } },
+      }),
+      prisma.cashflow.findMany({
+        where: { ...branchWhere, createdAt: { gte: from, lte: to } },
+      }),
+      prisma.stockMovement.findMany({
+        where: {
+          note: { startsWith: OPNAME_NOTE_PREFIX },
+          createdAt: { gte: from, lte: to },
+          ...(branchFilter ? { part: { branchId: branchFilter } } : {}),
+        },
+        include: { part: { select: { buyPrice: true } } },
+      }),
+      prisma.partSale.findMany({
+        where: { ...branchWhere, soldAt: { gte: from, lte: to } },
+        include: {
+          items: { select: { quantity: true, price: true, cost: true } },
+        },
+      }),
+    ]);
 
+  // Cabang payment: penjualan part bawa branchId sendiri; payment servis
+  // mengikuti cabang servisnya — tanpa ini, penjualan tanpa servis hilang
+  // dari omzet per-cabang padahal kasnya masuk (omzet ≠ kas).
   const scopedPayments = branchFilter
-    ? payments.filter((p) => p.service?.branchId === branchFilter)
+    ? payments.filter(
+        (p) => (p.branchId ?? p.service?.branchId) === branchFilter,
+      )
     : payments;
 
   // Laba per servis: revenue − HPP (snapshot cost part)
@@ -102,7 +115,19 @@ export default async function LaporanPage({
       unitCost: m.cost ?? m.part.buyPrice,
     })),
   );
-  const totalLaba = totalRevenue - totalHpp + opnameDelta;
+
+  // Penjualan part tanpa servis: pendapatan & HPP (FIFO per-unit saat transaksi)
+  // — metrik terpisah dari laba servis, ikut laba bersih.
+  const omzetJualPart = partSales.reduce(
+    (sum, sale) => sum + totalPenjualan(sale.items),
+    0,
+  );
+  const labaJualPart = partSales.reduce(
+    (sum, sale) => sum + labaPenjualan(sale.items),
+    0,
+  );
+  const totalLaba =
+    totalRevenue - totalHpp + opnameDelta + labaJualPart;
 
   const omzet = scopedPayments.reduce((sum, p) => sum + p.amount, 0);
   const kasMasuk = cashflows.filter((c) => c.type === "INCOME").reduce((s, c) => s + c.amount, 0);
@@ -121,7 +146,8 @@ export default async function LaporanPage({
 
   const summary = [
     { label: "Omzet (kas masuk bayar)", value: formatRupiah(omzet) },
-    { label: "Laba kotor (rev − HPP ± opname)", value: formatRupiah(totalLaba), accent: totalLaba >= 0 },
+    { label: "Laba kotor (rev − HPP ± opname + jual part)", value: formatRupiah(totalLaba), accent: totalLaba >= 0 },
+    { label: "Penjualan part (tanpa servis)", value: formatRupiah(omzetJualPart) },
     { label: "Selisih opname (beban/temuan)", value: formatRupiah(opnameDelta), accent: opnameDelta >= 0 },
     { label: "Servis selesai", value: String(doneServices.length) },
     { label: "Saldo kas periode", value: formatRupiah(kasMasuk - kasKeluar) },

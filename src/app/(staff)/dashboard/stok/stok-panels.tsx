@@ -8,11 +8,13 @@ import {
   stockIn,
   adjustStock,
   correctStockCost,
+  sellPart,
   createSupplier,
   updateSupplier,
   type StokState,
 } from "./actions";
 import { formatRupiah, formatTanggalPendek } from "@/lib/service-status";
+import { totalPenjualan, labaPenjualan } from "@/lib/sale";
 import { SubmitButton } from "@/components/submit-button";
 import { PartPicker } from "@/components/part-picker";
 
@@ -41,6 +43,20 @@ type Movement = {
   supplier: { nama: string } | null;
 };
 type Branch = { id: string; name: string };
+type SaleRow = {
+  id: string;
+  code: string;
+  method: string;
+  note: string | null;
+  soldAt: Date;
+  items: {
+    id: string;
+    quantity: number;
+    price: number;
+    cost: number;
+    part: { name: string; unit: string };
+  }[];
+};
 type RiwayatPart = {
   id: string;
   name: string;
@@ -259,6 +275,58 @@ function StockInForm({ parts, suppliers }: { parts: Part[]; suppliers: Supplier[
       </p>
       <SubmitButton pendingText="Menyimpan..." className={btnPrimary}>
         Catat Stok Masuk
+      </SubmitButton>
+    </form>
+  );
+}
+
+function SellForm({ parts }: { parts: Part[] }) {
+  const [state, action] = useActionState<StokState, FormData>(sellPart, {});
+  return (
+    <form action={action} className="space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
+      <p className="text-sm font-semibold text-foreground">
+        Jual Part (Tanpa Servis)
+      </p>
+      <Msg state={state} />
+      <div>
+        <label className="block text-sm font-medium text-foreground">Part</label>
+        <PartPicker parts={parts} placeholder="Ketik nama / SKU part (stok siap)…" />
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="block text-sm font-medium text-foreground">Jumlah</label>
+          <input name="quantity" type="number" min={1} required className={inputCls} />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-foreground">
+            Harga Jual /unit (Rp)
+          </label>
+          <input name="price" type="number" min={0} required className={inputCls} />
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="block text-sm font-medium text-foreground">Bayar</label>
+          <select name="method" defaultValue="CASH" className={inputCls}>
+            <option value="CASH">Tunai (Kas)</option>
+            <option value="TRANSFER">Transfer (Bank)</option>
+            <option value="QRIS">QRIS (Bank)</option>
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-foreground">Catatan</label>
+          <input name="note" placeholder="Opsional" className={inputCls} />
+        </div>
+      </div>
+      <label className="flex items-start gap-2 text-xs text-slate-400">
+        <input type="checkbox" name="confirmLoss" className="mt-0.5" />
+        Harga jual di bawah harga beli — saya paham (wajib dicentang bila disengaja).
+      </label>
+      <p className="text-xs text-slate-400">
+        Otomatis: stok berkurang (FIFO), kas masuk sesuai total, masuk laporan.
+      </p>
+      <SubmitButton pendingText="Mencatat..." className={btnPrimary}>
+        Catat Penjualan
       </SubmitButton>
     </form>
   );
@@ -566,6 +634,7 @@ export function StokPanels({
   isLockedBranch,
   riwayatPart,
   kategoris,
+  sales,
 }: {
   tab: string;
   parts: Part[];
@@ -576,6 +645,7 @@ export function StokPanels({
   isLockedBranch: boolean;
   riwayatPart: RiwayatPart;
   kategoris: string[];
+  sales: SaleRow[];
 }) {
   const [showForms, setShowForms] = useState(false);
   const [aksi, setAksi] = useState<"part" | "masuk" | "opname">("part");
@@ -584,6 +654,59 @@ export function StokPanels({
 
   if (tab === "supplier") {
     return <SupplierPanel suppliers={suppliers} />;
+  }
+
+  if (tab === "jual") {
+    return (
+      <div className="space-y-3">
+        <SellForm parts={parts} />
+        <div className="rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
+          <p className="text-sm font-semibold text-foreground">
+            Riwayat Penjualan Part
+          </p>
+          {sales.length === 0 ? (
+            <p className="mt-2 text-sm text-muted-foreground">
+              Belum ada penjualan.
+            </p>
+          ) : (
+            <ul className="mt-2 divide-y divide-slate-100">
+              {sales.map((s) => {
+                const total = totalPenjualan(s.items);
+                const laba = labaPenjualan(s.items);
+                return (
+                  <li key={s.id} className="py-2 text-sm">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="font-medium text-foreground">
+                          {s.code} · {s.method}
+                        </p>
+                        <p className="text-xs text-slate-400">
+                          {formatTanggalPendek(s.soldAt)}
+                          {s.note ? ` · ${s.note}` : ""}
+                        </p>
+                      </div>
+                      <div className="shrink-0 text-right">
+                        <p className="font-medium">{formatRupiah(total)}</p>
+                        <p
+                          className={`text-xs ${laba < 0 ? "text-danger" : "text-slate-400"}`}
+                        >
+                          laba {formatRupiah(laba)}
+                        </p>
+                      </div>
+                    </div>
+                    <p className="mt-0.5 text-xs text-slate-500">
+                      {s.items
+                        .map((i) => `${i.quantity} ${i.part.unit} ${i.part.name}`)
+                        .join(", ")}
+                    </p>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+      </div>
+    );
   }
 
   if (tab === "riwayat") {

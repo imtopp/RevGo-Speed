@@ -47,7 +47,7 @@ export default async function StokPage({
     ? parts.find((p) => p.id === params.part) ?? null
     : null;
 
-  const [suppliers, movements] = await Promise.all([
+  const [suppliers, movements, sales] = await Promise.all([
     prisma.supplier.findMany({ orderBy: { nama: "asc" } }),
     prisma.stockMovement.findMany({
       where: {
@@ -60,6 +60,16 @@ export default async function StokPage({
         part: { select: { name: true, unit: true } },
         user: { select: { name: true } },
         supplier: { select: { nama: true } },
+      },
+    }),
+    prisma.partSale.findMany({
+      where: branchFilter ? { branchId: branchFilter } : {},
+      orderBy: { soldAt: "desc" },
+      take: 30,
+      include: {
+        items: {
+          include: { part: { select: { name: true, unit: true } } },
+        },
       },
     }),
   ]);
@@ -125,6 +135,7 @@ export default async function StokPage({
       <div className="flex gap-1">
         {[
           { key: "part", label: "Part" },
+          { key: "jual", label: "Jual" },
           { key: "riwayat", label: "Riwayat" },
           { key: "supplier", label: "Supplier" },
         ].map((t) => (
@@ -152,6 +163,7 @@ export default async function StokPage({
         isLockedBranch={!!branchIdStaff}
         riwayatPart={riwayatPart}
         kategoris={kategoris}
+        sales={sales}
       />
     </div>
   );
