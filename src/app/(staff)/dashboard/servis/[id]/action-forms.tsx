@@ -17,12 +17,14 @@ import {
 } from "../actions";
 import { SubmitButton } from "@/components/submit-button";
 import { SlotPicker } from "@/components/slot-picker";
+import { formatRupiah } from "@/lib/service-status";
 import type { ServiceStatus } from "@db/prisma/client";
 
 type ServiceInfo = {
   id: string;
   branchId: string;
   status: ServiceStatus;
+  catalogId: string | null;
   estimate: number;
   laborCost: number;
   mechanicId: string | null;
@@ -31,6 +33,12 @@ type ServiceInfo = {
 };
 
 type Mechanic = { id: string; name: string };
+type Catalog = {
+  id: string;
+  nama: string;
+  hargaDasar: number;
+  estimasiMenit: number;
+};
 type Part = {
   id: string;
   name: string;
@@ -92,20 +100,54 @@ const btnDanger =
 function EstimateForm({
   service,
   mechanics,
+  catalog,
 }: {
   service: ServiceInfo;
   mechanics: Mechanic[];
+  catalog: Catalog[];
 }) {
   const { state, formAction } = useForm(submitEstimate);
   const [jadwal, setJadwal] = useState("");
+  const [catalogId, setCatalogId] = useState(service.catalogId ?? "");
+  const [estimate, setEstimate] = useState(service.estimate);
+  const pilih = catalog.find((c) => c.id === catalogId);
   return (
     <form action={formAction} className="space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
       <input type="hidden" name="id" value={service.id} />
       <p className="text-sm font-semibold text-foreground">Isi Estimasi</p>
       <Msg state={state} />
+      <Field label="Jenis Jasa">
+        <select
+          name="catalogId"
+          value={catalogId}
+          onChange={(e) => {
+            setCatalogId(e.target.value);
+            const c = catalog.find((x) => x.id === e.target.value);
+            if (c) setEstimate(c.hargaDasar);
+          }}
+          className={inputCls}
+        >
+          <option value="">— Bebas / keluhan —</option>
+          {catalog.map((c) => (
+            <option key={c.id} value={c.id}>{c.nama}</option>
+          ))}
+        </select>
+        {pilih && (
+          <p className="mt-1 text-xs text-slate-400">
+            Harga katalog: {formatRupiah(pilih.hargaDasar)} · ± {pilih.estimasiMenit} menit pengerjaan
+          </p>
+        )}
+      </Field>
       <div className="grid grid-cols-2 gap-3">
         <Field label="Estimasi Biaya (Rp)">
-          <input name="estimate" type="number" min={0} defaultValue={service.estimate} className={inputCls} />
+          <input
+            name="estimate"
+            type="number"
+            min={0}
+            value={estimate}
+            onChange={(e) => setEstimate(Number(e.target.value))}
+            className={inputCls}
+          />
         </Field>
         <Field label="Biaya Jasa (Rp)">
           <input name="laborCost" type="number" min={0} defaultValue={service.laborCost} className={inputCls} />
@@ -332,12 +374,14 @@ function OtherActions({ children }: { children: React.ReactNode }) {
 export function ActionForms({
   service,
   mechanics,
+  catalog,
   parts,
   isMechanic,
   isAssignedMechanic,
 }: {
   service: ServiceInfo;
   mechanics: Mechanic[];
+  catalog: Catalog[];
   parts: Part[];
   isMechanic: boolean;
   isAssignedMechanic: boolean;
@@ -350,7 +394,7 @@ export function ActionForms({
   switch (service.status) {
     case "PENDING":
       if (canAdmin) {
-        primary = <EstimateForm service={service} mechanics={mechanics} />;
+        primary = <EstimateForm service={service} mechanics={mechanics} catalog={catalog} />;
         others = [
           <ApproveForm key="approve" service={service} />,
           <CancelForm key="cancel" service={service} />,

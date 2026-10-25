@@ -320,6 +320,7 @@ export async function submitEstimate(
   const laborCost = Number(formData.get("laborCost") ?? 0);
   const mechanicId = String(formData.get("mechanicId") ?? "").trim();
   const scheduledAtRaw = String(formData.get("scheduledAt") ?? "").trim();
+  const catalogId = String(formData.get("catalogId") ?? "").trim();
 
   if (
     !Number.isFinite(estimate) ||
@@ -330,6 +331,14 @@ export async function submitEstimate(
     laborCost > 2_000_000_000
   ) {
     return { error: "Biaya tidak valid." };
+  }
+
+  if (catalogId) {
+    const cat = await prisma.serviceCatalog.findFirst({
+      where: { id: catalogId, aktif: true },
+      select: { id: true },
+    });
+    if (!cat) return { error: "Jenis jasa tidak ditemukan di katalog." };
   }
 
   const service = await prisma.service.findUnique({
@@ -372,6 +381,7 @@ export async function submitEstimate(
         laborCost,
         mechanicId: mechanicId || null,
         scheduledAt,
+        catalogId: catalogId || null,
       },
       { lock, validasi },
     );

@@ -63,6 +63,11 @@ export default async function ServisDetailPage({
     orderBy: { name: "asc" },
     select: { id: true, name: true, unit: true, quantity: true, sellPrice: true },
   });
+  const catalogList = await prisma.serviceCatalog.findMany({
+    where: { aktif: true },
+    orderBy: { nama: "asc" },
+    select: { id: true, nama: true, hargaDasar: true, estimasiMenit: true },
+  });
 
   const totalPartHarga = service.parts.reduce(
     (sum, p) => sum + p.price * p.quantity,
@@ -293,6 +298,7 @@ export default async function ServisDetailPage({
               id: service.id,
               branchId: service.branchId,
               status: service.status,
+              catalogId: service.catalogId,
               estimate: service.estimate,
               laborCost: service.laborCost,
               mechanicId: service.mechanicId,
@@ -300,6 +306,7 @@ export default async function ServisDetailPage({
               complaint: service.complaint,
             }}
             mechanics={mechanics}
+            catalog={catalogList}
             parts={parts}
             isMechanic={isMechanic}
             isAssignedMechanic={isAssignedMechanic}

@@ -56,6 +56,7 @@ export default async function ServisPage({
         vehicle: true,
         customer: { select: { name: true, phone: true } },
         mechanic: { select: { name: true } },
+        catalog: { select: { nama: true } },
       },
     }),
     prisma.branch.findMany({
@@ -149,6 +150,11 @@ export default async function ServisPage({
                   {s.customer.name}
                   {s.mechanic ? ` · ${s.mechanic.name}` : ""}
                 </p>
+                {s.catalog?.nama && (
+                  <p className="text-sm font-medium text-foreground">
+                    {s.catalog.nama}
+                  </p>
+                )}
               </div>
               <div className="shrink-0 text-right">
                 <span
