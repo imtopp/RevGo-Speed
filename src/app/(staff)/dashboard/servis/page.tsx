@@ -9,6 +9,7 @@ import {
   ACTIVE_STATUSES,
 } from "@/lib/service-status";
 import { BookingForm } from "./booking-form";
+import { BookingToggle } from "./booking-toggle";
 import { buildModelPerMerek } from "@/lib/vehicle";
 import type { ServiceStatus } from "@db/prisma/client";
 
@@ -89,12 +90,7 @@ export default async function ServisPage({
             Kelola katalog →
           </Link>
         </div>
-        <Link
-          href={showBooking ? "/dashboard/servis" : "/dashboard/servis?booking=1"}
-          className="rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white active:opacity-90"
-        >
-          {showBooking ? "Tutup Booking Servis" : "+ Booking Servis"}
-        </Link>
+        <BookingToggle showBooking={showBooking} />
       </div>
 
       {showBooking && (
