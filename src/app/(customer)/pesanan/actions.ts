@@ -3,6 +3,8 @@
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { normalizeMerek, normalizeTipe, modelTidakSesuaiMerek, normalizePlate, MEREK_LAINNYA } from "@/lib/vehicle";
+import { cekSlotTersedia, kunciSlot } from "@/lib/booking";
+import { DURASI_DEFAULT_MENIT, parseJadwal, pesanDitolak } from "@/lib/availability";
 import { revalidatePath } from "next/cache";
 
 export type CustomerState = { error?: string; success?: string };
@@ -55,34 +57,50 @@ export async function customerBooking(
   });
   if (!branch) return { error: "Cabang tidak valid." };
 
-  // Cek jam operasional
-  const now = new Date();
-  const day = now.getDay().toString();
-  if (!branch.hariAktif.split(",").includes(day)) {
-    // Tetap terima (antrian buka berikutnya) — hanya catat
-  }
-
   const catalog = catalogId
     ? await prisma.serviceCatalog.findFirst({ where: { id: catalogId, aktif: true } })
     : null;
 
-  const code = await generateServiceCode(branchId);
-  const scheduledAt = scheduledAtRaw ? new Date(scheduledAtRaw) : null;
+  if (!scheduledAtRaw) {
+    return { error: "Jadwal kedatangan wajib dipilih." };
+  }
+  const epoch = parseJadwal(scheduledAtRaw);
+  if (epoch === null) {
+    return { error: "Jadwal kedatangan tidak valid." };
+  }
+  const durasiMenit = catalog?.estimasiMenit ?? DURASI_DEFAULT_MENIT;
 
-  await prisma.service.create({
-    data: {
-      code,
+  const code = await generateServiceCode(branchId);
+  const hasil = await prisma.$transaction(async (tx) => {
+    await kunciSlot(tx, branchId, epoch);
+    const cek = await cekSlotTersedia({
       branchId,
-      source: "APP",
-      catalogId: catalog?.id ?? null,
-      vehicleId,
-      customerId: session.user.id,
-      status: "PENDING",
-      complaint: complaint || catalog?.nama || null,
-      estimate: catalog?.hargaDasar ?? 0,
-      scheduledAt,
-    },
+      epoch,
+      durasiMenit,
+      pakaiLeadTime: true,
+      db: tx,
+    });
+    if (!cek.ok) return cek;
+    const created = await tx.service.create({
+      data: {
+        code,
+        branchId,
+        source: "APP",
+        catalogId: catalog?.id ?? null,
+        vehicleId,
+        customerId: session.user.id,
+        status: "PENDING",
+        complaint: complaint || catalog?.nama || null,
+        estimate: catalog?.hargaDasar ?? 0,
+        scheduledAt: new Date(epoch),
+        estimasiMenit: durasiMenit,
+      },
+    });
+    return { ok: true as const, id: created.id };
   });
+  if (!hasil.ok) {
+    return { error: pesanDitolak(hasil) };
+  }
 
   revalidatePath("/pesanan");
   return { success: `Booking ${code} terkirim. Menunggu konfirmasi bengkel.` };

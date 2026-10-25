@@ -58,7 +58,7 @@ export function CatalogManager() {
               className={inputCls}
             />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             <div>
               <label className="block text-sm font-medium text-foreground">
                 Harga Dasar (Rp)
@@ -68,6 +68,19 @@ export function CatalogManager() {
                 type="number"
                 min={0}
                 defaultValue={0}
+                className={inputCls}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-foreground">
+                Estimasi Durasi (menit)
+              </label>
+              <input
+                name="estimasiMenit"
+                type="number"
+                min={5}
+                max={1440}
+                defaultValue={60}
                 className={inputCls}
               />
             </div>

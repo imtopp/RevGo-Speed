@@ -4,9 +4,10 @@ import { useActionState, useState } from "react";
 import { MEREK_GROUPS, MEREK_LAINNYA, flattenModel } from "@/lib/vehicle";
 import { createBooking, type ServisState } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
+import { SlotPicker } from "@/components/slot-picker";
 
 type Branch = { id: string; name: string };
-type Catalog = { id: string; nama: string; hargaDasar: number; allowDp: boolean };
+type Catalog = { id: string; nama: string; hargaDasar: number; allowDp: boolean; estimasiMenit: number };
 
 export function BookingForm({
   branches,
@@ -23,6 +24,11 @@ export function BookingForm({
   );
   const [plate, setPlate] = useState("");
   const [merekPilih, setMerekPilih] = useState("");
+  const [branchId, setBranchId] = useState(branches[0]?.id ?? "");
+  const [tipeKedatangan, setTipeKedatangan] = useState<"walkin" | "reservasi">("walkin");
+  const [jadwal, setJadwal] = useState("");
+  const [durasi, setDurasi] = useState("");
+  const [catalogId, setCatalogId] = useState("");
   const tipeOptions =
     merekPilih && merekPilih !== MEREK_LAINNYA
       ? (modelPerMerek[merekPilih] ?? [])
@@ -53,7 +59,8 @@ export function BookingForm({
           <select
             name="branchId"
             required
-            defaultValue={branches[0]?.id ?? ""}
+            value={branchId}
+            onChange={(e) => setBranchId(e.target.value)}
             className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-base outline-none focus:border-slate-900"
           >
             {branches.map((b) => (
@@ -180,7 +187,12 @@ export function BookingForm({
           </label>
           <select
             name="catalogId"
-            defaultValue=""
+            value={catalogId}
+            onChange={(e) => {
+              setCatalogId(e.target.value);
+              const c = catalog.find((x) => x.id === e.target.value);
+              if (c) setDurasi(String(c.estimasiMenit));
+            }}
             className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-base outline-none focus:border-slate-900"
           >
             <option value="">— Bebas / keluhan —</option>
@@ -193,14 +205,50 @@ export function BookingForm({
         </div>
         <div>
           <label className="block text-sm font-medium text-foreground">
-            Jadwal (opsional)
+            Estimasi Durasi (menit)
           </label>
           <input
-            name="scheduledAt"
-            type="datetime-local"
+            name="durasiMenit"
+            type="number"
+            min={5}
+            max={1440}
+            value={durasi}
+            onChange={(e) => setDurasi(e.target.value)}
+            placeholder={
+              catalogId
+                ? `otomatis (${catalog.find((c) => c.id === catalogId)?.estimasiMenit ?? 60} menit)`
+                : "otomatis (60 menit)"
+            }
             className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-base outline-none focus:border-slate-900"
           />
         </div>
+      </div>
+
+      <div className="space-y-2">
+        <label className="block text-sm font-medium text-foreground">Kedatangan</label>
+        <select
+          name="kedatangan"
+          value={tipeKedatangan}
+          onChange={(e) => setTipeKedatangan(e.target.value as "walkin" | "reservasi")}
+          className="w-full rounded-lg border border-slate-300 px-3 py-2 text-base outline-none focus:border-slate-900"
+        >
+          <option value="walkin">Datang langsung (walk-in) — tanpa jadwal</option>
+          <option value="reservasi">Reservasi — pilih jadwal kedatangan</option>
+        </select>
+        {tipeKedatangan === "reservasi" ? (
+          <SlotPicker
+            key={state.success ?? "picker"}
+            branchId={branchId}
+            value={jadwal}
+            onChange={setJadwal}
+            pakaiLeadTime={false}
+          />
+        ) : (
+          <p className="rounded-lg bg-slate-50 px-3 py-2 text-xs text-muted-foreground">
+            Kedatangan dicatat = sekarang, lalu slot berikutnya otomatis diblokir sesuai
+            estimasi durasi (walk-in tidak pernah ditolak).
+          </p>
+        )}
       </div>
 
       <div>

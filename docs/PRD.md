@@ -106,7 +106,7 @@ PENDING / WAITING_APPROVAL / CONFIRMED / CHECKED_IN ──(batal)→ CANCELLED (
 | Garansi & pengingat servis berikutnya | Fase 2 (lihat §7) |
 
 **Aturan:**
-- Booking di luar jam operasional (konfigurasi per cabang) tetap diterima → antrian buka berikutnya.
+- **Booking berbasis slot kedatangan** (per cabang): customer **wajib** pilih jadwal pada grid per jam dalam `jamBuka`–`jamTutup` hari aktif — booking di luar jam/hari operasional, melewati horizon, atau saat kuota pit penuh **ditolak + alternatif slot ditampilkan**. Slot `T` tersedia bila jumlah servis aktif dengan window `[jadwal, +estimasi durasi + buffer)` menutupi `T` < `kuotaParalel` cabang (default 2 pit). Lead time default 2 jam & horizon default 14 hari diatur di **Pengaturan → Booking & Slot**; buffer antar unit default 15 menit. **Reservasi admin** (telepon) aturannya sama **tanpa lead time**; **walk-in tanpa jadwal tidak pernah ditolak** — kedatangan dicatat = sekarang, slot berikutnya otomatis diblokir sesuai durasi (peringatan bila melebihi kuota). Tampilan selalu menyatakan waktu yang dipilih = **jam kedatangan**, bukan janji jam selesai.
 - **Tidak ada pengerjaan tanpa persetujuan estimasi** (gerbang `CONFIRMED`) **dan tanpa precheck** (gerbang `CHECKED_IN → IN_PROGRESS`).
 - Pemeriksaan awal (`CHECKED_IN`): km/odometer, level BBM (opsional), **kondisi yang sudah ada** (goresan/penyok — teks), keluhan disepakati (prefill booking), waktu terima otomatis. Bukti kondisi awal → acuan serah terima.
 - Kerja tambahan di tengah pengerjaan: konfirmasi WA/telepon dulu, lalu update estimasi (approval per-item: fase 2).
@@ -262,7 +262,7 @@ Akses: Admin/Owner (input hitung), Owner (review).
 - Eksekusi refund DP otomatis; **diskon** per item/nota; **PPN/pajak**.
 - Sublet (kerja keluar: spooring, cat, bubut); penjualan part over-the-counter (POS); transfer stok antar cabang; harga/katalog per cabang.
 - Laporan lanjutan: laba bersih per kategori, rincian piutang di laporan, DP vs pelunasan, durasi rata-rata, tingkat persetujuan estimasi, performa mekanik, part terlaris; **cetak estimasi & daftar piutang**; opsi agregat “Semua Cabang”; pencarian customer by nama/HP; filter transaksi kas (tanggal/kategori/jenis/kantong) & ringkasan harian/bulanan.
-- Grafik trend penjualan, aging piutang, komisi & payroll mekanik, absensi, CRM loyalitas/poin, slot jam booking, cetak via printer Bluetooth/thermal, multi-bahasa, SaaS, integrasi payment gateway, laporan akuntansi penuh (neraca/jurnal/PSAK).
+- Grafik trend penjualan, aging piutang, komisi & payroll mekanik, absensi, CRM loyalitas/poin, cetak via printer Bluetooth/thermal, multi-bahasa, SaaS, integrasi payment gateway, laporan akuntansi penuh (neraca/jurnal/PSAK).
 
 ---
 

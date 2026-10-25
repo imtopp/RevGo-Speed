@@ -6,6 +6,7 @@ import {
   STATUS_COLOR,
   formatRupiah,
   formatTanggalPendek,
+  formatTanggalWIB,
 } from "@/lib/service-status";
 import { BookingSection, RespondForm } from "./booking-section";
 import { buildModelPerMerek } from "@/lib/vehicle";
@@ -85,6 +86,11 @@ export default async function PesananPage() {
               <p className="text-sm text-muted-foreground">
                 {active.branch.name} · {formatTanggalPendek(active.createdAt)}
               </p>
+              {active.scheduledAt && (
+                <p className="text-sm font-medium text-foreground">
+                  Kedatangan: {formatTanggalWIB(active.scheduledAt)}
+                </p>
+              )}
             </div>
             <span
               className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_COLOR[active.status]}`}
@@ -153,6 +159,11 @@ export default async function PesananPage() {
                   <p className="text-sm text-muted-foreground">
                     {s.branch.name} · {formatTanggalPendek(s.createdAt)}
                   </p>
+                  {s.scheduledAt && (
+                    <p className="text-sm text-foreground">
+                      Kedatangan: {formatTanggalWIB(s.scheduledAt)}
+                    </p>
+                  )}
                 </div>
                 <span
                   className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_COLOR[s.status]}`}

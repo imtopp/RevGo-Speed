@@ -86,6 +86,8 @@ model Branch {
   jamBuka   String   @default("08:00")
   jamTutup  String   @default("17:00")
   hariAktif String   @default("1,2,3,4,5,6")
+  /// Jumlah pit yang boleh dikerjakan paralel — kapasitas slot booking per jam.
+  kuotaParalel Int   @default(2)
   aktif     Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -102,6 +104,8 @@ model ServiceCatalog {
   deskripsi  String?
   hargaDasar Int      @default(0)
   allowDp    Boolean  @default(false)
+  /// Estimasi durasi pengerjaan (menit) — bahan blokir slot booking.
+  estimasiMenit Int   @default(60)
   aktif      Boolean  @default(true)
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
@@ -217,6 +221,8 @@ model Service {
   laborCost    Int             @default(0)
   cancelReason String?
   scheduledAt  DateTime?
+  /// Durasi efektif saat booking dibuat (override admin / estimasi katalog) — bahan blokir slot.
+  estimasiMenit Int?
   checkedInAt  DateTime?
   startedAt    DateTime?
   finishedAt   DateTime?

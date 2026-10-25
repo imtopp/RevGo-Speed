@@ -12,6 +12,7 @@ type Branch = {
   jamBuka: string;
   jamTutup: string;
   hariAktif: string;
+  kuotaParalel: number;
   aktif: boolean;
 };
 
@@ -82,6 +83,22 @@ function BranchFields({ branch }: { branch?: Branch }) {
             className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-base outline-none focus:border-slate-900"
           />
         </div>
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-foreground">
+          Kuota Pit Paralel (per jam)
+        </label>
+        <input
+          name="kuotaParalel"
+          type="number"
+          min={1}
+          max={20}
+          defaultValue={branch?.kuotaParalel ?? 2}
+          className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-base outline-none focus:border-slate-900"
+        />
+        <p className="mt-1 text-xs text-muted-foreground">
+          Jumlah motor yang boleh dikerjakan bersamaan — dasar slot booking.
+        </p>
       </div>
       <div>
         <span className="block text-sm font-medium text-foreground">
@@ -177,7 +194,7 @@ export function BranchManager({ branches }: { branches: Branch[] }) {
               <div>
                 <p className="font-medium">{branch.name}</p>
                 <p className="text-sm text-muted-foreground">
-                  {branch.jamBuka}–{branch.jamTutup} ·{" "}
+                  {branch.jamBuka}–{branch.jamTutup} · {branch.kuotaParalel} pit ·{" "}
                   {branch.aktif ? "Aktif" : "Nonaktif"}
                 </p>
               </div>

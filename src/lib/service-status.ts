@@ -75,3 +75,17 @@ export function formatTanggalPendek(d: Date | string | null): string {
     minute: "2-digit",
   }).format(date);
 }
+
+/** Format jadwal kedatangan — selalu WIB, apa pun TZ runtime server. */
+export function formatTanggalWIB(d: Date | string | null): string {
+  if (!d) return "—";
+  const date = typeof d === "string" ? new Date(d) : d;
+  return new Intl.DateTimeFormat("id-ID", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "Asia/Jakarta",
+  }).format(date);
+}

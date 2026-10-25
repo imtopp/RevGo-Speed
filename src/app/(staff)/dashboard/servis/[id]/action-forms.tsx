@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import {
   submitEstimate,
   approveInPerson,
@@ -16,10 +16,12 @@ import {
   type ServisState,
 } from "../actions";
 import { SubmitButton } from "@/components/submit-button";
+import { SlotPicker } from "@/components/slot-picker";
 import type { ServiceStatus } from "@db/prisma/client";
 
 type ServiceInfo = {
   id: string;
+  branchId: string;
   status: ServiceStatus;
   estimate: number;
   laborCost: number;
@@ -95,6 +97,7 @@ function EstimateForm({
   mechanics: Mechanic[];
 }) {
   const { state, formAction } = useForm(submitEstimate);
+  const [jadwal, setJadwal] = useState("");
   return (
     <form action={formAction} className="space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
       <input type="hidden" name="id" value={service.id} />
@@ -108,19 +111,22 @@ function EstimateForm({
           <input name="laborCost" type="number" min={0} defaultValue={service.laborCost} className={inputCls} />
         </Field>
       </div>
-      <div className="grid grid-cols-2 gap-3">
-        <Field label="Mekanik">
-          <select name="mechanicId" defaultValue={service.mechanicId ?? ""} className={inputCls}>
-            <option value="">— Pilih —</option>
-            {mechanics.map((m) => (
-              <option key={m.id} value={m.id}>{m.name}</option>
-            ))}
-          </select>
-        </Field>
-        <Field label="Jadwal">
-          <input name="scheduledAt" type="datetime-local" defaultValue="" className={inputCls} />
-        </Field>
-      </div>
+      <Field label="Mekanik">
+        <select name="mechanicId" defaultValue={service.mechanicId ?? ""} className={inputCls}>
+          <option value="">— Pilih —</option>
+          {mechanics.map((m) => (
+            <option key={m.id} value={m.id}>{m.name}</option>
+          ))}
+        </select>
+      </Field>
+      <Field label="Ubah Jadwal Kedatangan (opsional)">
+        <SlotPicker
+          branchId={service.branchId}
+          value={jadwal}
+          onChange={setJadwal}
+          pakaiLeadTime={false}
+        />
+      </Field>
       <SubmitButton pendingText="Mengirim..." className={btnPrimary}>
         Kirim Estimasi
       </SubmitButton>

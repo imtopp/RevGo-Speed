@@ -30,7 +30,7 @@ async function main() {
     if (existing) {
       await prisma.user.update({
         where: { email: u.email },
-        data: { passwordHash: hashPassword(PASSWORD), active: true },
+          data: { passwordHash: hashPassword(PASSWORD), isActive: true },
       });
       console.log(`UPDATE  ${u.role.padEnd(10)} ${u.email} / ${PASSWORD}`);
     } else {

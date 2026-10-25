@@ -8,6 +8,7 @@ import {
   NEXT_ACTION_LABEL,
   formatRupiah,
   formatTanggal,
+  formatTanggalWIB,
 } from "@/lib/service-status";
 import { ActionForms } from "./action-forms";
 import { VoidPaymentForm } from "./void-payment";
@@ -75,11 +76,15 @@ export default async function ServisDetailPage({
 
   const timeline = [
     service.createdAt && { label: "Booking dibuat", at: service.createdAt },
-    service.scheduledAt && { label: "Jadwal", at: service.scheduledAt },
+    service.scheduledAt && {
+      label: "Kedatangan / Jadwal",
+      at: service.scheduledAt,
+      wib: true,
+    },
     service.checkedInAt && { label: "Unit diterima", at: service.checkedInAt },
     service.startedAt && { label: "Mulai kerja", at: service.startedAt },
     service.finishedAt && { label: "Selesai dikerjakan", at: service.finishedAt },
-  ].filter(Boolean) as { label: string; at: Date }[];
+  ].filter(Boolean) as { label: string; at: Date; wib?: boolean }[];
 
   return (
     <div className="space-y-4">
@@ -164,7 +169,9 @@ export default async function ServisDetailPage({
           {timeline.map((t) => (
             <li key={t.label} className="flex justify-between text-sm">
               <span className="text-muted-foreground">{t.label}</span>
-              <span className="text-slate-400">{formatTanggal(t.at)}</span>
+              <span className="text-slate-400">
+                {t.wib ? formatTanggalWIB(t.at) : formatTanggal(t.at)}
+              </span>
             </li>
           ))}
         </ul>
@@ -284,6 +291,7 @@ export default async function ServisDetailPage({
           <ActionForms
             service={{
               id: service.id,
+              branchId: service.branchId,
               status: service.status,
               estimate: service.estimate,
               laborCost: service.laborCost,

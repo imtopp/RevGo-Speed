@@ -14,7 +14,18 @@ const ALLOWED_SETTING_KEYS = new Set([
   "app_name",
   "logo_url",
   "service_code_prefix",
+  "dp_policy",
+  "booking_lead_minutes",
+  "booking_horizon_days",
+  "booking_buffer_minutes",
 ]);
+
+/** Rentang valid config booking (sinkron dengan parseBookingConfig). */
+const SETTING_NUMERIK: Record<string, { min: number; max: number; label: string }> = {
+  booking_lead_minutes: { min: 0, max: 10080, label: "Lead time booking" },
+  booking_horizon_days: { min: 1, max: 90, label: "Horizon booking" },
+  booking_buffer_minutes: { min: 0, max: 120, label: "Buffer antar jadwal" },
+};
 
 async function requireOwnerOrSysAdminAction() {
   const session = await auth();
@@ -40,6 +51,15 @@ export async function updateSetting(
   if (key === "logo_url" && value && !value.startsWith("https://") && !value.startsWith("/")) {
     return { error: "Logo harus URL https:// atau path gambar (diawali /)." };
   }
+  const numerik = SETTING_NUMERIK[key];
+  if (numerik) {
+    const n = Number(value);
+    if (!Number.isInteger(n) || n < numerik.min || n > numerik.max) {
+      return {
+        error: `${numerik.label} harus bilangan bulat ${numerik.min}–${numerik.max}.`,
+      };
+    }
+  }
 
   const prev = await prisma.systemSetting.findUnique({ where: { key } });
 
@@ -63,6 +83,23 @@ export async function updateSetting(
   return { success: `Pengaturan "${key}" tersimpan.` };
 }
 
+function bacaHariAktif(formData: FormData): string | null {
+  const hari = formData
+    .getAll("hari")
+    .map((v) => String(v))
+    .filter((v) => /^[0-6]$/.test(v))
+    .sort();
+  if (hari.length === 0) return null;
+  return [...new Set(hari)].join(",");
+}
+
+function bacaKuotaParalel(formData: FormData): number {
+  const raw = String(formData.get("kuotaParalel") ?? "2").trim();
+  const n = Number(raw);
+  if (!Number.isInteger(n) || n < 1 || n > 20) return NaN;
+  return n;
+}
+
 export async function createBranch(
   _prev: BranchState,
   formData: FormData,
@@ -73,9 +110,14 @@ export async function createBranch(
   const phone = String(formData.get("phone") ?? "").trim();
   const jamBuka = String(formData.get("jamBuka") ?? "08:00").trim();
   const jamTutup = String(formData.get("jamTutup") ?? "17:00").trim();
-  const hariAktif = String(formData.get("hariAktif") ?? "1,2,3,4,5,6").trim();
+  const hariAktif = bacaHariAktif(formData);
+  const kuotaParalel = bacaKuotaParalel(formData);
 
   if (!name) return { error: "Nama cabang wajib diisi." };
+  if (!hariAktif) return { error: "Pilih minimal satu hari operasional." };
+  if (Number.isNaN(kuotaParalel)) {
+    return { error: "Jumlah pit paralel harus 1–20." };
+  }
 
   const existing = await prisma.branch.findFirst({ where: { name } });
   if (existing) return { error: "Nama cabang sudah dipakai." };
@@ -89,6 +131,7 @@ export async function createBranch(
         jamBuka,
         jamTutup,
         hariAktif,
+        kuotaParalel,
       },
     });
     await logAudit(tx, session.user, {
@@ -97,7 +140,7 @@ export async function createBranch(
       entityId: created.id,
       branchId: created.id,
       summary: `Cabang "${name}" dibuat`,
-      after: { name, jamBuka, jamTutup, hariAktif },
+      after: { name, jamBuka, jamTutup, hariAktif, kuotaParalel },
     });
     return created;
   });
@@ -117,10 +160,15 @@ export async function updateBranch(
   const phone = String(formData.get("phone") ?? "").trim();
   const jamBuka = String(formData.get("jamBuka") ?? "08:00").trim();
   const jamTutup = String(formData.get("jamTutup") ?? "17:00").trim();
-  const hariAktif = String(formData.get("hariAktif") ?? "1,2,3,4,5,6").trim();
+  const hariAktif = bacaHariAktif(formData);
+  const kuotaParalel = bacaKuotaParalel(formData);
   const aktif = formData.get("aktif") === "on";
 
   if (!id || !name) return { error: "Data cabang tidak lengkap." };
+  if (!hariAktif) return { error: "Pilih minimal satu hari operasional." };
+  if (Number.isNaN(kuotaParalel)) {
+    return { error: "Jumlah pit paralel harus 1–20." };
+  }
 
   const dup = await prisma.branch.findFirst({
     where: { name, NOT: { id } },
@@ -133,7 +181,16 @@ export async function updateBranch(
   await prisma.$transaction(async (tx) => {
     await tx.branch.update({
       where: { id },
-      data: { name, address: address || null, phone: phone || null, jamBuka, jamTutup, hariAktif, aktif },
+      data: {
+        name,
+        address: address || null,
+        phone: phone || null,
+        jamBuka,
+        jamTutup,
+        hariAktif,
+        kuotaParalel,
+        aktif,
+      },
     });
     await logAudit(tx, session.user, {
       action: "BRANCH_UPDATE",
@@ -141,8 +198,15 @@ export async function updateBranch(
       entityId: id,
       branchId: id,
       summary: `Cabang "${name}" diperbarui${prev.aktif !== aktif ? ` · ${aktif ? "diaktifkan" : "dinonaktifkan"}` : ""}`,
-      before: { name: prev.name, aktif: prev.aktif, jamBuka: prev.jamBuka, jamTutup: prev.jamTutup, hariAktif: prev.hariAktif },
-      after: { name, aktif, jamBuka, jamTutup, hariAktif },
+      before: {
+        name: prev.name,
+        aktif: prev.aktif,
+        jamBuka: prev.jamBuka,
+        jamTutup: prev.jamTutup,
+        hariAktif: prev.hariAktif,
+        kuotaParalel: prev.kuotaParalel,
+      },
+      after: { name, aktif, jamBuka, jamTutup, hariAktif, kuotaParalel },
     });
   });
 

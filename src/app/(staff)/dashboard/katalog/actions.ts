@@ -6,6 +6,17 @@ import { revalidatePath } from "next/cache";
 
 export type KatalogState = { error?: string; success?: string };
 
+const DURASI_MIN = 5;
+const DURASI_MAX = 1440;
+
+function bacaEstimasiMenit(formData: FormData): number | null {
+  const raw = String(formData.get("estimasiMenit") ?? "").trim();
+  if (!raw) return 60;
+  const n = Number(raw);
+  if (!Number.isInteger(n) || n < DURASI_MIN || n > DURASI_MAX) return null;
+  return n;
+}
+
 async function requireOwnerOrAdmin() {
   const session = await auth();
   if (!session?.user) throw new Error("Belum login.");
@@ -24,9 +35,13 @@ export async function createCatalog(
   const deskripsi = String(formData.get("deskripsi") ?? "").trim();
   const hargaDasar = Number(formData.get("hargaDasar") ?? 0);
   const allowDp = formData.get("allowDp") === "on";
+  const estimasiMenit = bacaEstimasiMenit(formData);
 
   if (!nama) return { error: "Nama jasa wajib diisi." };
   if (hargaDasar < 0) return { error: "Harga tidak valid." };
+  if (estimasiMenit === null) {
+    return { error: `Estimasi durasi harus ${DURASI_MIN}–${DURASI_MAX} menit.` };
+  }
 
   await prisma.serviceCatalog.create({
     data: {
@@ -34,6 +49,7 @@ export async function createCatalog(
       deskripsi: deskripsi || null,
       hargaDasar,
       allowDp,
+      estimasiMenit,
     },
   });
 
@@ -52,12 +68,24 @@ export async function updateCatalog(
   const hargaDasar = Number(formData.get("hargaDasar") ?? 0);
   const allowDp = formData.get("allowDp") === "on";
   const aktif = formData.get("aktif") === "on";
+  const estimasiMenit = bacaEstimasiMenit(formData);
 
   if (!id || !nama) return { error: "Data tidak lengkap." };
+  if (hargaDasar < 0) return { error: "Harga tidak valid." };
+  if (estimasiMenit === null) {
+    return { error: `Estimasi durasi harus ${DURASI_MIN}–${DURASI_MAX} menit.` };
+  }
 
   await prisma.serviceCatalog.update({
     where: { id },
-    data: { nama, deskripsi: deskripsi || null, hargaDasar, allowDp, aktif },
+    data: {
+      nama,
+      deskripsi: deskripsi || null,
+      hargaDasar,
+      allowDp,
+      estimasiMenit,
+      aktif,
+    },
   });
 
   revalidatePath("/dashboard/katalog");

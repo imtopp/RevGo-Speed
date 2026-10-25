@@ -6,8 +6,17 @@ import { getStaffBranchId } from "@/lib/guard";
 import { logAudit } from "@/lib/audit";
 import { normalizeMerek, normalizeTipe, modelTidakSesuaiMerek, normalizePlate, MEREK_LAINNYA } from "@/lib/vehicle";
 import { allocateFifo } from "@/lib/inventory";
+import { cekSlotTersedia, getBookingConfig, getJendelaAktif, kunciSlot } from "@/lib/booking";
+import {
+  DURASI_DEFAULT_MENIT,
+  DURASI_MAX_MENIT,
+  DURASI_MIN_MENIT,
+  cekKapasitas,
+  parseJadwal,
+  pesanDitolak,
+} from "@/lib/availability";
 import { revalidatePath } from "next/cache";
-import type { ServiceStatus } from "@db/prisma/client";
+import type { Prisma, ServiceStatus } from "@db/prisma/client";
 
 export type ServisState = { error?: string; success?: string };
 
@@ -52,13 +61,15 @@ export async function createBooking(
   _prev: ServisState,
   formData: FormData,
 ): Promise<ServisState> {
-  await requireStaffRole(["OWNER", "ADMIN"]);
+  const session = await requireStaffRole(["OWNER", "ADMIN"]);
   const branchIdStaff = await getStaffBranchId();
   const branchId = branchIdStaff || String(formData.get("branchId") ?? "").trim();
   const plateRaw = String(formData.get("plateNumber") ?? "").trim();
   const catalogId = String(formData.get("catalogId") ?? "").trim();
   const complaint = String(formData.get("complaint") ?? "").trim();
   const scheduledAtRaw = String(formData.get("scheduledAt") ?? "").trim();
+  const kedatangan = String(formData.get("kedatangan") ?? "walkin").trim();
+  const durasiRaw = String(formData.get("durasiMenit") ?? "").trim();
 
   // Data kendaraan & customer baru (jika belum terdaftar)
   const brandRaw = String(formData.get("brand") ?? "").trim();
@@ -83,54 +94,114 @@ export async function createBooking(
   });
   if (!branch) return { error: "Cabang tidak valid." };
 
-  // Cari kendaraan by plat
-  let vehicle = await prisma.vehicle.findUnique({
-    where: { plateNumber },
-    include: { owner: true },
-  });
-  let passwordSementara: string | null = null;
-
-  if (!vehicle) {
-    // Kendaraan baru → butuh data customer + merek/tipe
-    if (!brand || !model || !customerName || !customerEmail) {
-      return {
-        error:
-          "Kendaraan belum terdaftar. Isi juga nama, email, merek, dan tipe customer untuk mendaftarkan.",
-      };
-    }
-    if (modelTidakSesuaiMerek(brand, model)) {
-      return { error: `"${model}" bukan tipe merek ${brand}. Periksa pilihan merek/tipe.` };
-    }
-    let customer = await prisma.user.findUnique({ where: { email: customerEmail } });
-    if (!customer) {
-      const { hashPassword } = await import("@/lib/password");
-      const { randomBytes } = await import("node:crypto");
-      // Password acak per akun — jangan pernah pakai default publik.
-      passwordSementara = randomBytes(8).toString("hex");
-      customer = await prisma.user.create({
-        data: {
-          name: customerName,
-          email: customerEmail,
-          phone: customerPhone || null,
-          passwordHash: hashPassword(passwordSementara),
-          role: "CUSTOMER",
-        },
-      });
-    }
-    vehicle = await prisma.vehicle.create({
-      data: { plateNumber, brand, model, ownerId: customer.id },
-      include: { owner: true },
-    });
-  }
-
   const catalog = catalogId
     ? await prisma.serviceCatalog.findFirst({ where: { id: catalogId, aktif: true } })
     : null;
 
-  const code = await generateServiceCode(branchId);
-  const scheduledAt = scheduledAtRaw ? new Date(scheduledAtRaw) : null;
+  let durasiMenit = catalog?.estimasiMenit ?? DURASI_DEFAULT_MENIT;
+  if (durasiRaw) {
+    const n = Number(durasiRaw);
+    if (!Number.isInteger(n) || n < DURASI_MIN_MENIT || n > DURASI_MAX_MENIT) {
+      return {
+        error: `Estimasi durasi harus ${DURASI_MIN_MENIT}–${DURASI_MAX_MENIT} menit.`,
+      };
+    }
+    durasiMenit = n;
+  }
 
-  await prisma.$transaction(async (tx) => {
+  const reservasi = kedatangan === "reservasi";
+  let epoch: number | null = null;
+  if (reservasi) {
+    if (!scheduledAtRaw) return { error: "Pilih jadwal kedatangan untuk reservasi." };
+    epoch = parseJadwal(scheduledAtRaw);
+    if (epoch === null) return { error: "Jadwal kedatangan tidak valid." };
+  }
+
+  const code = await generateServiceCode(branchId);
+
+  const hasil = await prisma.$transaction(async (tx) => {
+    const jadwalEpoch = reservasi && epoch !== null ? epoch : Date.now();
+    await kunciSlot(tx, branchId, jadwalEpoch);
+
+    if (reservasi && epoch !== null) {
+      const cek = await cekSlotTersedia({
+        branchId,
+        epoch,
+        durasiMenit,
+        pakaiLeadTime: false,
+        db: tx,
+      });
+      if (!cek.ok) return cek;
+    }
+
+    // Cari kendaraan by plat
+    let vehicle = await tx.vehicle.findUnique({
+      where: { plateNumber },
+      include: { owner: true },
+    });
+    let passwordSementara: string | null = null;
+
+    if (!vehicle) {
+      // Kendaraan baru → butuh data customer + merek/tipe
+      if (!brand || !model || !customerName || !customerEmail) {
+        return {
+          ok: false as const,
+          error:
+            "Kendaraan belum terdaftar. Isi juga nama, email, merek, dan tipe customer untuk mendaftarkan.",
+        };
+      }
+      if (modelTidakSesuaiMerek(brand, model)) {
+        return {
+          ok: false as const,
+          error: `"${model}" bukan tipe merek ${brand}. Periksa pilihan merek/tipe.`,
+        };
+      }
+      let customer = await tx.user.findUnique({ where: { email: customerEmail } });
+      if (!customer) {
+        const { hashPassword } = await import("@/lib/password");
+        const { randomBytes } = await import("node:crypto");
+        // Password acak per akun — jangan pernah pakai default publik.
+        passwordSementara = randomBytes(8).toString("hex");
+        customer = await tx.user.create({
+          data: {
+            name: customerName,
+            email: customerEmail,
+            phone: customerPhone || null,
+            passwordHash: hashPassword(passwordSementara),
+            role: "CUSTOMER",
+          },
+        });
+      }
+      vehicle = await tx.vehicle.create({
+        data: { plateNumber, brand, model, ownerId: customer.id },
+        include: { owner: true },
+      });
+    }
+
+    // Walk-in tidak pernah ditolak — hanya peringatan bila melebihi kuota pit.
+    let peringatan = "";
+    if (!reservasi) {
+      const config = await getBookingConfig(tx);
+      const jendelas = await getJendelaAktif({
+        branchId,
+        epoch: jadwalEpoch,
+        bufferMenit: config.bufferMinutes,
+        db: tx,
+      });
+      const titikPenuh = cekKapasitas(
+        jadwalEpoch,
+        durasiMenit,
+        config.bufferMinutes,
+        jendelas,
+        branch.kuotaParalel,
+        branch.jamBuka,
+        branch.jamTutup,
+      );
+      if (titikPenuh !== null) {
+        peringatan = " Kuota pit terlampaui — slot berikutnya otomatis ditutup.";
+      }
+    }
+
     const created = await tx.service.create({
       data: {
         code,
@@ -142,32 +213,40 @@ export async function createBooking(
         status: "PENDING",
         complaint: complaint || catalog?.nama || null,
         estimate: catalog?.hargaDasar ?? 0,
-        scheduledAt,
+        scheduledAt: new Date(jadwalEpoch),
+        estimasiMenit: durasiMenit,
       },
     });
-    const session = await auth();
-    if (session?.user) {
-      await logAudit(tx, session.user, {
-        action: "SERVICE_CREATE",
-        entityType: "Service",
-        entityId: created.id,
-        branchId,
-        summary: `${code} dibuat untuk ${plateNumber}`,
-        after: {
-          source: "ADMIN",
-          catalogId: catalog?.id ?? null,
-          estimate: catalog?.hargaDasar ?? 0,
-        },
-      });
-    }
+    await logAudit(tx, session.user, {
+      action: "SERVICE_CREATE",
+      entityType: "Service",
+      entityId: created.id,
+      branchId,
+      summary: `${code} dibuat untuk ${plateNumber}`,
+      after: {
+        source: "ADMIN",
+        catalogId: catalog?.id ?? null,
+        estimate: catalog?.hargaDasar ?? 0,
+        scheduledAt: new Date(jadwalEpoch).toISOString(),
+        estimasiMenit: durasiMenit,
+      },
+    });
+    return { ok: true as const, passwordSementara, peringatan };
   });
+
+  if (!hasil.ok) {
+    return { error: hasil.error };
+  }
 
   revalidatePath("/dashboard/servis");
   return {
     success:
-      `Booking ${code} dibuat untuk ${plateNumber}.` +
-      (passwordSementara
-        ? ` Akun customer baru dibuat — password sementara: ${passwordSementara} (beritahu customer, sarankan diganti).`
+      (reservasi
+        ? `Reservasi ${code} dibuat untuk ${plateNumber}.`
+        : `Booking ${code} dibuat untuk ${plateNumber} (walk-in).`) +
+      hasil.peringatan +
+      (hasil.passwordSementara
+        ? ` Akun customer baru dibuat — password sementara: ${hasil.passwordSementara} (beritahu customer, sarankan diganti).`
         : ""),
   };
 }
@@ -183,11 +262,17 @@ async function getServiceOrThrow(id: string) {
   return service;
 }
 
+type TransitionOpts = {
+  lock?: { branchId: string; epoch: number };
+  validasi?: (tx: Prisma.TransactionClient) => Promise<string | null>;
+};
+
 async function transition(
   id: string,
   from: ServiceStatus[],
   to: ServiceStatus,
   extra: Record<string, unknown> = {},
+  opts?: TransitionOpts,
 ) {
   const service = await getServiceOrThrow(id);
   const aksesError = await cekCabangServis(service.branchId);
@@ -198,6 +283,13 @@ async function transition(
     );
   }
   return prisma.$transaction(async (tx) => {
+    if (opts?.lock) {
+      await kunciSlot(tx, opts.lock.branchId, opts.lock.epoch);
+    }
+    if (opts?.validasi) {
+      const err = await opts.validasi(tx);
+      if (err) throw new Error(err);
+    }
     const updated = await tx.service.update({
       where: { id },
       data: { status: to, ...extra },
@@ -239,19 +331,53 @@ export async function submitEstimate(
   ) {
     return { error: "Biaya tidak valid." };
   }
-  let scheduledAt: Date | undefined;
-  if (scheduledAtRaw) {
-    const d = new Date(scheduledAtRaw);
-    if (Number.isNaN(d.getTime())) return { error: "Jadwal tidak valid." };
-    scheduledAt = d;
+
+  const service = await prisma.service.findUnique({
+    where: { id },
+    select: { status: true, branchId: true, estimasiMenit: true },
+  });
+  if (!service) return { error: "Servis tidak ditemukan." };
+  if (service.status !== "PENDING") {
+    return { error: "Servis tidak dalam tahap Booking." };
   }
 
-  await transition(id, ["PENDING"], "WAITING_APPROVAL", {
-    estimate,
-    laborCost,
-    mechanicId: mechanicId || null,
-    scheduledAt,
-  });
+  let scheduledAt: Date | undefined;
+  let lock: { branchId: string; epoch: number } | undefined;
+  let validasi: ((tx: Prisma.TransactionClient) => Promise<string | null>) | undefined;
+  if (scheduledAtRaw) {
+    const epoch = parseJadwal(scheduledAtRaw);
+    if (epoch === null) return { error: "Jadwal tidak valid." };
+    scheduledAt = new Date(epoch);
+    lock = { branchId: service.branchId, epoch };
+    validasi = async (tx) => {
+      const cek = await cekSlotTersedia({
+        branchId: service.branchId,
+        epoch,
+        durasiMenit: service.estimasiMenit ?? DURASI_DEFAULT_MENIT,
+        excludeId: id,
+        pakaiLeadTime: false,
+        db: tx,
+      });
+      return cek.ok ? null : pesanDitolak(cek);
+    };
+  }
+
+  try {
+    await transition(
+      id,
+      ["PENDING"],
+      "WAITING_APPROVAL",
+      {
+        estimate,
+        laborCost,
+        mechanicId: mechanicId || null,
+        scheduledAt,
+      },
+      { lock, validasi },
+    );
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Gagal menyimpan estimasi." };
+  }
 
   revalidatePath("/dashboard/servis");
   revalidatePath(`/dashboard/servis/${id}`);

@@ -21,6 +21,24 @@ const SETTING_FIELDS = [
   },
 ];
 
+const BOOKING_FIELDS = [
+  {
+    key: "booking_lead_minutes",
+    label: "Lead Time Booking (menit)",
+    placeholder: "120 — minimal pesan 2 jam sebelum kedatangan (0 = bebas)",
+  },
+  {
+    key: "booking_horizon_days",
+    label: "Booking Maks (hari ke depan)",
+    placeholder: "14",
+  },
+  {
+    key: "booking_buffer_minutes",
+    label: "Buffer Antar Jadwal (menit)",
+    placeholder: "15 — jeda persiapan antar unit",
+  },
+];
+
 export default async function PengaturanPage() {
   await requireOwnerOrSysAdmin();
 
@@ -44,6 +62,23 @@ export default async function PengaturanPage() {
         <h2 className="text-sm font-semibold text-foreground">Umum</h2>
         <div className="space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
           {SETTING_FIELDS.map((field) => (
+            <SettingForm
+              key={field.key}
+              field={field}
+              initialValue={settingMap.get(field.key) ?? ""}
+            />
+          ))}
+        </div>
+      </section>
+
+      <section className="space-y-3">
+        <h2 className="text-sm font-semibold text-foreground">Booking &amp; Slot</h2>
+        <div className="space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
+          <p className="text-xs text-muted-foreground">
+            Atur ketersediaan slot kedatangan customer (lead time, jauhnya booking, jeda
+            antar unit). Kuota pit diatur per cabang di bawah.
+          </p>
+          {BOOKING_FIELDS.map((field) => (
             <SettingForm
               key={field.key}
               field={field}

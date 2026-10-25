@@ -17,6 +17,7 @@ import {
   type CustomerState,
 } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
+import { SlotPicker } from "@/components/slot-picker";
 
 type Vehicle = { id: string; plateNumber: string; brand: string; model: string };
 type Branch = { id: string; name: string };
@@ -265,12 +266,15 @@ export function BookingSection({
   const [showAddVehicle, setShowAddVehicle] = useState(false);
   const [showBooking, setShowBooking] = useState(false);
   const [flash, setFlash] = useState<string | null>(null);
+  const [branchId, setBranchId] = useState(branches[0]?.id ?? "");
+  const [jadwal, setJadwal] = useState("");
 
   const runBooking = async (prev: CustomerState, fd: FormData) => {
     const r = await customerBooking(prev, fd);
     if (r.success) {
       setFlash(r.success);
       setShowBooking(false);
+      setJadwal("");
     }
     return r;
   };
@@ -349,7 +353,11 @@ export function BookingSection({
             <select
               name="branchId"
               required
-              defaultValue={branches[0]?.id ?? ""}
+              value={branchId}
+              onChange={(e) => {
+                setBranchId(e.target.value);
+                setJadwal("");
+              }}
               className={inputCls}
             >
               {branches.map((b) => (
@@ -374,9 +382,14 @@ export function BookingSection({
           </div>
           <div>
             <label className="block text-sm font-medium text-foreground">
-              Jadwal (opsional)
+              Jadwal Kedatangan (wajib)
             </label>
-            <input name="scheduledAt" type="datetime-local" className={inputCls} />
+            <SlotPicker
+              branchId={branchId}
+              value={jadwal}
+              onChange={setJadwal}
+              pakaiLeadTime
+            />
           </div>
           <div>
             <label className="block text-sm font-medium text-foreground">
