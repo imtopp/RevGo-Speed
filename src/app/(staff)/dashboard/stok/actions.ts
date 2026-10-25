@@ -381,12 +381,8 @@ export async function sellPart(
   if (part.quantity < quantity) {
     return { error: `Stok ${part.name} kurang (tersisa ${part.quantity}).` };
   }
-  const rugi = cekHargaRugi({
-    buyPrice: part.buyPrice,
-    sellPrice: part.sellPrice,
-    konfirmasi: konfirmasiRugi(formData),
-  });
-  if (rugi) return { error: `${rugi} Centang konfirmasi bila memang disengaja.` };
+  // Validasi jual rugi terjadi saat harga diatur di menu part (PartForm/PartEdit).
+  // Penjualan selalu memakai sellPrice data part apa adanya — tanpa konfirmasi di sini.
 
   let totalAkhir = 0;
 

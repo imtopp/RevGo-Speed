@@ -327,10 +327,6 @@ function SellForm({ parts }: { parts: Part[] }) {
           <input name="note" placeholder="Opsional" className={inputCls} />
         </div>
       </div>
-      <label className="flex items-start gap-2 text-xs text-slate-400">
-        <input type="checkbox" name="confirmLoss" className="mt-0.5" />
-        Harga jual di bawah harga beli — saya paham (wajib dicentang bila disengaja).
-      </label>
       <p className="text-xs text-slate-400">
         Harga jual otomatis dari data part. Otomatis: stok berkurang (FIFO),
         kas masuk sesuai total, masuk laporan.
