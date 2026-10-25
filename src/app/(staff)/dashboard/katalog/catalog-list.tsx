@@ -4,6 +4,7 @@ import { useActionState, useState } from "react";
 import { updateCatalog, type KatalogState } from "./actions";
 import { formatRupiah } from "@/lib/service-status";
 import { SubmitButton } from "@/components/submit-button";
+import { NumberInput } from "@/components/number-input";
 
 type Item = {
   id: string;
@@ -87,25 +88,18 @@ export function CatalogList({ items }: { items: Item[] }) {
                     <label className="block text-sm font-medium text-foreground">
                       Harga Dasar (Rp)
                     </label>
-                    <input
+                    <NumberInput
                       name="hargaDasar"
-                      type="number"
-                      min={0}
                       defaultValue={item.hargaDasar}
-                      className={inputCls}
                     />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-foreground">
                       Estimasi Durasi (menit)
                     </label>
-                    <input
+                    <NumberInput
                       name="estimasiMenit"
-                      type="number"
-                      min={5}
-                      max={1440}
                       defaultValue={item.estimasiMenit}
-                      className={inputCls}
                     />
                   </div>
                   <div className="flex flex-col justify-end gap-1 pb-1 text-sm font-medium text-foreground">

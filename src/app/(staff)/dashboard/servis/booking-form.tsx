@@ -10,6 +10,7 @@ import {
 import { createBooking, type ServisState } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
 import { SlotPicker } from "@/components/slot-picker";
+import { NumberInput } from "@/components/number-input";
 
 type Branch = { id: string; name: string };
 type Catalog = { id: string; nama: string; hargaDasar: number; allowDp: boolean; estimasiMenit: number };
@@ -32,7 +33,7 @@ export function BookingForm({
   const [branchId, setBranchId] = useState(branches[0]?.id ?? "");
   const [tipeKedatangan, setTipeKedatangan] = useState<"walkin" | "reservasi">("walkin");
   const [jadwal, setJadwal] = useState("");
-  const [durasi, setDurasi] = useState("");
+  const [durasi, setDurasi] = useState(0);
   const [catalogId, setCatalogId] = useState("");
   // null = belum diisi (biarkan `required` yang menahan), false = format salah.
   const plateDiisi = plate.trim() !== "";
@@ -218,7 +219,7 @@ export function BookingForm({
             onChange={(e) => {
               setCatalogId(e.target.value);
               const c = catalog.find((x) => x.id === e.target.value);
-              if (c) setDurasi(String(c.estimasiMenit));
+              if (c) setDurasi(c.estimasiMenit);
             }}
             className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-base outline-none focus:border-slate-900"
           >
@@ -234,19 +235,15 @@ export function BookingForm({
           <label className="block text-sm font-medium text-foreground">
             Estimasi Durasi (menit)
           </label>
-          <input
+          <NumberInput
             name="durasiMenit"
-            type="number"
-            min={5}
-            max={1440}
             value={durasi}
-            onChange={(e) => setDurasi(e.target.value)}
+            onChange={setDurasi}
             placeholder={
               catalogId
                 ? `otomatis (${catalog.find((c) => c.id === catalogId)?.estimasiMenit ?? 60} menit)`
                 : "otomatis (60 menit)"
             }
-            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-base outline-none focus:border-slate-900"
           />
         </div>
       </div>

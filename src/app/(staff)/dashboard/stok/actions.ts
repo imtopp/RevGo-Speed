@@ -361,16 +361,10 @@ export async function sellPart(
   const session = await requireStokRole();
   const partId = String(formData.get("partId") ?? "").trim();
   const quantity = Number(formData.get("quantity") ?? 0);
-  const price = Number(formData.get("price") ?? 0);
   const method = String(formData.get("method") ?? "CASH") as PaymentMethod;
   const note = String(formData.get("note") ?? "").trim();
 
   if (!partId) return { error: "Part belum dipilih — pilih satu dari daftar saran." };
-  const itemError = validasiItemJual(quantity, price);
-  if (itemError) return { error: itemError };
-  if (!["CASH", "TRANSFER", "QRIS"].includes(method)) {
-    return { error: "Metode bayar tidak valid." };
-  }
 
   const part = await prisma.part.findUnique({ where: { id: partId } });
   if (!part) return { error: "Part tidak ditemukan." };
@@ -378,17 +372,23 @@ export async function sellPart(
   if (branchIdStaff && part.branchId !== branchIdStaff) {
     return { error: "Part bukan di cabang Anda." };
   }
+  // Harga jual SELALU dari data part (sama dgn addServicePart) — bukan input kasir.
+  const itemError = validasiItemJual(quantity, part.sellPrice);
+  if (itemError) return { error: itemError };
+  if (!["CASH", "TRANSFER", "QRIS"].includes(method)) {
+    return { error: "Metode bayar tidak valid." };
+  }
   if (part.quantity < quantity) {
     return { error: `Stok ${part.name} kurang (tersisa ${part.quantity}).` };
   }
   const rugi = cekHargaRugi({
     buyPrice: part.buyPrice,
-    sellPrice: price,
+    sellPrice: part.sellPrice,
     konfirmasi: konfirmasiRugi(formData),
   });
   if (rugi) return { error: `${rugi} Centang konfirmasi bila memang disengaja.` };
 
-  const total = quantity * price;
+  let totalAkhir = 0;
 
   await prisma.$transaction(async (tx) => {
     await tx.$queryRaw`SELECT id FROM "Part" WHERE id = ${partId} FOR UPDATE`;
@@ -399,9 +399,14 @@ export async function sellPart(
     });
     if (updated.count === 0) throw new Error(`Stok ${part.name} kurang.`);
 
-    // Baca ulang SETELAH baris terkunci — HPP FIFO dari angka terkini.
+    // Baca ulang SETELAH baris terkunci — harga & HPP FIFO dari angka terkini.
     const partF = await tx.part.findUnique({ where: { id: partId } });
     if (!partF) throw new Error("Part tidak ditemukan.");
+    const price = partF.sellPrice;
+    const hargaError = validasiItemJual(quantity, price);
+    if (hargaError) throw new Error(hargaError);
+    const total = quantity * price;
+    totalAkhir = total;
 
     // Alokasi FIFO per-unit (sama dgn servis) — jejak di PartBatchUsage.saleItemId.
     const movements = await tx.stockMovement.findMany({
@@ -510,7 +515,7 @@ export async function sellPart(
   revalidatePath("/dashboard/kas");
   revalidatePath("/dashboard/laporan");
   return {
-    success: `Penjualan ${quantity} ${part.unit} ${part.name} tercatat — stok berkurang, kas masuk ${total.toLocaleString("id-ID")}.`,
+    success: `Penjualan ${quantity} ${part.unit} ${part.name} tercatat — stok berkurang, kas masuk ${totalAkhir.toLocaleString("id-ID")}.`,
   };
 }
 

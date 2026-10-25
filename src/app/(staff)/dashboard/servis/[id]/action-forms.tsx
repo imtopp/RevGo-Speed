@@ -20,6 +20,7 @@ import {
 import { SubmitButton } from "@/components/submit-button";
 import { SlotPicker } from "@/components/slot-picker";
 import { PartPicker } from "@/components/part-picker";
+import { NumberInput } from "@/components/number-input";
 import { formatRupiah, formatTanggalWIB } from "@/lib/service-status";
 import type { ServiceStatus } from "@db/prisma/client";
 
@@ -170,24 +171,10 @@ function EstimateForm({
       </Field>
       <div className="grid grid-cols-2 gap-3">
         <Field label="Estimasi Biaya (Rp)">
-          <input
-            name="estimate"
-            type="number"
-            min={0}
-            value={estimate}
-            onChange={(e) => setEstimate(Number(e.target.value))}
-            className={inputCls}
-          />
+          <NumberInput name="estimate" value={estimate} onChange={setEstimate} />
         </Field>
         <Field label="Biaya Jasa (Rp)">
-          <input
-            name="laborCost"
-            type="number"
-            min={0}
-            value={laborCost}
-            onChange={(e) => setLaborCost(Number(e.target.value))}
-            className={inputCls}
-          />
+          <NumberInput name="laborCost" value={laborCost} onChange={setLaborCost} />
         </Field>
       </div>
       <Field label="Mekanik">
@@ -364,7 +351,7 @@ function AddPartForm({
         </p>
       </Field>
       <Field label="Jumlah">
-        <input name="quantity" type="number" min={1} defaultValue={1} className={inputCls} />
+        <NumberInput name="quantity" defaultValue={1} required />
       </Field>
       <SubmitButton className={btnSecondary}>Tambah Part</SubmitButton>
     </form>

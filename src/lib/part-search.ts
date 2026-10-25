@@ -4,6 +4,8 @@ export type PartCari = {
   sku: string;
   category?: string | null;
   quantity: number;
+  /** Harga jual part — dipakai form jual part (opsional utk pemakaian lain). */
+  sellPrice?: number;
 };
 
 /**

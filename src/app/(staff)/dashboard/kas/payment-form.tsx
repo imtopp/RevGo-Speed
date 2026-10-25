@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import { addPayment, type BayarState } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
+import { NumberInput } from "@/components/number-input";
 
 const inputCls =
   "mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-base outline-none focus:border-slate-900";
@@ -49,7 +50,7 @@ export function PaymentForm({
       <div className="grid grid-cols-2 gap-2">
         <div>
           <label className="block text-sm font-medium text-foreground">Jumlah (Rp)</label>
-          <input name="amount" type="number" min={1} max={remaining} required className={inputCls} />
+          <NumberInput name="amount" required />
         </div>
         <div>
           <label className="block text-sm font-medium text-foreground">Jenis</label>

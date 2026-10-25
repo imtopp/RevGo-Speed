@@ -18,6 +18,7 @@ export function PartPicker({
   name = "partId",
   allowHabis = false,
   placeholder,
+  onPick,
 }: {
   parts: PartOpsi[];
   /** Nama field form; hidden input diisi id part terpilih. */
@@ -25,6 +26,8 @@ export function PartPicker({
   /** Izinkan pilih part stok 0 (restock/opname — justru part inilah yang dicari). */
   allowHabis?: boolean;
   placeholder?: string;
+  /** Dipanggil tiap part dipilih (mis. auto-isi harga jual dari data part). */
+  onPick?: (p: PartOpsi) => void;
 }) {
   const listId = useId();
   const [query, setQuery] = useState("");
@@ -47,6 +50,7 @@ export function PartPicker({
     setNilai(p.id);
     setQuery(label(p));
     setOpen(false);
+    onPick?.(p);
   }
 
   function ubahQuery(v: string) {

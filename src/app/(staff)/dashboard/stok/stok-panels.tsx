@@ -17,6 +17,7 @@ import { formatRupiah, formatTanggalPendek } from "@/lib/service-status";
 import { totalPenjualan, labaPenjualan } from "@/lib/sale";
 import { SubmitButton } from "@/components/submit-button";
 import { PartPicker } from "@/components/part-picker";
+import { NumberInput } from "@/components/number-input";
 
 type Part = {
   id: string;
@@ -168,11 +169,11 @@ function PartForm({
       <div className="grid grid-cols-3 gap-2">
         <div>
           <label className="block text-sm font-medium text-foreground">Stok Awal</label>
-          <input name="quantity" type="number" min={0} defaultValue={0} className={inputCls} />
+          <NumberInput name="quantity" defaultValue={0} />
         </div>
         <div>
           <label className="block text-sm font-medium text-foreground">Min. Stok</label>
-          <input name="minStock" type="number" min={0} defaultValue={0} className={inputCls} />
+          <NumberInput name="minStock" defaultValue={0} />
         </div>
         <div>
           <label className="block text-sm font-medium text-foreground">Supplier</label>
@@ -187,25 +188,11 @@ function PartForm({
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="block text-sm font-medium text-foreground">Harga Beli (Rp)</label>
-          <input
-            name="buyPrice"
-            type="number"
-            min={0}
-            value={buyPrice}
-            onChange={(e) => setBuyPrice(Number(e.target.value))}
-            className={inputCls}
-          />
+          <NumberInput name="buyPrice" value={buyPrice} onChange={setBuyPrice} />
         </div>
         <div>
           <label className="block text-sm font-medium text-foreground">Harga Jual (Rp)</label>
-          <input
-            name="sellPrice"
-            type="number"
-            min={0}
-            value={sellPrice}
-            onChange={(e) => setSellPrice(Number(e.target.value))}
-            className={inputCls}
-          />
+          <NumberInput name="sellPrice" value={sellPrice} onChange={setSellPrice} />
         </div>
       </div>
       {rugi && (
@@ -240,11 +227,11 @@ function StockInForm({ parts, suppliers }: { parts: Part[]; suppliers: Supplier[
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="block text-sm font-medium text-foreground">Jumlah</label>
-          <input name="quantity" type="number" min={1} required className={inputCls} />
+          <NumberInput name="quantity" required />
         </div>
         <div>
           <label className="block text-sm font-medium text-foreground">Harga Beli /unit (Rp)</label>
-          <input name="buyPrice" type="number" min={0} required className={inputCls} />
+          <NumberInput name="buyPrice" required />
         </div>
       </div>
       <div className="grid grid-cols-2 gap-3">
@@ -282,6 +269,9 @@ function StockInForm({ parts, suppliers }: { parts: Part[]; suppliers: Supplier[
 
 function SellForm({ parts }: { parts: Part[] }) {
   const [state, action] = useActionState<StokState, FormData>(sellPart, {});
+  const [picked, setPicked] = useState<Part | null>(null);
+  const [qty, setQty] = useState(1);
+  const total = qty * (picked?.sellPrice ?? 0);
   return (
     <form action={action} className="space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
       <p className="text-sm font-semibold text-foreground">
@@ -290,20 +280,39 @@ function SellForm({ parts }: { parts: Part[] }) {
       <Msg state={state} />
       <div>
         <label className="block text-sm font-medium text-foreground">Part</label>
-        <PartPicker parts={parts} placeholder="Ketik nama / SKU part (stok siap)…" />
+        <PartPicker
+          parts={parts}
+          placeholder="Ketik nama / SKU part (stok siap)…"
+          onPick={(p) => setPicked(parts.find((x) => x.id === p.id) ?? null)}
+        />
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="block text-sm font-medium text-foreground">Jumlah</label>
-          <input name="quantity" type="number" min={1} required className={inputCls} />
+          <NumberInput name="quantity" value={qty} onChange={setQty} required />
         </div>
         <div>
           <label className="block text-sm font-medium text-foreground">
             Harga Jual /unit (Rp)
           </label>
-          <input name="price" type="number" min={0} required className={inputCls} />
+          <p
+            className={`mt-1 rounded-lg border px-3 py-2 text-sm ${
+              picked
+                ? "border-slate-200 bg-slate-50 text-foreground"
+                : "border-slate-200 bg-slate-50 text-slate-400"
+            }`}
+          >
+            {picked ? formatRupiah(picked.sellPrice) : "Ikut data part"}
+            {picked && <span className="text-slate-400"> · dari data part</span>}
+          </p>
         </div>
       </div>
+      {picked && qty > 0 && (
+        <p className="rounded-lg bg-primary/5 px-3 py-2 text-sm text-foreground">
+          Total:{" "}
+          <b className="text-primary">{formatRupiah(total)}</b>
+        </p>
+      )}
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="block text-sm font-medium text-foreground">Bayar</label>
@@ -323,7 +332,8 @@ function SellForm({ parts }: { parts: Part[] }) {
         Harga jual di bawah harga beli — saya paham (wajib dicentang bila disengaja).
       </label>
       <p className="text-xs text-slate-400">
-        Otomatis: stok berkurang (FIFO), kas masuk sesuai total, masuk laporan.
+        Harga jual otomatis dari data part. Otomatis: stok berkurang (FIFO),
+        kas masuk sesuai total, masuk laporan.
       </p>
       <SubmitButton pendingText="Mencatat..." className={btnPrimary}>
         Catat Penjualan
@@ -346,7 +356,7 @@ function AdjustForm({ parts }: { parts: Part[] }) {
         <label className="block text-sm font-medium text-foreground">
           Selisih (+ tambah / − kurang)
         </label>
-        <input name="delta" type="number" required placeholder="-2" className={inputCls} />
+        <NumberInput name="delta" required allowNegative placeholder="-2" />
       </div>
       <div>
         <label className="block text-sm font-medium text-foreground">Alasan *</label>
@@ -501,12 +511,12 @@ function PartEdit({ part, kategoris }: { part: Part; kategoris: string[] }) {
         </div>
         <div>
           <label className="block text-sm font-medium text-foreground">Min. Stok</label>
-          <input name="minStock" type="number" min={0} defaultValue={part.minStock} className={inputCls} />
+          <NumberInput name="minStock" defaultValue={part.minStock} />
         </div>
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="block text-sm font-medium text-foreground">Harga Beli</label>
+          <label className="block text-sm font-medium text-foreground">Harga Beli (Rp)</label>
           <p className="mt-1 rounded-lg bg-slate-100 px-3 py-2 text-base text-slate-600">
             {formatRupiah(part.buyPrice)}
           </p>
@@ -515,15 +525,8 @@ function PartEdit({ part, kategoris }: { part: Part; kategoris: string[] }) {
           </p>
         </div>
         <div>
-          <label className="block text-sm font-medium text-foreground">Harga Jual</label>
-          <input
-            name="sellPrice"
-            type="number"
-            min={0}
-            value={sellPrice}
-            onChange={(e) => setSellPrice(Number(e.target.value))}
-            className={inputCls}
-          />
+          <label className="block text-sm font-medium text-foreground">Harga Jual (Rp)</label>
+          <NumberInput name="sellPrice" value={sellPrice} onChange={setSellPrice} />
         </div>
       </div>
       {rugi && (
@@ -556,14 +559,7 @@ function CostEdit({ movementId, cost }: { movementId: string; cost: number }) {
         <label className="block text-xs font-medium text-muted-foreground">
           Harga beli batch yang benar (Rp)
         </label>
-        <input
-          name="cost"
-          type="number"
-          min={0}
-          defaultValue={cost}
-          required
-          className={inputCls}
-        />
+        <NumberInput name="cost" defaultValue={cost} required />
       </div>
       <p className="text-xs text-amber-600">
         Koreksi otomatis: riwayat batch, rata-rata, dan HPP servis yang unitnya

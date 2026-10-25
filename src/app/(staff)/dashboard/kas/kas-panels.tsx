@@ -4,6 +4,7 @@ import { useActionState, useState } from "react";
 import { addManualCashflow, type BayarState } from "./actions";
 import { formatRupiah, formatTanggalPendek } from "@/lib/service-status";
 import { SubmitButton } from "@/components/submit-button";
+import { NumberInput } from "@/components/number-input";
 
 type Branch = { id: string; name: string };
 type Cashflow = {
@@ -61,7 +62,7 @@ export function ManualCashflowForm({
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="block text-sm font-medium text-foreground">Jumlah (Rp)</label>
-          <input name="amount" type="number" min={1} required className={inputCls} />
+          <NumberInput name="amount" required />
         </div>
         <div>
           <label className="block text-sm font-medium text-foreground">Kantong</label>

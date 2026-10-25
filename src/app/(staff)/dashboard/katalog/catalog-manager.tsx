@@ -3,6 +3,7 @@
 import { useActionState, useState } from "react";
 import { createCatalog, type KatalogState } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
+import { NumberInput } from "@/components/number-input";
 
 const inputCls =
   "mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-base outline-none focus:border-slate-900";
@@ -63,26 +64,13 @@ export function CatalogManager() {
               <label className="block text-sm font-medium text-foreground">
                 Harga Dasar (Rp)
               </label>
-              <input
-                name="hargaDasar"
-                type="number"
-                min={0}
-                defaultValue={0}
-                className={inputCls}
-              />
+              <NumberInput name="hargaDasar" defaultValue={0} required />
             </div>
             <div>
               <label className="block text-sm font-medium text-foreground">
                 Estimasi Durasi (menit)
               </label>
-              <input
-                name="estimasiMenit"
-                type="number"
-                min={5}
-                max={1440}
-                defaultValue={60}
-                className={inputCls}
-              />
+              <NumberInput name="estimasiMenit" defaultValue={60} required />
             </div>
             <div className="flex items-end pb-2">
               <label className="flex items-center gap-2 text-sm font-medium text-foreground">

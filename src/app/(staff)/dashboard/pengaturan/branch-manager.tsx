@@ -3,6 +3,7 @@
 import { useActionState, useState } from "react";
 import { createBranch, updateBranch, type BranchState } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
+import { NumberInput } from "@/components/number-input";
 
 type Branch = {
   id: string;
@@ -88,14 +89,7 @@ function BranchFields({ branch }: { branch?: Branch }) {
         <label className="block text-sm font-medium text-foreground">
           Kuota Pit Paralel (per jam)
         </label>
-        <input
-          name="kuotaParalel"
-          type="number"
-          min={1}
-          max={20}
-          defaultValue={branch?.kuotaParalel ?? 2}
-          className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-base outline-none focus:border-slate-900"
-        />
+        <NumberInput name="kuotaParalel" defaultValue={branch?.kuotaParalel ?? 2} required />
         <p className="mt-1 text-xs text-muted-foreground">
           Jumlah motor yang boleh dikerjakan bersamaan — dasar slot booking.
         </p>
