@@ -10,6 +10,7 @@ import {
   movingAverageBuyPrice,
   estimateAvgAfterCostCorrection,
   correctedServiceCost,
+  cekHargaRugi,
 } from "@/lib/inventory";
 import type { PaymentMethod } from "@db/prisma/client";
 
@@ -45,6 +46,11 @@ async function kategoriPartExisting(): Promise<string[]> {
     select: { category: true },
   });
   return rows.map((r) => r.category).filter((c): c is string => !!c);
+}
+
+/** Centang "sengaja jual di bawah harga beli" dari form (checkbox). */
+function konfirmasiRugi(formData: FormData): boolean {
+  return ["on", "true", "1"].includes(String(formData.get("confirmLoss") ?? ""));
 }
 
 // ─── Supplier ─────────────────────────────────────────────────────────
@@ -130,6 +136,14 @@ export async function createPart(
   const dup = await prisma.part.findFirst({ where: { branchId, sku } });
   if (dup) return { error: `SKU "${sku}" sudah ada di cabang ini.` };
 
+  // Harga jual di bawah harga beli hanya boleh jika dikonfirmasi eksplisit.
+  const rugiError = cekHargaRugi({
+    buyPrice,
+    sellPrice,
+    konfirmasi: konfirmasiRugi(formData),
+  });
+  if (rugiError) return { error: rugiError };
+
   const session = await auth();
   if (!session?.user) return { error: "Belum login." };
   await prisma.$transaction(async (tx) => {
@@ -194,6 +208,14 @@ export async function updatePart(
   if (branchIdStaff && prev.branchId !== branchIdStaff) {
     return { error: "Part bukan di cabang Anda." };
   }
+
+  // Harga jual di bawah harga beli (rata-rata) hanya boleh jika dikonfirmasi.
+  const rugiError = cekHargaRugi({
+    buyPrice: prev.buyPrice,
+    sellPrice,
+    konfirmasi: konfirmasiRugi(formData),
+  });
+  if (rugiError) return { error: rugiError };
 
   // buyPrice TIDAK diubah dari sini: nilai itu rata-rata otomatis dari pembelian.
   // Koreksi harga per batch lewat koreksi riwayat (correctStockCost).

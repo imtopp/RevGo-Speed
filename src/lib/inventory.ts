@@ -95,3 +95,17 @@ export function correctedServiceCost(
   const deltaTotal = usageQty * (costBaru - costLama);
   return Math.max(0, Math.round(spCost + deltaTotal / spQty));
 }
+
+/**
+ * Validasi harga jual < harga beli: wajib konfirmasi eksplisit dari pengguna
+ * (centang "sengaja jual di bawah harga beli"). Balikkan pesan error bila belum —
+ * menyimpan tanpa konfirmasi = potensi rugi yang tidak disadari.
+ */
+export function cekHargaRugi(opts: {
+  buyPrice: number;
+  sellPrice: number;
+  konfirmasi: boolean;
+}): string | null {
+  if (opts.sellPrice >= opts.buyPrice || opts.konfirmasi) return null;
+  return "Harga jual di bawah harga beli (potensi rugi) — centang konfirmasi bila memang disengaja.";
+}

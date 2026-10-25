@@ -111,6 +111,9 @@ function PartForm({
   kategoris: string[];
 }) {
   const [state, action] = useActionState<StokState, FormData>(createPart, {});
+  const [buyPrice, setBuyPrice] = useState(0);
+  const [sellPrice, setSellPrice] = useState(0);
+  const rugi = sellPrice < buyPrice;
   return (
     <form action={action} className="space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
       <p className="text-sm font-semibold text-foreground">Tambah Part Baru</p>
@@ -167,13 +170,39 @@ function PartForm({
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="block text-sm font-medium text-foreground">Harga Beli (Rp)</label>
-          <input name="buyPrice" type="number" min={0} defaultValue={0} className={inputCls} />
+          <input
+            name="buyPrice"
+            type="number"
+            min={0}
+            value={buyPrice}
+            onChange={(e) => setBuyPrice(Number(e.target.value))}
+            className={inputCls}
+          />
         </div>
         <div>
           <label className="block text-sm font-medium text-foreground">Harga Jual (Rp)</label>
-          <input name="sellPrice" type="number" min={0} defaultValue={0} className={inputCls} />
+          <input
+            name="sellPrice"
+            type="number"
+            min={0}
+            value={sellPrice}
+            onChange={(e) => setSellPrice(Number(e.target.value))}
+            className={inputCls}
+          />
         </div>
       </div>
+      {rugi && (
+        <div className="rounded-lg bg-amber-50 p-3 ring-1 ring-amber-200">
+          <p className="text-xs font-medium text-amber-800">
+            ⚠ Harga jual {formatRupiah(sellPrice)} lebih murah dari harga beli{" "}
+            {formatRupiah(buyPrice)} — rugi {formatRupiah(buyPrice - sellPrice)} per unit.
+          </p>
+          <label className="mt-2 flex items-start gap-2 text-xs text-amber-800">
+            <input type="checkbox" name="confirmLoss" className="mt-0.5 h-4 w-4" />
+            Saya paham dan sengaja menjual di bawah harga beli.
+          </label>
+        </div>
+      )}
       <SubmitButton pendingText="Menyimpan..." className={btnPrimary}>
         Tambah Part
       </SubmitButton>
@@ -394,6 +423,8 @@ function PartRow({ part, kategoris }: { part: Part; kategoris: string[] }) {
 
 function PartEdit({ part, kategoris }: { part: Part; kategoris: string[] }) {
   const [state, action] = useActionState<StokState, FormData>(updatePart, {});
+  const [sellPrice, setSellPrice] = useState(part.sellPrice);
+  const rugi = sellPrice < part.buyPrice;
   return (
     <form action={action} className="mt-3 space-y-3 border-t border-slate-200 pt-3">
       <input type="hidden" name="id" value={part.id} />
@@ -430,9 +461,29 @@ function PartEdit({ part, kategoris }: { part: Part; kategoris: string[] }) {
         </div>
         <div>
           <label className="block text-sm font-medium text-foreground">Harga Jual</label>
-          <input name="sellPrice" type="number" min={0} defaultValue={part.sellPrice} className={inputCls} />
+          <input
+            name="sellPrice"
+            type="number"
+            min={0}
+            value={sellPrice}
+            onChange={(e) => setSellPrice(Number(e.target.value))}
+            className={inputCls}
+          />
         </div>
       </div>
+      {rugi && (
+        <div className="rounded-lg bg-amber-50 p-3 ring-1 ring-amber-200">
+          <p className="text-xs font-medium text-amber-800">
+            ⚠ Harga jual {formatRupiah(sellPrice)} lebih murah dari harga beli{" "}
+            {formatRupiah(part.buyPrice)} (rata-rata) — rugi{" "}
+            {formatRupiah(part.buyPrice - sellPrice)} per unit.
+          </p>
+          <label className="mt-2 flex items-start gap-2 text-xs text-amber-800">
+            <input type="checkbox" name="confirmLoss" className="mt-0.5 h-4 w-4" />
+            Saya paham dan sengaja menjual di bawah harga beli.
+          </label>
+        </div>
+      )}
       <SubmitButton className={btnSecondary}>Simpan</SubmitButton>
     </form>
   );

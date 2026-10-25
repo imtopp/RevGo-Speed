@@ -1,11 +1,32 @@
 import { describe, expect, it } from "vitest";
 import {
   allocateFifo,
+  cekHargaRugi,
   correctedServiceCost,
   estimateAvgAfterCostCorrection,
   movingAverageBuyPrice,
   type OpenBatch,
 } from "./inventory";
+
+describe("cekHargaRugi", () => {
+  it("jual >= beli → lolos tanpa konfirmasi", () => {
+    expect(cekHargaRugi({ buyPrice: 50_000, sellPrice: 50_000, konfirmasi: false })).toBeNull();
+    expect(cekHargaRugi({ buyPrice: 50_000, sellPrice: 60_000, konfirmasi: false })).toBeNull();
+  });
+
+  it("jual < beli tanpa konfirmasi → pesan error", () => {
+    const err = cekHargaRugi({ buyPrice: 50_000, sellPrice: 40_000, konfirmasi: false });
+    expect(err).toMatch(/potensi rugi/);
+  });
+
+  it("jual < beli dengan konfirmasi → lolos", () => {
+    expect(cekHargaRugi({ buyPrice: 50_000, sellPrice: 40_000, konfirmasi: true })).toBeNull();
+  });
+
+  it("harga nol semua → lolos", () => {
+    expect(cekHargaRugi({ buyPrice: 0, sellPrice: 0, konfirmasi: false })).toBeNull();
+  });
+});
 
 describe("movingAverageBuyPrice", () => {
   it("stok habis → harga batch baru murni", () => {
