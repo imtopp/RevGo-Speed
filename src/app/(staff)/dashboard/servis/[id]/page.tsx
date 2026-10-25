@@ -16,6 +16,7 @@ import {
 } from "@/lib/service-status";
 import { ActionForms } from "./action-forms";
 import { VoidPaymentForm } from "./void-payment";
+import { RefundForm } from "./refund-form";
 import { RemovePartButton } from "./remove-part-button";
 import { PaymentForm } from "../../kas/payment-form";
 import { formatTanggalPendek } from "@/lib/service-status";
@@ -273,7 +274,12 @@ export default async function ServisDetailPage({
               >
                 <div className={p.voidedAt ? "opacity-60" : ""}>
                   <p>
-                    {p.kind === "DP" ? "DP" : "Bayar"} · {p.method}
+                    {p.kind === "DP"
+                      ? "DP"
+                      : p.kind === "REFUND"
+                        ? "Kembali"
+                        : "Bayar"}{" "}
+                    · {p.method}
                     {p.voidedAt && (
                       <span className="ml-2 rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-medium text-danger">
                         DIBATALKAN
@@ -289,12 +295,16 @@ export default async function ServisDetailPage({
                 <div className="flex shrink-0 flex-col items-end gap-1">
                   <span
                     className={`font-medium ${
-                      p.voidedAt ? "text-slate-400 line-through" : ""
+                      p.voidedAt
+                        ? "text-slate-400 line-through"
+                        : p.kind === "REFUND"
+                          ? "text-danger"
+                          : ""
                     }`}
                   >
                     {formatRupiah(p.amount)}
                   </span>
-                  {isOwner && !p.voidedAt && (
+                  {isOwner && !p.voidedAt && p.kind !== "REFUND" && (
                     <VoidPaymentForm paymentId={p.id} />
                   )}
                 </div>
@@ -312,13 +322,32 @@ export default async function ServisDetailPage({
               remaining > 0 ? "text-danger" : "text-success"
             }`}
           >
-            <span>{remaining > 0 ? "Sisa tagihan" : "Status"}</span>
             <span>
-              {remaining > 0 ? formatRupiah(remaining) : "LUNAS"}
+              {remaining > 0
+                ? "Sisa tagihan"
+                : remaining < 0
+                  ? "Kelebihan bayar"
+                  : "Status"}
+            </span>
+            <span>
+              {remaining !== 0 ? formatRupiah(Math.abs(remaining)) : "LUNAS"}
             </span>
           </div>
         </div>
       </div>
+
+      {/* Kelebihan bayar (DP > biaya akhir) — Owner kembalikan 1 klik,
+          peran lain hanya diberi tahu. */}
+      {remaining < 0 && (
+        isOwner ? (
+          <RefundForm serviceId={service.id} kelebihan={-remaining} />
+        ) : (
+          <p className="rounded-xl bg-surface px-4 py-3 text-xs text-muted-foreground ring-1 ring-slate-200 shadow-card">
+            Kelebihan bayar {formatRupiah(-remaining)} — menunggu Owner untuk
+            pengembalian.
+          </p>
+        )
+      )}
 
       {/* Form bayar — hanya saat booking/awal (DP) atau setelah SELESAI;
           unit yang sedang dikerjakan menunggu QC lolos dulu. */}

@@ -166,6 +166,11 @@ export async function voidPayment(
   if (!payment) return { error: "Pembayaran tidak ditemukan." };
   if (payment.voidedAt) return { error: "Pembayaran sudah pernah dibatalkan." };
   if (!payment.service) return { error: "Pembayaran tidak terikat servis." };
+  // Baris REFUND = amount negatif; void-nya akan membuat EXPENSE negatif
+  // (arah kas terbalik) — pembatalan refund cukup lewat pembayaran baru.
+  if (payment.kind === "REFUND") {
+    return { error: "Baris refund tidak bisa di-void — catat pembayaran baru bila perlu." };
+  }
 
   const account = accountFromMethod(payment.method);
   const service = payment.service;
@@ -203,6 +208,113 @@ export async function voidPayment(
   revalidatePath("/dashboard/audit");
   return {
     success: `Pembayaran ${payment.amount.toLocaleString("id-ID")} dibatalkan — kas ${account} dikembalikan.`,
+  };
+}
+
+// ─── Kembalikan Kelebihan Bayar (Owner-only, reversal kas otomatis) ───
+
+/**
+ * DP diambil saat total masih besar, ternyata biaya akhir lebih kecil → paid > total.
+ * Satu aksi: baris Payment REFUND (amount negatif) + kas keluar sejumlah kelebihan.
+ * Angka selalu dihitung ulang dari DB (bukan input user) — terkunci tepat sejumlah kelebihan.
+ */
+export async function refundKelebihan(
+  _prev: BayarState,
+  formData: FormData,
+): Promise<BayarState> {
+  const session = await auth();
+  if (!session?.user) return { error: "Belum login." };
+  if (session.user.role !== "OWNER") {
+    return { error: "Hanya Owner yang bisa mengembalikan kelebihan bayar." };
+  }
+
+  const serviceId = String(formData.get("serviceId") ?? "").trim();
+  const method = String(formData.get("method") ?? "CASH") as PaymentMethod;
+  const reason = String(formData.get("reason") ?? "").trim();
+
+  if (!serviceId) return { error: "Servis tidak valid." };
+  if (!["CASH", "QRIS", "TRANSFER"].includes(method)) {
+    return { error: "Metode pengembalian tidak valid." };
+  }
+  if (reason.length < 4) {
+    return { error: "Alasan pengembalian wajib diisi (min. 4 karakter)." };
+  }
+
+  const service = await prisma.service.findUnique({
+    where: { id: serviceId },
+    select: { id: true, branchId: true },
+  });
+  if (!service) return { error: "Servis tidak ditemukan." };
+  const branchIdStaff = await getStaffBranchId();
+  if (branchIdStaff && service.branchId !== branchIdStaff) {
+    return { error: "Servis bukan di cabang Anda." };
+  }
+
+  const account = accountFromMethod(method);
+
+  await prisma.$transaction(async (tx) => {
+    // Kunci baris servis (FOR UPDATE) — recompute total/paid dari angka terkini
+    // supaya kelebihan tepat meski ada pembayaran paralel.
+    await tx.$queryRaw`SELECT id FROM "Service" WHERE id = ${serviceId} FOR UPDATE`;
+    const fresh = await tx.service.findUnique({
+      where: { id: serviceId },
+      include: {
+        parts: { select: { price: true, quantity: true } },
+        payments: { where: { voidedAt: null }, select: { amount: true } },
+      },
+    });
+    if (!fresh) throw new Error("Servis tidak ditemukan.");
+    const total = totalTagihan(fresh.laborCost, fresh.parts);
+    const paid = fresh.payments.reduce((s, p) => s + p.amount, 0);
+    const kelebihan = paid - total;
+    if (kelebihan <= 0) {
+      throw new Error("Tidak ada kelebihan bayar untuk dikembalikan.");
+    }
+
+    const payment = await tx.payment.create({
+      data: {
+        serviceId,
+        amount: -kelebihan,
+        kind: "REFUND",
+        method,
+        note: reason,
+        receivedById: session.user.id,
+      },
+    });
+    await tx.cashflow.create({
+      data: {
+        type: "EXPENSE",
+        category: "Pengembalian Kelebihan Bayar",
+        amount: kelebihan,
+        account,
+        branchId: fresh.branchId,
+        description: `${fresh.code} · refund kelebihan: ${reason}`,
+        createdBy: session.user.id,
+      },
+    });
+    await logAudit(tx, session.user, {
+      action: "PAYMENT_REFUND",
+      entityType: "Payment",
+      entityId: payment.id,
+      branchId: fresh.branchId,
+      summary: `${fresh.code} · REFUND ${kelebihan.toLocaleString("id-ID")} (${method}) — ${reason}`,
+      after: {
+        amount: -kelebihan,
+        kind: "REFUND",
+        method,
+        account,
+        kelebihan,
+        reason,
+      },
+    });
+  });
+
+  revalidatePath(`/dashboard/servis/${serviceId}`);
+  revalidatePath("/dashboard/kas");
+  revalidatePath("/dashboard/piutang");
+  revalidatePath("/dashboard/audit");
+  return {
+    success: `Kelebihan dikembalikan — kas ${account} keluar. Servis kini lunas.`,
   };
 }
 

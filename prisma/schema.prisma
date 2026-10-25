@@ -55,6 +55,8 @@ enum PaymentMethod {
 enum PaymentKind {
   DP
   PELUNASAN
+  /// Pengembalian kelebihan bayar (amount negatif — dikurangi dari total bayar).
+  REFUND
 }
 
 model User {
