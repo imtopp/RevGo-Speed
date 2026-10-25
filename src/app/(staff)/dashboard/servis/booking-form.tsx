@@ -176,13 +176,22 @@ export function BookingForm({
             </div>
             <div>
               <label className="block text-sm font-medium text-foreground">
-                Email Customer
+                Email Customer{" "}
+                <span className="font-normal text-muted-foreground">
+                  (opsional)
+                </span>
               </label>
               <input
                 name="customerEmail"
                 type="email"
+                placeholder="Biarkan kosong jika tidak mau akun"
                 className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-base outline-none focus:border-slate-900"
               />
+              <p className="mt-1 text-xs text-muted-foreground">
+                Tanpa email, customer tetap tercatat tapi tidak bisa login
+                online. Dengan email, akun dibuat + password sementara
+                ditampilkan setelah booking jadi.
+              </p>
             </div>
             <div>
               <label className="block text-sm font-medium text-foreground">

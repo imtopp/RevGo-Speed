@@ -24,6 +24,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         const user = await prisma.user.findUnique({ where: { email } });
         if (!user || !user.isActive) return null;
+        // Customer walk-in tanpa akun: email/passwordHash null — tidak pernah
+        // ketemuan lewat pencarian by email, tapi tetap jaga verifyPassword.
+        if (!user.passwordHash) return null;
         if (!verifyPassword(password, user.passwordHash)) return null;
 
         return {

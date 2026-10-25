@@ -60,9 +60,10 @@ enum PaymentKind {
 model User {
   id           String   @id @default(cuid())
   name         String
-  email        String   @unique
+  /// Null = customer walk-in tanpa akun login (booking admin tanpa email).
+  email        String?  @unique
   phone        String?
-  passwordHash String
+  passwordHash String?
   role         Role     @default(CUSTOMER)
   isActive     Boolean  @default(true)
   branchId     String?

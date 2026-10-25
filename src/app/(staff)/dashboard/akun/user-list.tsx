@@ -12,7 +12,7 @@ import { SubmitButton } from "@/components/submit-button";
 type UserRow = {
   id: string;
   name: string;
-  email: string;
+  email: string | null;
   role: string;
   isActive: boolean;
   branch: { id: string; name: string } | null;
@@ -169,7 +169,9 @@ export function UserList({
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
               <p className="font-medium">{user.name}</p>
-              <p className="truncate text-sm text-muted-foreground">{user.email}</p>
+              <p className="truncate text-sm text-muted-foreground">
+                {user.email ?? "tanpa email — tidak bisa login"}
+              </p>
               <p className="mt-1 text-xs text-slate-400">
                 {ROLE_LABEL[user.role] ?? user.role} ·{" "}
                 {user.branch?.name ?? "Lintas cabang"} ·{" "}

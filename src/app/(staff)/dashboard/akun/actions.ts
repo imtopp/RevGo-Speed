@@ -93,7 +93,7 @@ export async function resetPassword(
       entityType: "User",
       entityId: id,
       branchId: user.branchId,
-      summary: `Password ${user.name} (${user.email}) direset`,
+      summary: `Password ${user.name} (${user.email ?? "tanpa email"}) direset`,
     });
   });
 
@@ -125,7 +125,7 @@ export async function toggleActive(
       entityType: "User",
       entityId: id,
       branchId: user.branchId,
-      summary: `${user.name} (${user.email}) ${user.isActive ? "dinonaktifkan" : "diaktifkan"}`,
+      summary: `${user.name} (${user.email ?? "tanpa email"}) ${user.isActive ? "dinonaktifkan" : "diaktifkan"}`,
       before: { isActive: user.isActive },
       after: { isActive: !user.isActive },
     });

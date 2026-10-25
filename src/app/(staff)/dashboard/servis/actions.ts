@@ -143,12 +143,14 @@ export async function createBooking(
     let passwordSementara: string | null = null;
 
     if (!vehicle) {
-      // Kendaraan baru → butuh data customer + merek/tipe
-      if (!brand || !model || !customerName || !customerEmail) {
+      // Kendaraan baru → butuh data customer + merek/tipe.
+      // Email opsional: tanpa email, customer tetap tercatat tapi tidak
+      // dibuatkan akun login (cocok untuk walk-in yang tidak mau daftar).
+      if (!brand || !model || !customerName) {
         return {
           ok: false as const,
           error:
-            "Kendaraan belum terdaftar. Isi juga nama, email, merek, dan tipe customer untuk mendaftarkan.",
+            "Kendaraan belum terdaftar. Isi nama customer, merek, dan tipe. (Email opsional — untuk akun login online.)",
         };
       }
       if (modelTidakSesuaiMerek(brand, model)) {
@@ -157,21 +159,33 @@ export async function createBooking(
           error: `"${model}" bukan tipe merek ${brand}. Periksa pilihan merek/tipe.`,
         };
       }
-      let customer = await tx.user.findUnique({ where: { email: customerEmail } });
+      let customer = customerEmail
+        ? await tx.user.findUnique({ where: { email: customerEmail } })
+        : null;
       if (!customer) {
-        const { hashPassword } = await import("@/lib/password");
-        const { randomBytes } = await import("node:crypto");
-        // Password acak per akun — jangan pernah pakai default publik.
-        passwordSementara = randomBytes(8).toString("hex");
-        customer = await tx.user.create({
-          data: {
-            name: customerName,
-            email: customerEmail,
-            phone: customerPhone || null,
-            passwordHash: hashPassword(passwordSementara),
-            role: "CUSTOMER",
-          },
-        });
+        if (customerEmail) {
+          const { hashPassword } = await import("@/lib/password");
+          const { randomBytes } = await import("node:crypto");
+          // Password acak per akun — jangan pernah pakai default publik.
+          passwordSementara = randomBytes(8).toString("hex");
+          customer = await tx.user.create({
+            data: {
+              name: customerName,
+              email: customerEmail,
+              phone: customerPhone || null,
+              passwordHash: hashPassword(passwordSementara),
+              role: "CUSTOMER",
+            },
+          });
+        } else {
+          customer = await tx.user.create({
+            data: {
+              name: customerName,
+              phone: customerPhone || null,
+              role: "CUSTOMER",
+            },
+          });
+        }
       }
       vehicle = await tx.vehicle.create({
         data: { plateNumber, brand, model, ownerId: customer.id },
