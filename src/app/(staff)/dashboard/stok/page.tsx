@@ -10,7 +10,7 @@ export const metadata = { title: "Stok" };
 export default async function StokPage({
   searchParams,
 }: {
-  searchParams: Promise<{ tab?: string; branch?: string }>;
+  searchParams: Promise<{ tab?: string; branch?: string; part?: string }>;
 }) {
   await requireStaffRole(["OWNER", "ADMIN"]);
   const params = await searchParams;
@@ -22,21 +22,29 @@ export default async function StokPage({
     orderBy: { name: "asc" },
   });
   const activeBranchId = branchIdStaff ?? params.branch ?? branches[0]?.id ?? null;
-  const branchFilter = branchIdStaff ? branchIdStaff : activeBranchId;
+  const branchFilter = activeBranchId;
 
   const partWhere = branchFilter ? { branchId: branchFilter } : {};
 
-  const [parts, suppliers, movements] = await Promise.all([
-    prisma.part.findMany({
-      where: partWhere,
-      orderBy: { name: "asc" },
-      include: { supplier: { select: { nama: true } } },
-    }),
+  const parts = await prisma.part.findMany({
+    where: partWhere,
+    orderBy: { name: "asc" },
+    include: { supplier: { select: { nama: true } } },
+  });
+
+  const selectedPart = params.part
+    ? parts.find((p) => p.id === params.part) ?? null
+    : null;
+
+  const [suppliers, movements] = await Promise.all([
     prisma.supplier.findMany({ orderBy: { nama: "asc" } }),
     prisma.stockMovement.findMany({
-      where: branchFilter ? { part: { branchId: branchFilter } } : {},
+      where: {
+        ...(branchFilter ? { part: { branchId: branchFilter } } : {}),
+        ...(selectedPart ? { partId: selectedPart.id } : {}),
+      },
       orderBy: { createdAt: "desc" },
-      take: 100,
+      take: selectedPart ? 500 : 100,
       include: {
         part: { select: { name: true, unit: true } },
         user: { select: { name: true } },
@@ -44,6 +52,22 @@ export default async function StokPage({
       },
     }),
   ]);
+
+  // Info harga beli untuk filter riwayat: rata-rata + batch pembelian terakhir.
+  const lastBatch = selectedPart
+    ? movements.find((m) => m.type === "IN" && m.cost !== null)
+    : null;
+  const riwayatPart = selectedPart
+    ? {
+        id: selectedPart.id,
+        name: selectedPart.name,
+        unit: selectedPart.unit,
+        buyPrice: selectedPart.buyPrice,
+        lastCost: lastBatch?.cost ?? null,
+        lastCostAt: lastBatch?.createdAt ?? null,
+        lastNote: lastBatch?.note ?? null,
+      }
+    : null;
 
   const totalNilai = parts.reduce((s, p) => s + p.quantity * p.buyPrice, 0);
   const lowParts = parts.filter((p) => p.quantity <= p.minStock);
@@ -115,6 +139,7 @@ export default async function StokPage({
         branches={branches}
         activeBranchId={branchFilter}
         isLockedBranch={!!branchIdStaff}
+        riwayatPart={riwayatPart}
       />
     </div>
   );

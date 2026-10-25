@@ -93,12 +93,13 @@ export default async function LaporanPage({
   const totalHpp = rows.reduce((sum, r) => sum + r.hpp, 0);
 
   // Selisih opname periode: OUT (hilang) = beban, IN (temuan) = untung.
-  // Divaluasi dengan buyPrice — harga jual part tidak ikut berubah.
+  // Divaluasi dengan cost gerakan (snapshot saat kejadian); part lama fallback buyPrice.
+  // Harga jual part tidak ikut berubah.
   const opnameDelta = opnameDeltaValue(
     opnameMoves.map((m) => ({
       type: m.type,
       quantity: m.quantity,
-      unitCost: m.part.buyPrice,
+      unitCost: m.cost ?? m.part.buyPrice,
     })),
   );
   const totalLaba = totalRevenue - totalHpp + opnameDelta;

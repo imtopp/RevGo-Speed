@@ -5,6 +5,7 @@ import { auth } from "@/lib/auth";
 import { getStaffBranchId } from "@/lib/guard";
 import { logAudit } from "@/lib/audit";
 import { normalizeMerek, normalizeTipe, modelTidakSesuaiMerek, normalizePlate, MEREK_LAINNYA } from "@/lib/vehicle";
+import { allocateFifo } from "@/lib/inventory";
 import { revalidatePath } from "next/cache";
 import type { ServiceStatus } from "@db/prisma/client";
 
@@ -442,6 +443,9 @@ export async function addServicePart(
     include: { branch: true },
   });
   if (!service) return { error: "Servis tidak ditemukan." };
+  if (service.status === "DONE" || service.status === "CANCELLED") {
+    return { error: "Tidak bisa menambah part pada servis yang sudah selesai/dibatalkan." };
+  }
   const aksesError = await cekCabangServis(service.branchId);
   if (aksesError) return { error: aksesError };
 
@@ -463,15 +467,54 @@ export async function addServicePart(
     if (updated.count === 0) {
       throw new Error(`Stok ${part.name} kurang (tersisa ${part.quantity}).`);
     }
+
+    // Baca ulang part SETELAH baris terkunci — harga jual & rata-rata fallback
+    // harus dari angka terkini, bukan bacaan basi sebelum transaksi.
+    const partF = await tx.part.findUnique({ where: { id: partId } });
+    if (!partF) throw new Error("Part tidak ditemukan.");
+
+    // Alokasi FIFO: unit diambil dari batch pembelian tertua yang masih sisa,
+    // jejaknya dicatat di PartBatchUsage supaya koreksi harga batch nanti bisa
+    // tepat sasaran (terbatas jumlah unit yang benar-benar terpakai).
+    const movements = await tx.stockMovement.findMany({
+      where: { partId, type: "IN" },
+      // Tiebreak id: createdAt bisa sama (ms) → urutan FIFO harus deterministik.
+      orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+      select: { id: true, quantity: true, cost: true },
+    });
+    const usedAgg = await tx.partBatchUsage.groupBy({
+      by: ["movementId"],
+      where: { movementId: { in: movements.map((m) => m.id) } },
+      _sum: { quantity: true },
+    });
+    const usedMap = new Map(
+      usedAgg.map((u) => [u.movementId, u._sum?.quantity ?? 0]),
+    );
+    const openBatches = movements.map((m) => ({
+      movementId: m.id,
+      remaining: m.quantity - (usedMap.get(m.id) ?? 0),
+      cost: m.cost,
+    }));
+    const { allocations, cost } = allocateFifo(quantity, openBatches, partF.buyPrice);
+
     const sp = await tx.servicePart.create({
       data: {
         serviceId,
         partId,
         quantity,
-        price: part.sellPrice,
-        cost: part.buyPrice,
+        price: partF.sellPrice,
+        cost,
       },
     });
+    for (const a of allocations) {
+      await tx.partBatchUsage.create({
+        data: {
+          movementId: a.movementId,
+          servicePartId: sp.id,
+          quantity: a.quantity,
+        },
+      });
+    }
     await tx.stockMovement.create({
       data: {
         partId,
@@ -487,8 +530,8 @@ export async function addServicePart(
         entityType: "ServicePart",
         entityId: sp.id,
         branchId: service.branchId,
-        summary: `${service.code} · +${quantity} ${part.unit} ${part.name} @${part.sellPrice.toLocaleString("id-ID")}`,
-        after: { partId, quantity, price: part.sellPrice, cost: part.buyPrice },
+        summary: `${service.code} · +${quantity} ${part.unit} ${part.name} @${sp.price.toLocaleString("id-ID")}`,
+        after: { partId, quantity, price: sp.price, cost },
       });
     }
   });
@@ -516,11 +559,13 @@ export async function removeServicePart(
   if (aksesError) return { error: aksesError };
 
   await prisma.$transaction(async (tx) => {
-    await tx.servicePart.delete({ where: { id } });
+    // Kunci baris part dulu (sebelum hapus ServicePart) — urutan lock konsisten
+    // dengan addServicePart/correctStockCost (Part → ServicePart), anti-deadlock.
     await tx.part.update({
       where: { id: sp.partId },
       data: { quantity: { increment: sp.quantity } },
     });
+    await tx.servicePart.delete({ where: { id } });
     await tx.stockMovement.create({
       data: {
         partId: sp.partId,

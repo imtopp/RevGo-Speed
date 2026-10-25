@@ -82,11 +82,12 @@ export async function GET(request: Request) {
   servisRows.push(["TOTAL", "", "", "", "", totRev, totHpp, totRev - totHpp]);
 
   // Selisih opname: OUT (hilang) = beban negatif, IN (temuan) = positif.
+  // Cost gerakan = snapshot saat kejadian; part lama fallback buyPrice.
   const opnameDelta = opnameDeltaValue(
     opnameMoves.map((m) => ({
       type: m.type,
       quantity: m.quantity,
-      unitCost: m.part.buyPrice,
+      unitCost: m.cost ?? m.part.buyPrice,
     })),
   );
   servisRows.push(["SELISIH OPNAME", "", "", "", "", "", "", opnameDelta]);

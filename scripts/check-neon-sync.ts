@@ -9,6 +9,7 @@ const prisma = new PrismaClient({ adapter });
 const expectedTables = [
   "User", "Branch", "ServiceCatalog", "Supplier", "SystemSetting", "Vehicle",
   "Part", "StockMovement", "Service", "ServicePart", "Payment", "Cashflow",
+  "PartBatchUsage",
   // tabel join/enum Prisma (enum jadi tabel di Postgres utk native enums? tidak — enum tipe terpisah)
   "_prisma_migrations",
 ];
@@ -56,6 +57,7 @@ const keyChecks: [string, string[]][] = [
   ["Cashflow", ["account", "branchId", "createdBy"]],
   ["Part", ["branchId", "supplierId", "sku", "minStock"]],
   ["StockMovement", ["supplierId", "cost"]],
+  ["PartBatchUsage", ["movementId", "servicePartId", "quantity"]],
   ["ServiceCatalog", ["allowDp", "hargaDasar", "aktif"]],
   ["SystemSetting", ["key", "value", "updatedBy"]],
   ["Supplier", ["nama", "telepon", "aktif"]],

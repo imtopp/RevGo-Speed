@@ -1,11 +1,13 @@
 "use client";
 
 import { useActionState, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   createPart,
   updatePart,
   stockIn,
   adjustStock,
+  correctStockCost,
   createSupplier,
   updateSupplier,
   type StokState,
@@ -38,6 +40,15 @@ type Movement = {
   supplier: { nama: string } | null;
 };
 type Branch = { id: string; name: string };
+type RiwayatPart = {
+  id: string;
+  name: string;
+  unit: string;
+  buyPrice: number;
+  lastCost: number | null;
+  lastCostAt: Date | null;
+  lastNote: string | null;
+} | null;
 
 function Msg({ state }: { state: StokState }) {
   if (state.error)
@@ -376,7 +387,12 @@ function PartEdit({ part }: { part: Part }) {
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="block text-sm font-medium text-foreground">Harga Beli</label>
-          <input name="buyPrice" type="number" min={0} defaultValue={part.buyPrice} className={inputCls} />
+          <p className="mt-1 rounded-lg bg-slate-100 px-3 py-2 text-base text-slate-600">
+            {formatRupiah(part.buyPrice)}
+          </p>
+          <p className="mt-1 text-xs text-slate-400">
+            Otomatis rata-rata pembelian — koreksi per batch lewat tab Riwayat.
+          </p>
         </div>
         <div>
           <label className="block text-sm font-medium text-foreground">Harga Jual</label>
@@ -390,6 +406,84 @@ function PartEdit({ part }: { part: Part }) {
 
 // ── Panel utama ───────────────────────────────────────────────────────
 
+function CostEdit({ movementId, cost }: { movementId: string; cost: number }) {
+  const [state, action] = useActionState<StokState, FormData>(correctStockCost, {});
+  return (
+    <form action={action} className="mt-3 space-y-2 border-t border-slate-200 pt-3">
+      <input type="hidden" name="movementId" value={movementId} />
+      <Msg state={state} />
+      <div>
+        <label className="block text-xs font-medium text-muted-foreground">
+          Harga beli batch yang benar (Rp)
+        </label>
+        <input
+          name="cost"
+          type="number"
+          min={0}
+          defaultValue={cost}
+          required
+          className={inputCls}
+        />
+      </div>
+      <p className="text-xs text-amber-600">
+        Koreksi otomatis: riwayat batch, rata-rata, dan HPP servis yang unitnya
+        terpakai dari batch ini saja. Kas dikoreksi bertanggal pembelian hanya
+        bila pembeliannya tercatat di kas. Harga jual tidak berubah.
+      </p>
+      <SubmitButton pendingText="Mengoreksi..." className={btnSecondary}>
+        Koreksi Harga Beli
+      </SubmitButton>
+    </form>
+  );
+}
+
+function MovementRow({ m }: { m: Movement }) {
+  const [open, setOpen] = useState(false);
+  const canCorrect = m.type === "IN" && m.cost !== null;
+  return (
+    <div className="rounded-xl bg-surface p-3 ring-1 ring-slate-200 shadow-card">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="text-sm font-medium">
+            <span className={m.type === "IN" ? "text-success" : "text-danger"}>
+              {m.type === "IN" ? "+" : "−"}
+              {m.quantity}
+            </span>{" "}
+            {m.part.name}
+            {m.cost !== null && (
+              <span className="ml-2 text-xs font-normal text-muted-foreground">
+                @{formatRupiah(m.cost)}
+              </span>
+            )}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            {m.note ?? "—"}
+            {m.supplier ? ` · ${m.supplier.nama}` : ""}
+            {m.user ? ` · ${m.user.name}` : ""}
+          </p>
+        </div>
+        <div className="flex shrink-0 flex-col items-end gap-1">
+          <span className="text-xs text-slate-400">
+            {formatTanggalPendek(m.createdAt)}
+          </span>
+          {canCorrect && (
+            <button
+              type="button"
+              onClick={() => setOpen((v) => !v)}
+              className="text-xs font-medium text-foreground underline underline-offset-2"
+            >
+              {open ? "Tutup" : "Koreksi"}
+            </button>
+          )}
+        </div>
+      </div>
+      {open && m.cost !== null && (
+        <CostEdit movementId={m.id} cost={m.cost} />
+      )}
+    </div>
+  );
+}
+
 export function StokPanels({
   tab,
   parts,
@@ -398,6 +492,7 @@ export function StokPanels({
   branches,
   activeBranchId,
   isLockedBranch,
+  riwayatPart,
 }: {
   tab: string;
   parts: Part[];
@@ -406,44 +501,71 @@ export function StokPanels({
   branches: Branch[];
   activeBranchId: string | null;
   isLockedBranch: boolean;
+  riwayatPart: RiwayatPart;
 }) {
   const [showForms, setShowForms] = useState(false);
   const [aksi, setAksi] = useState<"part" | "masuk" | "opname">("part");
+  const router = useRouter();
 
   if (tab === "supplier") {
     return <SupplierPanel suppliers={suppliers} />;
   }
 
   if (tab === "riwayat") {
+    const branchQ = activeBranchId ? `&branch=${activeBranchId}` : "";
     return (
-      <div className="space-y-2">
+      <div className="space-y-3">
+        <div>
+          <label className="block text-xs font-medium text-muted-foreground">
+            Fokus ke part
+          </label>
+          <select
+            value={riwayatPart?.id ?? ""}
+            onChange={(e) =>
+              router.push(
+                `/dashboard/stok?tab=riwayat${e.target.value ? `&part=${e.target.value}` : ""}${branchQ}`,
+              )
+            }
+            className="mt-1 w-full rounded-lg border border-slate-300 bg-surface px-3 py-2 text-base outline-none"
+          >
+            <option value="">Semua part</option>
+            {parts.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {riwayatPart && (
+          <div className="rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
+            <p className="font-medium">{riwayatPart.name}</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Harga rata-rata:{" "}
+              <span className="font-semibold text-foreground">
+                {formatRupiah(riwayatPart.buyPrice)}
+              </span>
+            </p>
+            {riwayatPart.lastCost !== null && (
+              <p className="text-sm text-muted-foreground">
+                Harga beli batch terakhir:{" "}
+                <span className="font-semibold text-foreground">
+                  {formatRupiah(riwayatPart.lastCost)}
+                </span>{" "}
+                {riwayatPart.lastCostAt &&
+                  `· ${formatTanggalPendek(riwayatPart.lastCostAt)}`}
+              </p>
+            )}
+          </div>
+        )}
+
         {movements.length === 0 && (
           <div className="rounded-xl bg-surface p-6 ring-1 ring-slate-200 shadow-card">
             <p className="text-sm text-muted-foreground">Belum ada pergerakan stok.</p>
           </div>
         )}
         {movements.map((m) => (
-          <div key={m.id} className="rounded-xl bg-surface p-3 ring-1 ring-slate-200 shadow-card">
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0">
-                <p className="text-sm font-medium">
-                  <span className={m.type === "IN" ? "text-success" : "text-danger"}>
-                    {m.type === "IN" ? "+" : "−"}
-                    {m.quantity}
-                  </span>{" "}
-                  {m.part.name}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {m.note ?? "—"}
-                  {m.supplier ? ` · ${m.supplier.nama}` : ""}
-                  {m.user ? ` · ${m.user.name}` : ""}
-                </p>
-              </div>
-              <span className="shrink-0 text-xs text-slate-400">
-                {formatTanggalPendek(m.createdAt)}
-              </span>
-            </div>
-          </div>
+          <MovementRow key={m.id} m={m} />
         ))}
       </div>
     );

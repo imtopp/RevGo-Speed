@@ -5,6 +5,11 @@ import { auth } from "@/lib/auth";
 import { getStaffBranchId } from "@/lib/guard";
 import { logAudit } from "@/lib/audit";
 import { revalidatePath } from "next/cache";
+import {
+  movingAverageBuyPrice,
+  estimateAvgAfterCostCorrection,
+  correctedServiceCost,
+} from "@/lib/inventory";
 import type { PaymentMethod } from "@db/prisma/client";
 
 export type StokState = { error?: string; success?: string };
@@ -111,19 +116,38 @@ export async function createPart(
   const dup = await prisma.part.findFirst({ where: { branchId, sku } });
   if (dup) return { error: `SKU "${sku}" sudah ada di cabang ini.` };
 
-  await prisma.part.create({
-    data: {
-      branchId,
-      sku,
-      name,
-      category: category || null,
-      unit,
-      quantity,
-      minStock,
-      buyPrice,
-      sellPrice,
-      supplierId: supplierId || null,
-    },
+  const session = await auth();
+  if (!session?.user) return { error: "Belum login." };
+  await prisma.$transaction(async (tx) => {
+    const p = await tx.part.create({
+      data: {
+        branchId,
+        sku,
+        name,
+        category: category || null,
+        unit,
+        quantity,
+        minStock,
+        buyPrice,
+        sellPrice,
+        supplierId: supplierId || null,
+      },
+    });
+    // Stok awal dicatat sebagai batch pembelian pertama — riwayat & alokasi FIFO
+    // langsung lengkap sejak part dibuat.
+    if (quantity > 0) {
+      await tx.stockMovement.create({
+        data: {
+          partId: p.id,
+          type: "IN",
+          quantity,
+          cost: buyPrice,
+          note: "Stok awal",
+          userId: session.user.id,
+          supplierId: supplierId || null,
+        },
+      });
+    }
   });
   revalidatePath("/dashboard/stok");
   return { success: `Part "${name}" ditambahkan.` };
@@ -139,12 +163,11 @@ export async function updatePart(
   const category = String(formData.get("category") ?? "").trim();
   const unit = String(formData.get("unit") ?? "pcs").trim();
   const minStock = Number(formData.get("minStock") ?? 0);
-  const buyPrice = Number(formData.get("buyPrice") ?? 0);
   const sellPrice = Number(formData.get("sellPrice") ?? 0);
   const supplierId = String(formData.get("supplierId") ?? "").trim();
 
   if (!id || !name) return { error: "Data tidak lengkap." };
-  if (minStock < 0 || buyPrice < 0 || sellPrice < 0) {
+  if (minStock < 0 || sellPrice < 0) {
     return { error: "Nilai tidak boleh negatif." };
   }
 
@@ -155,6 +178,8 @@ export async function updatePart(
     return { error: "Part bukan di cabang Anda." };
   }
 
+  // buyPrice TIDAK diubah dari sini: nilai itu rata-rata otomatis dari pembelian.
+  // Koreksi harga per batch lewat koreksi riwayat (correctStockCost).
   await prisma.$transaction(async (tx) => {
     await tx.part.update({
       where: { id },
@@ -163,7 +188,6 @@ export async function updatePart(
         category: category || null,
         unit,
         minStock,
-        buyPrice,
         sellPrice,
         supplierId: supplierId || null,
       },
@@ -175,9 +199,9 @@ export async function updatePart(
         entityType: "Part",
         entityId: id,
         branchId: prev.branchId,
-        summary: `${name} · harga beli ${prev.buyPrice.toLocaleString("id-ID")} → ${buyPrice.toLocaleString("id-ID")}, harga jual ${prev.sellPrice.toLocaleString("id-ID")} → ${sellPrice.toLocaleString("id-ID")}`,
-        before: { buyPrice: prev.buyPrice, sellPrice: prev.sellPrice, name: prev.name, minStock: prev.minStock },
-        after: { buyPrice, sellPrice, name, minStock },
+        summary: `${name} · harga jual ${prev.sellPrice.toLocaleString("id-ID")} → ${sellPrice.toLocaleString("id-ID")}`,
+        before: { sellPrice: prev.sellPrice, name: prev.name, minStock: prev.minStock },
+        after: { sellPrice, name, minStock },
       });
     }
   });
@@ -223,11 +247,22 @@ export async function stockIn(
 
   const total = quantity * buyPrice;
 
-  // Transaksi atomik: qty naik + update harga beli + movement + auto kas keluar
+  // Transaksi atomik: qty naik + update harga beli + movement + auto kas keluar.
+  // Baris part dikunci dulu (FOR UPDATE) supaya rata-rata dihitung dari angka
+  // yang benar-benar terkini saat ada stok masuk/koreksi paralel.
   await prisma.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT id FROM "Part" WHERE id = ${partId} FOR UPDATE`;
+    const fresh = await tx.part.findUnique({
+      where: { id: partId },
+      select: { quantity: true, buyPrice: true },
+    });
+    if (!fresh) throw new Error("Part tidak ditemukan.");
+    // Harga beli part = rata-rata tertimbang sisa stok (bukan harga batch terakhir),
+    // supaya nilai persediaan & HPP tidak meleset saat harga beli naik/turun.
+    const avgBaru = movingAverageBuyPrice(fresh.quantity, fresh.buyPrice, quantity, buyPrice);
     await tx.part.update({
       where: { id: partId },
-      data: { quantity: { increment: quantity }, buyPrice },
+      data: { quantity: { increment: quantity }, buyPrice: avgBaru },
     });
     await tx.stockMovement.create({
       data: {
@@ -257,8 +292,8 @@ export async function stockIn(
       entityId: partId,
       branchId: part.branchId,
       summary: `Beli ${quantity} ${part.unit} ${part.name} @${buyPrice.toLocaleString("id-ID")} = ${total.toLocaleString("id-ID")} (${accountFromMethod(method)})`,
-      before: { buyPrice: part.buyPrice, quantity: part.quantity },
-      after: { buyPrice, quantity: part.quantity + quantity },
+      before: { buyPrice: fresh.buyPrice, quantity: fresh.quantity },
+      after: { buyPrice: avgBaru, quantity: fresh.quantity + quantity },
     });
   });
 
@@ -312,11 +347,18 @@ export async function adjustStock(
       data: { quantity: { increment: delta } },
     });
     if (updated.count === 0) return false;
+    // Baca ulang buyPrice SETELAH baris terkunci — snapshot cost gerakan harus
+    // memakai rata-rata terbaru (bisa berubah oleh stok masuk paralel).
+    const fresh = await tx.part.findUnique({
+      where: { id: partId },
+      select: { buyPrice: true },
+    });
     await tx.stockMovement.create({
       data: {
         partId,
         type,
         quantity: absDelta,
+        cost: fresh?.buyPrice ?? part.buyPrice,
         note: `Penyesuaian: ${reason}`,
         userId: session.user.id,
       },
@@ -340,4 +382,196 @@ export async function adjustStock(
   return {
     success: `Stok ${part.name} disesuaikan ${delta > 0 ? "+" : ""}${delta} → ${part.quantity + delta}.`,
   };
+}
+
+// ─── Koreksi Harga Beli per Batch ─────────────────────────────────────
+
+/**
+ * Koreksi harga beli satu batch (typo input stok masuk) — otomatis 4 langkah:
+ * 1. riwayat batch (StockMovement.cost), 2. rata-rata buyPrice part,
+ * 3. HPP servis yang unitnya diambil dari batch ini (TERBATAS jumlah unit terpakai, dari jejak PartBatchUsage),
+ * 4. kas koreksi senilai selisih penuh batch, bertanggal pembelian asli —
+ *    HANYA bila pembelian aslinya tercatat di kas; stok awal/penyesuaian tidak
+ *    memindahkan uang, jadi kas tidak diutak-atik (tidak membuat kas fiktif).
+ * Harga jual (sellPrice) tidak pernah disentuh.
+ */
+export async function correctStockCost(
+  _prev: StokState,
+  formData: FormData,
+): Promise<StokState> {
+  const session = await requireStokRole();
+  const movementId = String(formData.get("movementId") ?? "").trim();
+  const newCost = Number(formData.get("cost") ?? 0);
+
+  if (
+    !movementId ||
+    !Number.isFinite(newCost) ||
+    newCost < 0 ||
+    newCost > MAX_RUPIAH
+  ) {
+    return { error: "Harga beli tidak valid." };
+  }
+
+  const movement = await prisma.stockMovement.findUnique({
+    where: { id: movementId },
+    include: { part: true },
+  });
+  if (!movement || movement.type !== "IN") {
+    return { error: "Batch pembelian tidak ditemukan." };
+  }
+  const part = movement.part;
+  const branchIdStaff = await getStaffBranchId();
+  if (branchIdStaff && part.branchId !== branchIdStaff) {
+    return { error: "Part bukan di cabang Anda." };
+  }
+
+  if (movement.cost === null) {
+    return {
+      error: "Batch ini bukan pembelian (tanpa harga tercatat) — tidak bisa dikoreksi.",
+    };
+  }
+  if (movement.cost === newCost) {
+    return { error: "Harga sama dengan harga batch saat ini." };
+  }
+
+  // Diisi di dalam transaksi (setelah baris part dikunci, baca ulang data terkini).
+  let costLama = movement.cost;
+  let x = 0;
+  let avgBaru = part.buyPrice;
+  let kasDelta = 0;
+  let kasTercatat = false;
+  let serviceCount = 0;
+
+  // Kunci baris part (pola FOR UPDATE sama dengan addPayment) — serialisasi
+  // dengan stok masul/servis/koreksi paralel; semua baca ulang dilakukan SETELAH
+  // kunci supaya tidak ada pembacaan basi yang menimpa angka orang lain.
+  await prisma.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT id FROM "Part" WHERE id = ${part.id} FOR UPDATE`;
+    const partF = await tx.part.findUnique({
+      where: { id: part.id },
+      select: { quantity: true, buyPrice: true },
+    });
+    const mvF = await tx.stockMovement.findUnique({
+      where: { id: movementId },
+      select: { quantity: true, cost: true, createdAt: true },
+    });
+    if (!partF || !mvF || mvF.cost === null) {
+      throw new Error("Batch pembelian tidak ditemukan.");
+    }
+    costLama = mvF.cost;
+
+    // Jejak unit servis dari batch ini → x: batas koreksi HPP, tidak melebar.
+    const usages = await tx.partBatchUsage.findMany({
+      where: { movementId },
+      include: { servicePart: true },
+    });
+    x = usages.reduce((s, u) => s + u.quantity, 0);
+    const perSp = new Map<
+      string,
+      { qty: number; sp: (typeof usages)[number]["servicePart"] }
+    >();
+    for (const u of usages) {
+      const cur = perSp.get(u.servicePartId);
+      if (cur) cur.qty += u.quantity;
+      else perSp.set(u.servicePartId, { qty: u.quantity, sp: u.servicePart });
+    }
+    serviceCount = perSp.size;
+
+    // 1. Riwayat batch
+    await tx.stockMovement.update({
+      where: { id: movementId },
+      data: { cost: newCost },
+    });
+    // 2. Rata-rata harga beli part — dampak hanya sisa batch yang masih di stok
+    avgBaru = estimateAvgAfterCostCorrection(
+      mvF.quantity,
+      x,
+      costLama,
+      newCost,
+      partF.buyPrice,
+      partF.quantity,
+    );
+    await tx.part.update({
+      where: { id: part.id },
+      data: { buyPrice: avgBaru },
+    });
+    // 3. HPP servis terdampak — hanya porsi unit dari batch ini (total x)
+    for (const [, { qty, sp }] of perSp) {
+      const newSpCost = correctedServiceCost(
+        sp.cost,
+        sp.quantity,
+        qty,
+        costLama,
+        newCost,
+      );
+      if (newSpCost !== sp.cost) {
+        await tx.servicePart.update({
+          where: { id: sp.id },
+          data: { cost: newSpCost },
+        });
+      }
+    }
+    // 4. Kas koreksi bertanggal pembelian asli — hanya bila pembeliannya
+    //    memang tercatat di kas (stok awal/penyesuaian tidak ada kas aslinya).
+    kasDelta = mvF.quantity * (newCost - costLama);
+    const origCash = await tx.cashflow.findFirst({
+      where: {
+        type: "EXPENSE",
+        category: "Pembelian Part",
+        amount: mvF.quantity * costLama,
+        branchId: part.branchId,
+        createdAt: {
+          gte: new Date(mvF.createdAt.getTime() - 86_400_000),
+          lte: new Date(mvF.createdAt.getTime() + 86_400_000),
+        },
+      },
+      orderBy: { createdAt: "asc" },
+    });
+    kasTercatat = Boolean(origCash);
+    if (kasDelta !== 0 && origCash) {
+      await tx.cashflow.create({
+        data: {
+          type: kasDelta > 0 ? "EXPENSE" : "INCOME",
+          category: "Koreksi Pembelian Part",
+          amount: Math.abs(kasDelta),
+          account: origCash.account,
+          branchId: part.branchId,
+          description: `Koreksi harga beli ${part.name} @${costLama} → @${newCost} (${mvF.quantity} ${part.unit})`,
+          createdBy: session.user.id,
+          createdAt: mvF.createdAt,
+        },
+      });
+    }
+    await logAudit(tx, session.user, {
+      action: "STOCK_COST_CORRECT",
+      entityType: "StockMovement",
+      entityId: movementId,
+      branchId: part.branchId,
+      summary: `${part.name}: batch ${mvF.quantity} @${costLama} → @${newCost} · ${perSp.size} servis / ${x} unit terdampak · kas ${kasDelta === 0 ? "±0" : kasTercatat ? `${kasDelta > 0 ? "+" : "−"}${Math.abs(kasDelta)}` : "dilewati (bukan pembelian)"} · rata-rata → ${avgBaru}`,
+      before: { cost: costLama, buyPrice: partF.buyPrice },
+      after: {
+        cost: newCost,
+        buyPrice: avgBaru,
+        affectedServices: perSp.size,
+        affectedUnits: x,
+      },
+    });
+  });
+
+  revalidatePath("/dashboard/stok");
+  revalidatePath("/dashboard/laporan");
+
+  const efek = [
+    `Harga batch ${part.name} @${costLama} → @${newCost}`,
+    `rata-rata → ${avgBaru}`,
+  ];
+  if (serviceCount > 0) efek.push(`${serviceCount} servis (${x} unit) ikut dikoreksi`);
+  if (kasDelta !== 0) {
+    efek.push(
+      kasTercatat
+        ? `kas ${kasDelta > 0 ? "+" : "−"}${Math.abs(kasDelta).toLocaleString("id-ID")}`
+        : "kas tidak dikoreksi (bukan pembelian tercatat)",
+    );
+  }
+  return { success: efek.join(" · ") + "." };
 }

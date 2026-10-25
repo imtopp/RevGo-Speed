@@ -178,6 +178,22 @@ model StockMovement {
   supplierId String?
   supplier   Supplier?         @relation(fields: [supplierId], references: [id])
   createdAt  DateTime          @default(now())
+
+  batchUsages PartBatchUsage[]
+}
+
+/// Alokasi FIFO: jejak unit servis yang diambil dari batch pembelian tertentu.
+model PartBatchUsage {
+  id            String        @id @default(cuid())
+  movementId    String
+  movement      StockMovement @relation(fields: [movementId], references: [id], onDelete: Cascade)
+  servicePartId String
+  servicePart   ServicePart   @relation(fields: [servicePartId], references: [id], onDelete: Cascade)
+  quantity      Int
+  createdAt     DateTime      @default(now())
+
+  @@index([movementId])
+  @@index([servicePartId])
 }
 
 model Service {
@@ -220,6 +236,8 @@ model ServicePart {
   quantity  Int
   price     Int
   cost      Int     @default(0)
+
+  batchUsages PartBatchUsage[]
 }
 
 model Payment {

@@ -93,7 +93,7 @@ generated/                  # Prisma client output (gitignored)
   (`CANCELLED` dari PENDING/WAITING_APPROVAL/CONFIRMED/CHECKED_IN, wajib alasan)
 - **Scoping cabang:** Owner & SysAdmin lintas cabang (`branchId = null`); Admin & Mekanik terikat 1 cabang. Selalu filter query via `getStaffBranchId()`.
 - **Kantong kas:** `CashflowAccount` = `KAS` | `BANK`. Pembayaran `CASH` → KAS; `QRIS`/`TRANSFER` → BANK.
-- **HPP:** `ServicePart.cost` = snapshot `buyPrice` saat part dipakai — jangan diubah setelah dibuat.
+- **HPP:** `ServicePart.cost` = campuran harga beli batch (alokasi FIFO `PartBatchUsage`) — hanya boleh berubah lewat `correctStockCost` (koreksi 4 langkah, terbatas unit dari batch terkait). Baca di laporan: `Σ cost×qty` per servis DONE.
 
 ## Aturan Penting
 
@@ -106,6 +106,7 @@ generated/                  # Prisma client output (gitignored)
 7. **Jangan hardcode nama aplikasi** — pakai `getAppName()` / `getBranding()` dari `src/lib/branding.ts`.
 8. **Jangan pernah sebut "RevLedger"** — nama lama project sebelum rebrand. Nama resmi: **RevGo Speed**. Jika menemukan sisa referensi "RevLedger" di mana pun, hapus/ganti.
 9. **Token/credential wajib aman:** `.env` di-gitignore; token OAuth MCP di `~/.local/share/opencode/mcp-auth.json` (lokal, jangan commit); Vercel env vars disimpan sebagai Secret. Jangan pernah log, print, atau commit secret ke repo.
+10. **Cek integritas akuntansi setiap ada modifikasi (WAJIB sebelum commit).** Setiap perubahan yang menyentuh uang, stok, HPP, omzet, kas, atau laporan → audit alur dulu: (a) **kas = uang real** — tiap uang nyata bergerak tepat satu baris `Cashflow` (tanda/bulan/kantong benar), tidak ada kas fiktif (baris kas tanpa uang) maupun kas hilang (uang bergerak tanpa baris); (b) **laporan vs uang real tidak selisih karena salah alur** — telusuri semua jalur tulis (payment, pembelian, koreksi, opname, void, kas manual) dan cocokkan dengan semua jalur baca laporan (`laporan/page.tsx` + `api/laporan/export`); (c) **konservasi stok** — `part.quantity` selalu = Σ IN − Σ OUT gerakan; (d) **konservasi batch/FIFO** — alokasi ≤ qty batch, koreksi HPP terbatas unit terpakai; (e) **tidak ada data hilang** — migrasi additive, backup memuat semua tabel (termasuk `PartBatchUsage`), delete/cascade tidak menyingkirkan jejak yang dibutuhkan laporan. Fallback snapshot (mis. `cost ?? buyPrice`) hanya boleh untuk data lama, dicatat sebagai aproksimasi.
 
 ## Branding & Naming (eksternal)
 
