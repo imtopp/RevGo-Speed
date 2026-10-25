@@ -764,8 +764,15 @@ export async function addServicePart(
   const partId = String(formData.get("partId") ?? "").trim();
   const quantity = Number(formData.get("quantity") ?? 0);
 
-  if (!serviceId || !partId || !Number.isInteger(quantity) || quantity <= 0 || quantity > 1_000_000) {
-    return { error: "Part dan jumlah tidak valid." };
+  if (!serviceId) return { error: "Servis tidak valid." };
+  if (!partId) {
+    return {
+      error:
+        "Part belum dipilih — ketik nama part lalu pilih satu dari daftar saran.",
+    };
+  }
+  if (!Number.isInteger(quantity) || quantity <= 0 || quantity > 1_000_000) {
+    return { error: "Jumlah tidak valid — isi bilangan bulat minimal 1." };
   }
 
   const service = await prisma.service.findUnique({

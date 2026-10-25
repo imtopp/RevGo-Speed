@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useRef, useState } from "react";
+import { useId, useState } from "react";
 import { cariPart, type PartCari } from "@/lib/part-search";
 
 export type PartOpsi = PartCari & { unit: string };
@@ -27,7 +27,6 @@ export function PartPicker({
   placeholder?: string;
 }) {
   const listId = useId();
-  const hiddenRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
   const [pickedId, setPickedId] = useState("");
@@ -42,7 +41,6 @@ export function PartPicker({
 
   function setNilai(id: string) {
     setPickedId(id);
-    if (hiddenRef.current) hiddenRef.current.value = id;
   }
 
   function pilih(p: PartOpsi) {
@@ -58,9 +56,19 @@ export function PartPicker({
     setOpen(true);
   }
 
+  function blur() {
+    setOpen(false);
+    // Ketikan yang mengenai tepat satu part (stok siap) → otomatis terpilih,
+    // supaya tap "Simpan" setelah mengetik tidak mengirim partId kosong.
+    if (!pickedId && query.trim()) {
+      const cocok = semua.filter(bisaDipilih);
+      if (cocok.length === 1) setNilai(cocok[0].id);
+    }
+  }
+
   return (
     <div className="relative">
-      <input type="hidden" name={name} ref={hiddenRef} defaultValue="" />
+      <input type="hidden" name={name} value={pickedId} readOnly />
       <input
         type="text"
         role="combobox"
@@ -71,7 +79,7 @@ export function PartPicker({
         value={query}
         placeholder={placeholder ?? "Ketik nama / SKU part…"}
         onFocus={() => setOpen(true)}
-        onBlur={() => setOpen(false)}
+        onBlur={blur}
         onChange={(e) => ubahQuery(e.target.value)}
         onKeyDown={(e) => {
           if (e.key === "Escape") {

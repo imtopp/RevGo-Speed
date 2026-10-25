@@ -34,6 +34,7 @@ type ServiceInfo = {
   mechanicName: string | null;
   scheduledAt: Date | null;
   complaint: string | null;
+  finishedAt: Date | null;
 };
 
 type Mechanic = { id: string; name: string };
@@ -358,6 +359,9 @@ function AddPartForm({
       <Msg state={state} />
       <Field label="Part (stok cabang)">
         <PartPicker parts={parts} />
+        <p className="mt-1 text-xs text-muted-foreground">
+          Pilih satu dari daftar saran — bukan hanya mengetik.
+        </p>
       </Field>
       <Field label="Jumlah">
         <input name="quantity" type="number" min={1} defaultValue={1} className={inputCls} />
@@ -416,6 +420,19 @@ function QcForm({ service }: { service: ServiceInfo }) {
       <Msg state={state} />
       <SubmitButton className={btnPrimary}>QC Lolos → SELESAI</SubmitButton>
     </form>
+  );
+}
+
+/** Mekanik sudah menandai selesai — tidak ada aksi lagi, tinggal tunggu QC admin. */
+function TungguQc() {
+  return (
+    <div className="space-y-1 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
+      <p className="text-sm font-semibold text-foreground">Menunggu QC admin</p>
+      <p className="text-xs text-muted-foreground">
+        Pekerjaan sudah ditandai selesai. Admin akan memeriksa hasilnya sebelum
+        servis dinyatakan SELESAI.
+      </p>
+    </div>
   );
 }
 
@@ -540,26 +557,45 @@ export function ActionForms({
           ]
         : [];
       break;
-    case "IN_PROGRESS":
-      primary =
-        isAssignedMechanic || canAdmin ? (
-          <FinishForm service={service} />
-        ) : null;
-      others = [
-        <DiagnosisForm key="dx" service={service} />,
-        <AddPartForm key="part" serviceId={service.id} parts={parts} />,
-        canAdmin && (
-          <ReassignMechanicForm
-            key="mekanik"
-            service={service}
-            mechanics={mechanics}
-            busyMechanics={busyMechanics}
-          />
-        ),
-        canAdmin && <WaitingPartsForm key="wp" service={service} />,
-        canAdmin && <QcForm key="qc" service={service} />,
-      ].filter(Boolean);
+    case "IN_PROGRESS": {
+      // Urutan wajib: mekanik tandai selesai dulu (finishedAt terisi),
+      // baru tombol QC admin muncul sebagai langkah berikutnya.
+      const selesaiDikerjakan = service.finishedAt != null;
+      if (selesaiDikerjakan) {
+        primary = canAdmin ? <QcForm service={service} /> : <TungguQc />;
+        others = [
+          <DiagnosisForm key="dx" service={service} />,
+          <AddPartForm key="part" serviceId={service.id} parts={parts} />,
+          canAdmin && (
+            <ReassignMechanicForm
+              key="mekanik"
+              service={service}
+              mechanics={mechanics}
+              busyMechanics={busyMechanics}
+            />
+          ),
+        ].filter(Boolean);
+      } else {
+        primary =
+          isAssignedMechanic || canAdmin ? (
+            <FinishForm service={service} />
+          ) : null;
+        others = [
+          <DiagnosisForm key="dx" service={service} />,
+          <AddPartForm key="part" serviceId={service.id} parts={parts} />,
+          canAdmin && (
+            <ReassignMechanicForm
+              key="mekanik"
+              service={service}
+              mechanics={mechanics}
+              busyMechanics={busyMechanics}
+            />
+          ),
+          canAdmin && <WaitingPartsForm key="wp" service={service} />,
+        ].filter(Boolean);
+      }
       break;
+    }
     case "WAITING_PARTS":
       primary = canAdmin ? (
         <ResumeForm service={service} />
@@ -577,7 +613,9 @@ export function ActionForms({
             busyMechanics={busyMechanics}
           />
         ),
-        canAdmin && <QcForm key="qc" service={service} />,
+        // QC hanya setelah pekerjaan ditandai selesai — urutan tetap.
+        canAdmin &&
+          service.finishedAt != null && <QcForm key="qc" service={service} />,
       ].filter(Boolean);
       break;
     default:

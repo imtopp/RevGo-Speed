@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { getStaffBranchId } from "@/lib/guard";
 import { logAudit } from "@/lib/audit";
+import { bolehBayar, PESAN_BAYAR_DITAHAN } from "@/lib/service-status";
 import { revalidatePath } from "next/cache";
 import type { PaymentKind, PaymentMethod, CashflowType, CashflowAccount } from "@db/prisma/client";
 
@@ -68,6 +69,7 @@ export async function addPayment(
   });
   if (!service) return { error: "Servis tidak ditemukan." };
   if (service.status === "CANCELLED") return { error: "Servis dibatalkan, tidak bisa dibayar." };
+  if (!bolehBayar(service.status)) return { error: PESAN_BAYAR_DITAHAN };
   const branchIdStaff = await getStaffBranchId();
   if (branchIdStaff && service.branchId !== branchIdStaff) {
     return { error: "Servis bukan di cabang Anda." };

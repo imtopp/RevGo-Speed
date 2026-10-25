@@ -44,6 +44,25 @@ export const ACTIVE_STATUSES: ServiceStatus[] = [
   "WAITING_PARTS",
 ];
 
+/** Status yang menerima pembayaran: saat booking/awal (DP) atau setelah SELESAI. */
+const STATUS_BAYAR_AWAL: ServiceStatus[] = [
+  "PENDING",
+  "WAITING_APPROVAL",
+  "CONFIRMED",
+];
+
+/**
+ * Urutan kas: bayar hanya saat booking/awal (DP) atau setelah servis SELESAI —
+ * unit yang sedang dikerjakan menunggu QC lolos dulu sebelum ada pembayaran.
+ */
+export function bolehBayar(status: ServiceStatus): boolean {
+  return STATUS_BAYAR_AWAL.includes(status) || status === "DONE";
+}
+
+/** Pesan untuk status yang menahan pembayaran (unit sedang dikerjakan). */
+export const PESAN_BAYAR_DITAHAN =
+  "Pembayaran ditahan — DP saat booking, pelunasan setelah servis SELESAI (QC lolos).";
+
 export function formatRupiah(n: number): string {
   return new Intl.NumberFormat("id-ID", {
     style: "currency",

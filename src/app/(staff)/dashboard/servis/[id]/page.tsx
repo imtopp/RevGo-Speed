@@ -11,6 +11,8 @@ import {
   formatRupiah,
   formatTanggal,
   formatTanggalWIB,
+  bolehBayar,
+  PESAN_BAYAR_DITAHAN,
 } from "@/lib/service-status";
 import { ActionForms } from "./action-forms";
 import { VoidPaymentForm } from "./void-payment";
@@ -318,9 +320,16 @@ export default async function ServisDetailPage({
         </div>
       </div>
 
-      {/* Form bayar (admin/owner, sisa > 0, servis belum batal) */}
-      {!isMechanic && service.status !== "CANCELLED" && remaining > 0 && (
-        <PaymentForm serviceId={service.id} remaining={remaining} />
+      {/* Form bayar — hanya saat booking/awal (DP) atau setelah SELESAI;
+          unit yang sedang dikerjakan menunggu QC lolos dulu. */}
+      {!isMechanic && remaining > 0 && service.status !== "CANCELLED" && (
+        bolehBayar(service.status) ? (
+          <PaymentForm serviceId={service.id} remaining={remaining} />
+        ) : (
+          <p className="rounded-xl bg-surface px-4 py-3 text-xs text-muted-foreground ring-1 ring-slate-200 shadow-card">
+            {PESAN_BAYAR_DITAHAN}
+          </p>
+        )
       )}
 
       {/* Aksi contextual */}
@@ -338,6 +347,7 @@ export default async function ServisDetailPage({
               mechanicName: service.mechanic?.name ?? null,
               scheduledAt: service.scheduledAt,
               complaint: service.complaint,
+              finishedAt: service.finishedAt,
             }}
             mechanics={mekanikTersedia}
             busyMechanics={busyMechanics}

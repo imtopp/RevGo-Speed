@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { requireStaffRole, getStaffBranchId } from "@/lib/guard";
-import { formatRupiah, STATUS_LABEL } from "@/lib/service-status";
+import { formatRupiah, STATUS_LABEL, bolehBayar, PESAN_BAYAR_DITAHAN } from "@/lib/service-status";
 import { PaymentForm } from "../kas/payment-form";
 import Link from "next/link";
 
@@ -96,7 +96,11 @@ export default async function PiutangPage({
               </div>
             </div>
             <div className="mt-3">
-              <PaymentForm serviceId={s.id} remaining={s.remaining} compact />
+              {bolehBayar(s.status) ? (
+                <PaymentForm serviceId={s.id} remaining={s.remaining} compact />
+              ) : (
+                <p className="text-xs text-muted-foreground">{PESAN_BAYAR_DITAHAN}</p>
+              )}
             </div>
           </div>
         ))}

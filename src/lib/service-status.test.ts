@@ -4,6 +4,8 @@ import {
   STATUS_COLOR,
   NEXT_ACTION_LABEL,
   ACTIVE_STATUSES,
+  bolehBayar,
+  PESAN_BAYAR_DITAHAN,
   formatRupiah,
   formatTanggal,
   formatTanggalPendek,
@@ -45,6 +47,30 @@ describe("peta status servis", () => {
     expect(ACTIVE_STATUSES).toHaveLength(6);
     expect(ACTIVE_STATUSES).not.toContain("DONE");
     expect(ACTIVE_STATUSES).not.toContain("CANCELLED");
+  });
+});
+
+describe("bolehBayar (urutan kas: DP di awal, sisanya setelah selesai)", () => {
+  it("boleh saat booking/awal — PENDING, WAITING_APPROVAL, CONFIRMED", () => {
+    expect(bolehBayar("PENDING")).toBe(true);
+    expect(bolehBayar("WAITING_APPROVAL")).toBe(true);
+    expect(bolehBayar("CONFIRMED")).toBe(true);
+  });
+
+  it("ditahan saat unit diterima/dikerjakan — CHECKED_IN, IN_PROGRESS, WAITING_PARTS", () => {
+    expect(bolehBayar("CHECKED_IN")).toBe(false);
+    expect(bolehBayar("IN_PROGRESS")).toBe(false);
+    expect(bolehBayar("WAITING_PARTS")).toBe(false);
+  });
+
+  it("boleh lagi setelah SELESAI (DONE); tidak untuk CANCELLED", () => {
+    expect(bolehBayar("DONE")).toBe(true);
+    expect(bolehBayar("CANCELLED")).toBe(false);
+  });
+
+  it("pesan penahan menyebut DP di awal & pelunasan setelah SELESAI", () => {
+    expect(PESAN_BAYAR_DITAHAN).toContain("DP");
+    expect(PESAN_BAYAR_DITAHAN).toContain("SELESAI");
   });
 });
 
