@@ -3,13 +3,12 @@
 import { useFormStatus } from "react-dom";
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 
-type SubmitButtonProps = Omit<
-  ButtonHTMLAttributes<HTMLButtonElement>,
-  "type" | "disabled"
-> & {
+type SubmitButtonProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, "type"> & {
   children: ReactNode;
   /** Teks yang tampil saat submit sedang berjalan. */
   pendingText?: string;
+  /** Selalu nonaktif (mis. isian belum valid), di luar status pending. */
+  disabled?: boolean;
 };
 
 /**
@@ -21,6 +20,7 @@ export function SubmitButton({
   children,
   pendingText = "Memproses…",
   className = "",
+  disabled,
   ...rest
 }: SubmitButtonProps) {
   const { pending } = useFormStatus();
@@ -29,7 +29,7 @@ export function SubmitButton({
     <button
       {...rest}
       type="submit"
-      disabled={pending}
+      disabled={pending || disabled}
       aria-busy={pending}
       className={className}
     >

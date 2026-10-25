@@ -1,7 +1,12 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { MEREK_GROUPS, MEREK_LAINNYA, flattenModel } from "@/lib/vehicle";
+import {
+  MEREK_GROUPS,
+  MEREK_LAINNYA,
+  flattenModel,
+  normalizePlate,
+} from "@/lib/vehicle";
 import { createBooking, type ServisState } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
 import { SlotPicker } from "@/components/slot-picker";
@@ -29,6 +34,9 @@ export function BookingForm({
   const [jadwal, setJadwal] = useState("");
   const [durasi, setDurasi] = useState("");
   const [catalogId, setCatalogId] = useState("");
+  // null = belum diisi (biarkan `required` yang menahan), false = format salah.
+  const plateDiisi = plate.trim() !== "";
+  const plateValid = !plateDiisi || !!normalizePlate(plate);
   const tipeOptions =
     merekPilih && merekPilih !== MEREK_LAINNYA
       ? (modelPerMerek[merekPilih] ?? [])
@@ -82,8 +90,18 @@ export function BookingForm({
             placeholder="B 1234 XYZ"
             pattern="[A-Za-z]{1,4}\s?\d{1,4}(\s?[A-Za-z]{1,3})?"
             title="Format plat nomor: B 1234 XY"
-            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-base uppercase outline-none focus:border-slate-900"
+            aria-invalid={plateDiisi && !plateValid}
+            className={`mt-1 w-full rounded-lg border px-3 py-2 text-base uppercase outline-none ${
+              plateDiisi && !plateValid
+                ? "border-danger focus:border-danger"
+                : "border-slate-300 focus:border-slate-900"
+            }`}
           />
+          {plateDiisi && !plateValid && (
+            <p className="mt-1 text-xs text-danger">
+              Format plat nomor tidak valid. Contoh: B 1234 XY.
+            </p>
+          )}
         </div>
       </div>
 
@@ -265,6 +283,7 @@ export function BookingForm({
 
       <SubmitButton
         pendingText="Membuat..."
+        disabled={!plateValid}
         className="w-full rounded-lg bg-primary py-2.5 text-sm font-medium text-white active:opacity-90 disabled:opacity-60"
       >
         Buat Booking
