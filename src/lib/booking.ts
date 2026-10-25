@@ -4,6 +4,7 @@ import type { Prisma } from "@db/prisma/client";
 import {
   DURASI_DEFAULT_MENIT,
   HARI_MS,
+  jendelaBentrok,
   jendelaDari,
   parseBookingConfig,
   startOfDayWib,
@@ -53,6 +54,46 @@ export async function getJendelaAktif(opts: {
       opts.bufferMenit,
     ),
   );
+}
+
+/**
+ * ID mekanik yang sudah di-assign ke servis AKTIF lain dengan jendela
+ * pengerjaan tumpang tindih pada [epoch, epoch+durasi) di cabang yang sama.
+ * Servis tanpa scheduledAt diabaikan (tidak bisa diposisikan dalam waktu).
+ */
+export async function mekanikSibuk(opts: {
+  branchId: string;
+  epoch: number | null;
+  durasiMenit: number;
+  excludeId?: string;
+  db?: Db;
+}): Promise<Set<string>> {
+  if (opts.epoch === null) return new Set();
+  const db = opts.db ?? prisma;
+  const rows = await db.service.findMany({
+    where: {
+      branchId: opts.branchId,
+      mechanicId: { not: null },
+      status: { in: ACTIVE_STATUSES },
+      scheduledAt: { not: null },
+      ...(opts.excludeId ? { id: { not: opts.excludeId } } : {}),
+    },
+    select: { mechanicId: true, scheduledAt: true, estimasiMenit: true },
+  });
+  const sibuk = new Set<string>();
+  for (const r of rows) {
+    if (
+      jendelaBentrok(
+        opts.epoch,
+        opts.durasiMenit,
+        r.scheduledAt!.getTime(),
+        r.estimasiMenit ?? DURASI_DEFAULT_MENIT,
+      )
+    ) {
+      sibuk.add(r.mechanicId!);
+    }
+  }
+  return sibuk;
 }
 
 export type CekSlotDb = {

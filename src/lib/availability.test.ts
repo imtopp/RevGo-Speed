@@ -9,6 +9,7 @@ import {
   formatAlternatif,
   formatDurasi,
   jamOf,
+  jendelaBentrok,
   jendelaDari,
   parseBookingConfig,
   parseHariAktif,
@@ -182,6 +183,28 @@ describe("jendelaDari & sisaKuota", () => {
       "17:00",
     );
     expect(bebas).toBeNull();
+  });
+});
+
+describe("jendelaBentrok", () => {
+  const t = (h: number, m = 0) => epochFromWall(2026, 11, 2, h, m);
+
+  it("tumpang tindih parsial / identik → bentrok", () => {
+    expect(jendelaBentrok(t(9), 60, t(9, 30), 60)).toBe(true);
+    expect(jendelaBentrok(t(9), 60, t(9), 60)).toBe(true);
+    expect(jendelaBentrok(t(9), 120, t(10), 30)).toBe(true);
+    expect(jendelaBentrok(t(10), 30, t(9), 120)).toBe(true);
+  });
+
+  it("bersebelahan (09–11 vs 11–12) atau jauh → tidak bentrok", () => {
+    expect(jendelaBentrok(t(9), 120, t(11), 60)).toBe(false);
+    expect(jendelaBentrok(t(11), 60, t(9), 120)).toBe(false);
+    expect(jendelaBentrok(t(9), 60, t(13), 60)).toBe(false);
+  });
+
+  it("durasi < 1 menit diperlakukan minimal 1 menit", () => {
+    expect(jendelaBentrok(t(9), 0, t(9), 60)).toBe(true);
+    expect(jendelaBentrok(t(9), 0, t(9, 1), 60)).toBe(false);
   });
 });
 

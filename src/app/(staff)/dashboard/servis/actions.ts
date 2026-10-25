@@ -6,7 +6,7 @@ import { getStaffBranchId } from "@/lib/guard";
 import { logAudit } from "@/lib/audit";
 import { normalizeMerek, normalizeTipe, modelTidakSesuaiMerek, normalizePlate, MEREK_LAINNYA } from "@/lib/vehicle";
 import { allocateFifo } from "@/lib/inventory";
-import { cekSlotTersedia, getBookingConfig, getJendelaAktif, kunciSlot } from "@/lib/booking";
+import { cekSlotTersedia, getBookingConfig, getJendelaAktif, kunciSlot, mekanikSibuk } from "@/lib/booking";
 import {
   DURASI_DEFAULT_MENIT,
   DURASI_MAX_MENIT,
@@ -348,11 +348,22 @@ export async function submitEstimate(
 
   const service = await prisma.service.findUnique({
     where: { id },
-    select: { status: true },
+    select: { status: true, branchId: true, scheduledAt: true, estimasiMenit: true },
   });
   if (!service) return { error: "Servis tidak ditemukan." };
   if (service.status !== "PENDING") {
     return { error: "Servis tidak dalam tahap Booking." };
+  }
+
+  if (mechanicId) {
+    const err = await validasiMekanik({
+      id,
+      branchId: service.branchId,
+      scheduledAt: service.scheduledAt,
+      durasiMenit: service.estimasiMenit ?? DURASI_DEFAULT_MENIT,
+      mechanicId,
+    });
+    if (err) return { error: err };
   }
 
   try {
@@ -376,6 +387,97 @@ export async function submitEstimate(
   return { success: "Estimasi dikirim — menunggu persetujuan pelanggan." };
 }
 
+/** Mekanik harus aktif, role MECHANIC, se-cabang, dan bebas (tidak tabrakan jadwal). */
+async function validasiMekanik(opts: {
+  id: string;
+  branchId: string;
+  scheduledAt: Date | null;
+  durasiMenit: number;
+  mechanicId: string;
+}): Promise<string | null> {
+  const m = await prisma.user.findFirst({
+    where: {
+      id: opts.mechanicId,
+      role: "MECHANIC",
+      isActive: true,
+      branchId: opts.branchId,
+    },
+    select: { name: true },
+  });
+  if (!m) return "Mekanik tidak valid untuk cabang ini.";
+  const sibuk = await mekanikSibuk({
+    branchId: opts.branchId,
+    epoch: opts.scheduledAt?.getTime() ?? null,
+    durasiMenit: opts.durasiMenit,
+    excludeId: opts.id,
+  });
+  if (sibuk.has(opts.mechanicId)) {
+    return `Mekanik ${m.name} sudah terjadwal di servis lain pada jam tersebut — pilih mekanik lain.`;
+  }
+  return null;
+}
+
+export async function reassignMechanic(
+  _prev: ServisState,
+  formData: FormData,
+): Promise<ServisState> {
+  const session = await requireStaffRole(["OWNER", "ADMIN"]);
+  const id = String(formData.get("id") ?? "").trim();
+  const mechanicId = String(formData.get("mechanicId") ?? "").trim();
+
+  const service = await getServiceOrThrow(id);
+  if (service.status === "DONE" || service.status === "CANCELLED") {
+    return { error: "Servis sudah selesai — mekanik tidak bisa diganti." };
+  }
+  const aksesError = await cekCabangServis(service.branchId);
+  if (aksesError) return { error: aksesError };
+
+  if (mechanicId) {
+    const err = await validasiMekanik({
+      id,
+      branchId: service.branchId,
+      scheduledAt: service.scheduledAt,
+      durasiMenit: service.estimasiMenit ?? DURASI_DEFAULT_MENIT,
+      mechanicId,
+    });
+    if (err) return { error: err };
+  }
+
+  const lama = service.mechanic?.name ?? "Belum ditentukan";
+  const baru = mechanicId
+    ? (
+        await prisma.user.findUnique({
+          where: { id: mechanicId },
+          select: { name: true },
+        })
+      )?.name ?? "Belum ditentukan"
+    : "Belum ditentukan";
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      await tx.service.update({
+        where: { id },
+        data: { mechanicId: mechanicId || null },
+      });
+      await logAudit(tx, session.user, {
+        action: "SERVICE_MECHANIC",
+        entityType: "Service",
+        entityId: id,
+        branchId: service.branchId,
+        summary: `${service.code}: mekanik ${lama} → ${baru}`,
+        before: { mechanicId: service.mechanicId, mechanicName: lama },
+        after: { mechanicId: mechanicId || null, mechanicName: baru },
+      });
+    });
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Gagal mengganti mekanik." };
+  }
+
+  revalidatePath("/dashboard/servis");
+  revalidatePath(`/dashboard/servis/${id}`);
+  return { success: `Mekanik diubah ke ${baru}.` };
+}
+
 export async function changeSchedule(
   _prev: ServisState,
   formData: FormData,
@@ -390,11 +492,32 @@ export async function changeSchedule(
 
   const service = await prisma.service.findUnique({
     where: { id },
-    select: { status: true, branchId: true, estimasiMenit: true },
+    select: {
+      status: true,
+      branchId: true,
+      estimasiMenit: true,
+      mechanicId: true,
+      mechanic: { select: { name: true } },
+    },
   });
   if (!service) return { error: "Servis tidak ditemukan." };
   if (service.status !== "PENDING") {
     return { error: "Servis tidak dalam tahap Booking." };
+  }
+
+  // Pindah jadwal tidak boleh membuat mekanik yang sudah ditugasi tabrakan.
+  if (service.mechanicId) {
+    const sibuk = await mekanikSibuk({
+      branchId: service.branchId,
+      epoch,
+      durasiMenit: service.estimasiMenit ?? DURASI_DEFAULT_MENIT,
+      excludeId: id,
+    });
+    if (sibuk.has(service.mechanicId)) {
+      return {
+        error: `Mekanik ${service.mechanic?.name ?? ""} sudah terjadwal di servis lain pada jam baru itu — ganti mekanik lewat form estimasi dulu.`,
+      };
+    }
   }
 
   try {

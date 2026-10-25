@@ -171,6 +171,22 @@ function jumlahYangMenutup(t: number, jendelas: Jendela[]): number {
   return n;
 }
 
+/**
+ * Dua jendela pengerjaan [mulai, selesai) saling tumpang tindih?
+ * Jendela yang hanya bersebelahan (09–11 vs 11–12) TIDAK dianggap bentrok.
+ * Durasi < 1 menit diperlakukan sebagai 1 menit.
+ */
+export function jendelaBentrok(
+  aMulai: number,
+  aDurasiMenit: number,
+  bMulai: number,
+  bDurasiMenit: number,
+): boolean {
+  const aSelesai = aMulai + Math.max(1, aDurasiMenit) * 60000;
+  const bSelesai = bMulai + Math.max(1, bDurasiMenit) * 60000;
+  return aMulai < bSelesai && bMulai < aSelesai;
+}
+
 export function sisaKuota(t: number, jendelas: Jendela[], kuota: number): number {
   return Math.max(0, kuota - jumlahYangMenutup(t, jendelas));
 }

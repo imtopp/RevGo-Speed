@@ -1,5 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { requireStaffRole, getStaffBranchId } from "@/lib/guard";
+import { mekanikSibuk } from "@/lib/booking";
+import { DURASI_DEFAULT_MENIT } from "@/lib/availability";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import {
@@ -58,6 +60,19 @@ export default async function ServisDetailPage({
     orderBy: { name: "asc" },
     select: { id: true, name: true },
   });
+
+  // Mekanik yang sudah terjadwal di servis lain pada jendela waktu servis ini
+  // tidak ditawarkan sebagai pilihan (kecuali memang sudah melekat di sini).
+  const sibuk = await mekanikSibuk({
+    branchId: service.branchId,
+    epoch: service.scheduledAt?.getTime() ?? null,
+    durasiMenit: service.estimasiMenit ?? DURASI_DEFAULT_MENIT,
+    excludeId: service.id,
+  });
+  const busyMechanics = mechanics.filter((m) => sibuk.has(m.id));
+  const mekanikTersedia = mechanics.filter(
+    (m) => !sibuk.has(m.id) || m.id === service.mechanicId,
+  );
   const parts = await prisma.part.findMany({
     where: { branchId: service.branchId },
     orderBy: { name: "asc" },
@@ -302,10 +317,12 @@ export default async function ServisDetailPage({
               estimate: service.estimate,
               laborCost: service.laborCost,
               mechanicId: service.mechanicId,
+              mechanicName: service.mechanic?.name ?? null,
               scheduledAt: service.scheduledAt,
               complaint: service.complaint,
             }}
-            mechanics={mechanics}
+            mechanics={mekanikTersedia}
+            busyMechanics={busyMechanics}
             catalog={catalogList}
             parts={parts}
             isMechanic={isMechanic}

@@ -4,6 +4,7 @@ import { useActionState, useState } from "react";
 import {
   submitEstimate,
   changeSchedule,
+  reassignMechanic,
   approveInPerson,
   checkInUnit,
   startWork,
@@ -29,6 +30,7 @@ type ServiceInfo = {
   estimate: number;
   laborCost: number;
   mechanicId: string | null;
+  mechanicName: string | null;
   scheduledAt: Date | null;
   complaint: string | null;
 };
@@ -89,6 +91,15 @@ function Field({
 
 const inputCls =
   "mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-base outline-none focus:border-slate-900";
+
+function MekanikHint({ busy }: { busy: Mechanic[] }) {
+  if (busy.length === 0) return null;
+  return (
+    <p className="mt-1 text-xs text-warning">
+      Sedang terjadwal di jam ini, tidak dipilih: {busy.map((m) => m.name).join(", ")}
+    </p>
+  );
+}
 const btnPrimary =
   "w-full rounded-lg bg-primary py-2.5 text-sm font-medium text-white active:opacity-90 disabled:opacity-60";
 const btnSecondary =
@@ -101,10 +112,12 @@ const btnDanger =
 function EstimateForm({
   service,
   mechanics,
+  busyMechanics,
   catalog,
 }: {
   service: ServiceInfo;
   mechanics: Mechanic[];
+  busyMechanics: Mechanic[];
   catalog: Catalog[];
 }) {
   const { state, formAction } = useForm(submitEstimate);
@@ -180,6 +193,7 @@ function EstimateForm({
             <option key={m.id} value={m.id}>{m.name}</option>
           ))}
         </select>
+        <MekanikHint busy={busyMechanics} />
       </Field>
       <SubmitButton pendingText="Mengirim..." className={btnPrimary}>
         Kirim Estimasi
@@ -213,6 +227,41 @@ function RescheduleForm({ service }: { service: ServiceInfo }) {
       />
       <SubmitButton pendingText="Menyimpan..." className={btnSecondary}>
         Simpan Jadwal Baru
+      </SubmitButton>
+    </form>
+  );
+}
+
+function ReassignMechanicForm({
+  service,
+  mechanics,
+  busyMechanics,
+}: {
+  service: ServiceInfo;
+  mechanics: Mechanic[];
+  busyMechanics: Mechanic[];
+}) {
+  const { state, formAction } = useForm(reassignMechanic);
+  return (
+    <form action={formAction} className="space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
+      <input type="hidden" name="id" value={service.id} />
+      <p className="text-sm font-semibold text-foreground">Ganti Mekanik</p>
+      <p className="text-xs text-slate-400">
+        Mekanik saat ini: {service.mechanicName ?? "Belum ditentukan"}
+        {service.scheduledAt ? ` · jadwal ${formatTanggalWIB(service.scheduledAt)}` : ""}
+      </p>
+      <Msg state={state} />
+      <Field label="Mekanik baru">
+        <select name="mechanicId" defaultValue={service.mechanicId ?? ""} className={inputCls}>
+          <option value="">— Belum ditentukan —</option>
+          {mechanics.map((m) => (
+            <option key={m.id} value={m.id}>{m.name}</option>
+          ))}
+        </select>
+        <MekanikHint busy={busyMechanics} />
+      </Field>
+      <SubmitButton pendingText="Menyimpan..." className={btnSecondary}>
+        Simpan Mekanik
       </SubmitButton>
     </form>
   );
@@ -416,6 +465,7 @@ function OtherActions({ children }: { children: React.ReactNode }) {
 export function ActionForms({
   service,
   mechanics,
+  busyMechanics,
   catalog,
   parts,
   isMechanic,
@@ -423,6 +473,7 @@ export function ActionForms({
 }: {
   service: ServiceInfo;
   mechanics: Mechanic[];
+  busyMechanics: Mechanic[];
   catalog: Catalog[];
   parts: Part[];
   isMechanic: boolean;
@@ -436,7 +487,14 @@ export function ActionForms({
   switch (service.status) {
     case "PENDING":
       if (canAdmin) {
-        primary = <EstimateForm service={service} mechanics={mechanics} catalog={catalog} />;
+        primary = (
+          <EstimateForm
+            service={service}
+            mechanics={mechanics}
+            busyMechanics={busyMechanics}
+            catalog={catalog}
+          />
+        );
         others = [
           <ApproveForm key="approve" service={service} />,
           <RescheduleForm key="jadwal" service={service} />,
@@ -447,16 +505,44 @@ export function ActionForms({
     case "WAITING_APPROVAL":
       if (canAdmin) {
         primary = <ApproveForm service={service} />;
-        others = [<CancelForm key="cancel" service={service} />];
+        others = [
+          <ReassignMechanicForm
+            key="mekanik"
+            service={service}
+            mechanics={mechanics}
+            busyMechanics={busyMechanics}
+          />,
+          <CancelForm key="cancel" service={service} />,
+        ];
       }
       break;
     case "CONFIRMED":
       primary = <CheckInForm service={service} />;
-      others = canAdmin ? [<CancelForm key="cancel" service={service} />] : [];
+      others = canAdmin
+        ? [
+            <ReassignMechanicForm
+              key="mekanik"
+              service={service}
+              mechanics={mechanics}
+              busyMechanics={busyMechanics}
+            />,
+            <CancelForm key="cancel" service={service} />,
+          ]
+        : [];
       break;
     case "CHECKED_IN":
       primary = <StartWorkForm service={service} />;
-      others = canAdmin ? [<CancelForm key="cancel" service={service} />] : [];
+      others = canAdmin
+        ? [
+            <ReassignMechanicForm
+              key="mekanik"
+              service={service}
+              mechanics={mechanics}
+              busyMechanics={busyMechanics}
+            />,
+            <CancelForm key="cancel" service={service} />,
+          ]
+        : [];
       break;
     case "IN_PROGRESS":
       primary =
@@ -466,6 +552,14 @@ export function ActionForms({
       others = [
         <DiagnosisForm key="dx" service={service} />,
         <AddPartForm key="part" serviceId={service.id} parts={parts} />,
+        canAdmin && (
+          <ReassignMechanicForm
+            key="mekanik"
+            service={service}
+            mechanics={mechanics}
+            busyMechanics={busyMechanics}
+          />
+        ),
         canAdmin && <WaitingPartsForm key="wp" service={service} />,
         canAdmin && <QcForm key="qc" service={service} />,
       ].filter(Boolean);
@@ -479,6 +573,14 @@ export function ActionForms({
       others = [
         <DiagnosisForm key="dx" service={service} />,
         canAdmin && <AddPartForm key="part" serviceId={service.id} parts={parts} />,
+        canAdmin && (
+          <ReassignMechanicForm
+            key="mekanik"
+            service={service}
+            mechanics={mechanics}
+            busyMechanics={busyMechanics}
+          />
+        ),
         canAdmin && <QcForm key="qc" service={service} />,
       ].filter(Boolean);
       break;
