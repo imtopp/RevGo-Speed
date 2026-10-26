@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import {
   createPart,
   updatePart,
+  deletePart,
   stockIn,
   adjustStock,
   correctStockCost,
@@ -161,7 +162,11 @@ function PartForm({
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="block text-sm font-medium text-foreground">SKU</label>
-          <input name="sku" required placeholder="OLI-001" className={`${inputCls} uppercase`} />
+          <input
+            name="sku"
+            placeholder="Kosongkan → auto PART-0001"
+            className={`${inputCls} uppercase`}
+          />
         </div>
         <div>
           <label className="block text-sm font-medium text-foreground">Nama</label>
@@ -557,6 +562,10 @@ function SupplierEdit({ supplier }: { supplier: Supplier }) {
 
 function PartRow({ part, kategoris }: { part: Part; kategoris: string[] }) {
   const [open, setOpen] = useState(false);
+  const [delState, delAction] = useActionState<StokState, FormData>(
+    deletePart,
+    {},
+  );
   const low = part.quantity <= part.minStock;
   return (
     <div className="rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
@@ -574,14 +583,38 @@ function PartRow({ part, kategoris }: { part: Part; kategoris: string[] }) {
             {part.supplier ? ` · ${part.supplier.nama}` : ""}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => setOpen((v) => !v)}
-          className="shrink-0 text-sm font-medium text-foreground underline underline-offset-2"
-        >
-          {open ? "Tutup" : "Ubah"}
-        </button>
+        <div className="flex shrink-0 flex-col items-end gap-2">
+          <button
+            type="button"
+            onClick={() => setOpen((v) => !v)}
+            className="text-sm font-medium text-foreground underline underline-offset-2"
+          >
+            {open ? "Tutup" : "Ubah"}
+          </button>
+          <form
+            action={delAction}
+            onSubmit={(e) => {
+              if (
+                !confirm(
+                  `Hapus part "${part.name}"? Hanya bisa bila belum pernah dipakai.`,
+                )
+              )
+                e.preventDefault();
+            }}
+          >
+            <input type="hidden" name="id" value={part.id} />
+            <button
+              type="submit"
+              className="text-xs font-medium text-danger underline underline-offset-2"
+            >
+              Hapus
+            </button>
+          </form>
+        </div>
       </div>
+      {delState.error && (
+        <p className="mt-2 text-xs text-danger">{delState.error}</p>
+      )}
       {open && <PartEdit part={part} kategoris={kategoris} />}
     </div>
   );
@@ -747,6 +780,8 @@ export function StokPanels({
   const [showForms, setShowForms] = useState(false);
   const [aksi, setAksi] = useState<"part" | "masuk" | "opname">("part");
   const [pesan, setPesan] = useState<string | null>(null);
+  const [cari, setCari] = useState("");
+  const [katPilih, setKatPilih] = useState("");
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
@@ -881,7 +916,18 @@ export function StokPanels({
     );
   }
 
-  // Tab part (default)
+  // Tab part (default) — filter klien: cari nama/SKU/kategori + kategori.
+  const q = cari.trim().toLowerCase();
+  const partsTampil = parts.filter((p) => {
+    const cocokQ =
+      !q ||
+      p.name.toLowerCase().includes(q) ||
+      p.sku.toLowerCase().includes(q) ||
+      (p.category ?? "").toLowerCase().includes(q);
+    const cocokKat = !katPilih || p.category === katPilih;
+    return cocokQ && cocokKat;
+  });
+
   return (
     <div className="space-y-3">
       <button
@@ -963,7 +1009,42 @@ export function StokPanels({
             </p>
           </div>
         )}
-        {parts.map((p) => (
+        {parts.length > 0 && (
+          <div className="rounded-xl bg-surface p-3 ring-1 ring-slate-200 shadow-card">
+            <input
+              type="search"
+              value={cari}
+              onChange={(e) => setCari(e.target.value)}
+              placeholder="Cari nama / SKU / kategori…"
+              className={inputCls}
+            />
+            <div className="mt-2 flex items-center gap-2">
+              <select
+                value={katPilih}
+                onChange={(e) => setKatPilih(e.target.value)}
+                className={`${inputCls} min-w-0 flex-1`}
+              >
+                <option value="">Semua kategori</option>
+                {kategoris.map((k) => (
+                  <option key={k} value={k}>
+                    {k}
+                  </option>
+                ))}
+              </select>
+              <p className="shrink-0 text-xs text-muted-foreground">
+                {partsTampil.length} dari {parts.length} part
+              </p>
+            </div>
+          </div>
+        )}
+        {parts.length > 0 && partsTampil.length === 0 && (
+          <div className="rounded-xl bg-surface p-6 ring-1 ring-slate-200 shadow-card">
+            <p className="text-sm text-muted-foreground">
+              Part tidak ditemukan untuk pencarian ini.
+            </p>
+          </div>
+        )}
+        {partsTampil.map((p) => (
           <PartRow key={p.id} part={p} kategoris={kategoris} />
         ))}
       </div>

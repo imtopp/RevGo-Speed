@@ -5,6 +5,7 @@ import { auth } from "@/lib/auth";
 import { getStaffBranchId } from "@/lib/guard";
 import { logAudit } from "@/lib/audit";
 import { samakanKategori } from "@/lib/category";
+import { skuBerikutnya } from "@/lib/sku";
 import { revalidatePath } from "next/cache";
 import {
   movingAverageBuyPrice,
@@ -107,7 +108,7 @@ export async function createPart(
   const branchIdStaff = await getStaffBranchId();
 
   const branchId = branchIdStaff || String(formData.get("branchId") ?? "").trim() || "";
-  const sku = String(formData.get("sku") ?? "").trim().toUpperCase();
+  let sku = String(formData.get("sku") ?? "").trim().toUpperCase();
   const name = String(formData.get("name") ?? "").trim();
   const category = samakanKategori(
     String(formData.get("category") ?? ""),
@@ -120,7 +121,7 @@ export async function createPart(
   const sellPrice = Number(formData.get("sellPrice") ?? 0);
   const supplierId = String(formData.get("supplierId") ?? "").trim();
 
-  if (!branchId || !sku || !name) return { error: "Cabang, SKU, dan nama wajib diisi." };
+  if (!branchId || !name) return { error: "Cabang dan nama wajib diisi." };
   if (
     !Number.isFinite(quantity) ||
     !Number.isFinite(minStock) ||
@@ -137,7 +138,16 @@ export async function createPart(
     return { error: "Nilai tidak valid." };
   }
 
-  // Cek SKU unik per cabang
+  // SKU dikosongkan → auto urut per cabang (PART-0001, anti-bolong);
+  // SKU manual tetap dipakai apa adanya. Unik per cabang dicek dua lapis
+  // (app + constraint DB @@unique([branchId, sku])).
+  if (!sku) {
+    const existing = await prisma.part.findMany({
+      where: { branchId },
+      select: { sku: true },
+    });
+    sku = skuBerikutnya(existing.map((r) => r.sku));
+  }
   const dup = await prisma.part.findFirst({ where: { branchId, sku } });
   if (dup) return { error: `SKU "${sku}" sudah ada di cabang ini.` };
 
@@ -276,6 +286,63 @@ export async function updatePart(
   });
   revalidatePath("/dashboard/stok");
   return { success: `Part "${name}" diperbarui.` };
+}
+
+/**
+ * Hapus part — guard ketat: hanya part BERSIH (belum pernah ada gerakan stok,
+ * belum dipakai servis, belum terjual) yang boleh dihapus. Part ber-riwayat
+ * dikoreksi via Opname/Ubah supaya cashflow & HPP tidak terganggu. Part tanpa
+ * gerakan berarti belum pernah membuat baris kas, jadi kas dijamin aman.
+ */
+export async function deletePart(
+  _prev: StokState,
+  formData: FormData,
+): Promise<StokState> {
+  const session = await requireStokRole();
+  const id = String(formData.get("id") ?? "").trim();
+  if (!id) return { error: "Data tidak lengkap." };
+
+  const part = await prisma.part.findUnique({
+    where: { id },
+    include: {
+      _count: { select: { movements: true, serviceParts: true, saleItems: true } },
+    },
+  });
+  if (!part) return { error: "Part tidak ditemukan." };
+  const branchIdStaff = await getStaffBranchId();
+  if (branchIdStaff && part.branchId !== branchIdStaff) {
+    return { error: "Part bukan di cabang Anda." };
+  }
+
+  const adaRiwayat =
+    part._count.movements > 0 ||
+    part._count.serviceParts > 0 ||
+    part._count.saleItems > 0;
+  if (adaRiwayat) {
+    return {
+      error: `Part "${part.name}" tidak bisa dihapus: sudah punya riwayat (gerakan stok / servis / penjualan). Koreksi stok lewat Opname, ubah data lewat Ubah.`,
+    };
+  }
+
+  await prisma.$transaction(async (tx) => {
+    await tx.part.delete({ where: { id } });
+    await logAudit(tx, session.user, {
+      action: "PART_DELETE",
+      entityType: "Part",
+      entityId: id,
+      branchId: part.branchId,
+      summary: `${part.name} (${part.sku}) dihapus — belum pernah dipakai`,
+      before: {
+        sku: part.sku,
+        name: part.name,
+        quantity: part.quantity,
+        buyPrice: part.buyPrice,
+        sellPrice: part.sellPrice,
+      },
+    });
+  });
+  revalidatePath("/dashboard/stok");
+  return { success: `Part "${part.name}" dihapus.` };
 }
 
 // ─── Stok Masuk (Pembelian) ───────────────────────────────────────────
