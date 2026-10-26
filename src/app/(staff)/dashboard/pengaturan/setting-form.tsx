@@ -19,7 +19,10 @@ export function SettingForm({
   );
 
   return (
-    <form action={action} className="flex flex-col gap-2 sm:flex-row sm:items-end">
+    <form
+      action={action}
+      className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end"
+    >
       <input type="hidden" name="key" value={field.key} />
       <div className="flex-1">
         <label className="block text-sm font-medium text-foreground">
@@ -42,7 +45,7 @@ export function SettingForm({
         <p className="text-sm text-danger sm:w-full">{state.error}</p>
       )}
       {state.success && (
-        <p className="text-sm text-green-600 sm:w-full">{state.success}</p>
+        <p className="text-sm text-success sm:w-full">{state.success}</p>
       )}
     </form>
   );
