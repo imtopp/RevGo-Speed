@@ -407,7 +407,7 @@ export default async function ServisDetailPage({
           <p className="text-sm text-muted-foreground">
             {service.status === "DONE"
               ? remaining > 0
-                ? `Sisa tagihan ${formatRupiah(remaining)} — lunasi lewat form bayar di halaman ini atau di modul Kas.`
+                ? `Sisa tagihan ${formatRupiah(remaining)} — lunasi lewat form bayar di halaman ini atau di menu Piutang.`
                 : "Servis selesai dan tagihan sudah lunas."
               : `Servis sudah ${STATUS_LABEL[service.status].toLowerCase()}.`}
           </p>
