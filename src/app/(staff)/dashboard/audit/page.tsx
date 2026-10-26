@@ -13,6 +13,7 @@ const ACTION_LABEL: Record<string, string> = {
   CASHFLOW_MANUAL: "Kas manual",
   STOCK_IN: "Stok masuk (beli)",
   STOCK_ADJUST: "Penyesuaian stok",
+  STOCK_RETURN: "Retur konsinyasi",
   PART_UPDATE: "Ubah harga part",
   PART_DELETE: "Hapus part",
   SERVICE_CREATE: "Servis dibuat",

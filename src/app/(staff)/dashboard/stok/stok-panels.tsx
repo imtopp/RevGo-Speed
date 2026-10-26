@@ -7,6 +7,7 @@ import {
   updatePart,
   deletePart,
   stockIn,
+  returKonsinyasi,
   adjustStock,
   correctStockCost,
   sellPart,
@@ -31,6 +32,7 @@ type Part = {
   buyPrice: number;
   sellPrice: number;
   supplier: { nama: string } | null;
+  consignment: boolean;
 };
 type Supplier = { id: string; nama: string; telepon: string | null; catatan: string | null; aktif: boolean };
 type Movement = {
@@ -135,6 +137,7 @@ function PartForm({
   const [buyPrice, setBuyPrice] = useState(0);
   const [sellPrice, setSellPrice] = useState(0);
   const [quantity, setQuantity] = useState(0);
+  const [konsinyasi, setKonsinyasi] = useState(false);
   const [stateSebelumnya, setStateSebelumnya] = useState(state);
   const rugi = sellPrice < buyPrice;
   const totalStokAwal = quantity * buyPrice;
@@ -213,7 +216,21 @@ function PartForm({
           <NumberInput name="sellPrice" value={sellPrice} onChange={setSellPrice} />
         </div>
       </div>
-      {totalStokAwal > 0 && (
+      <label className="flex items-start gap-2 rounded-lg bg-slate-50 p-3 text-sm text-foreground ring-1 ring-slate-200">
+        <input
+          type="checkbox"
+          name="consignment"
+          className="mt-0.5 h-4 w-4"
+          checked={konsinyasi}
+          onChange={(e) => setKonsinyasi(e.target.checked)}
+        />
+        <span>
+          <span className="font-medium">Konsinyasi</span> — barang titipan supplier.
+          Stok masuk <span className="font-medium">tanpa kas</span>, tidak laku → retur.
+          Wajib pilih supplier.
+        </span>
+      </label>
+      {totalStokAwal > 0 && !konsinyasi && (
         <div className="rounded-lg bg-slate-50 p-3 ring-1 ring-slate-200">
           <label className="block text-sm font-medium text-foreground">Bayar Stok Awal</label>
           <select name="method" defaultValue="CASH" className={inputCls}>
@@ -226,6 +243,13 @@ function PartForm({
             harga beli).
           </p>
         </div>
+      )}
+      {konsinyasi && (
+        <p className="rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-500 ring-1 ring-slate-200">
+          Konsinyasi: stok awal dicatat sebagai batch cost (untuk HPP) tapi{" "}
+          <span className="font-medium">tanpa kas keluar</span> — bayar supplier nanti lewat
+          kas manual &quot;Bayar konsinyasi&quot;.
+        </p>
       )}
       {rugi && (
         <div className="rounded-lg bg-amber-50 p-3 ring-1 ring-amber-200">
@@ -257,6 +281,7 @@ function StockInForm({
 }) {
   const [state, action] = useActionState<StokState, FormData>(stockIn, {});
   const [stateSebelumnya, setStateSebelumnya] = useState(state);
+  const [picked, setPicked] = useState<Part | null>(null);
 
   // Sukses → beri tahu panel induk (tutup blok + notif luar); gagal → form tetap.
   if (state !== stateSebelumnya) {
@@ -270,7 +295,11 @@ function StockInForm({
       <Msg state={state} />
       <div>
         <label className="block text-sm font-medium text-foreground">Part</label>
-        <PartPicker parts={parts} allowHabis />
+        <PartPicker
+          parts={parts}
+          allowHabis
+          onPick={(p) => setPicked(parts.find((x) => x.id === p.id) ?? null)}
+        />
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
@@ -282,7 +311,7 @@ function StockInForm({
           <NumberInput name="buyPrice" required />
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className={`grid gap-3 ${picked?.consignment ? "grid-cols-1" : "grid-cols-2"}`}>
         <div>
           <label className="block text-sm font-medium text-foreground">Supplier</label>
           <select name="supplierId" defaultValue="" className={inputCls}>
@@ -292,21 +321,25 @@ function StockInForm({
             ))}
           </select>
         </div>
-        <div>
-          <label className="block text-sm font-medium text-foreground">Bayar</label>
-          <select name="method" defaultValue="CASH" className={inputCls}>
-            <option value="CASH">Tunai (Kas)</option>
-            <option value="TRANSFER">Transfer (Bank)</option>
-            <option value="QRIS">QRIS (Bank)</option>
-          </select>
-        </div>
+        {!picked?.consignment && (
+          <div>
+            <label className="block text-sm font-medium text-foreground">Bayar</label>
+            <select name="method" defaultValue="CASH" className={inputCls}>
+              <option value="CASH">Tunai (Kas)</option>
+              <option value="TRANSFER">Transfer (Bank)</option>
+              <option value="QRIS">QRIS (Bank)</option>
+            </select>
+          </div>
+        )}
       </div>
       <div>
         <label className="block text-sm font-medium text-foreground">Catatan</label>
         <input name="note" placeholder="PO-001" className={inputCls} />
       </div>
       <p className="text-xs text-slate-400">
-        Otomatis catat kas keluar sesuai total (qty × harga beli).
+        {picked?.consignment
+          ? "Konsinyasi: stok & batch cost masuk (HPP benar) — TANPA kas keluar. Bayar supplier via kas manual."
+          : "Otomatis catat kas keluar sesuai total (qty × harga beli)."}
       </p>
       <SubmitButton pendingText="Menyimpan..." className={btnPrimary}>
         Catat Stok Masuk
@@ -590,6 +623,9 @@ function PartRow({
         <div className="min-w-0">
           <p className="font-medium">
             {part.name}
+            {part.consignment && (
+              <span className="ml-2 text-xs font-normal text-slate-500">konsinyasi</span>
+            )}
             {low && <span className="ml-2 text-xs text-amber-600">⚠ menipis</span>}
           </p>
           <p className="text-sm text-muted-foreground">
@@ -645,6 +681,18 @@ function PartEdit({ part, kategoris }: { part: Part; kategoris: string[] }) {
     <form action={action} className="mt-3 space-y-3 border-t border-slate-200 pt-3">
       <input type="hidden" name="id" value={part.id} />
       <Msg state={state} />
+      <label className="flex items-start gap-2 rounded-lg bg-slate-50 p-3 text-sm text-foreground ring-1 ring-slate-200">
+        <input
+          type="checkbox"
+          name="consignment"
+          defaultChecked={part.consignment}
+          className="mt-0.5 h-4 w-4"
+        />
+        <span>
+          <span className="font-medium">Konsinyasi</span> — barang titipan supplier (tanpa
+          kas; wajib pilih supplier).
+        </span>
+      </label>
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="block text-sm font-medium text-foreground">Nama</label>
@@ -694,6 +742,61 @@ function PartEdit({ part, kategoris }: { part: Part; kategoris: string[] }) {
         </div>
       )}
       <SubmitButton className={btnSecondary}>Simpan</SubmitButton>
+    </form>
+  );
+}
+
+function ReturForm({
+  parts,
+  onSuccess,
+}: {
+  parts: Part[];
+  onSuccess?: (msg: string) => void;
+}) {
+  const [state, action] = useActionState<StokState, FormData>(returKonsinyasi, {});
+  const [stateSebelumnya, setStateSebelumnya] = useState(state);
+
+  // Sukses → beri tahu panel induk (tutup blok + notif luar); gagal → form tetap.
+  if (state !== stateSebelumnya) {
+    setStateSebelumnya(state);
+    if (state.success) onSuccess?.(state.success);
+  }
+
+  const partsKonsti = parts.filter((p) => p.consignment);
+  return (
+    <form action={action} className="space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
+      <p className="text-sm font-semibold text-foreground">Retur Konsinyasi</p>
+      <Msg state={state} />
+      {partsKonsti.length === 0 ? (
+        <p className="text-sm text-muted-foreground">
+          Tidak ada part konsinyasi. Tandai part dulu lewat Ubah → centang Konsinyasi.
+        </p>
+      ) : (
+        <>
+          <div>
+            <label className="block text-sm font-medium text-foreground">Part</label>
+            <PartPicker parts={partsKonsti} placeholder="Pilih part konsinyasi…" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium text-foreground">Jumlah</label>
+              <NumberInput name="quantity" required />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-foreground">Catatan</label>
+              <input name="note" placeholder="PO-001" className={inputCls} />
+            </div>
+          </div>
+          <p className="text-xs text-slate-400">
+            Barang ditarik balik ke supplier: stok keluar <span className="font-medium">tanpa
+            kas</span> &amp; tanpa beban laporan. Yang sudah terjual dibayar lewat kas manual
+            &quot;Bayar konsinyasi&quot;.
+          </p>
+          <SubmitButton pendingText="Menyimpan..." className={btnPrimary}>
+            Catat Retur
+          </SubmitButton>
+        </>
+      )}
     </form>
   );
 }
@@ -795,7 +898,7 @@ export function StokPanels({
   sales: SaleRow[];
 }) {
   const [showForms, setShowForms] = useState(false);
-  const [aksi, setAksi] = useState<"part" | "masuk" | "opname">("part");
+  const [aksi, setAksi] = useState<"part" | "masuk" | "opname" | "retur">("part");
   const [pesan, setPesan] = useState<string | null>(null);
   const [cari, setCari] = useState("");
   const [katPilih, setKatPilih] = useState("");
@@ -961,12 +1064,13 @@ export function StokPanels({
 
       {showForms && (
         <div className="space-y-3">
-          <div className="grid grid-cols-3 gap-1 rounded-xl bg-surface p-1 ring-1 ring-slate-200 shadow-card">
+          <div className="grid grid-cols-2 gap-1 rounded-xl bg-surface p-1 ring-1 ring-slate-200 shadow-card sm:grid-cols-4">
             {(
               [
                 ["part", "Tambah Part"],
                 ["masuk", "Stok Masuk"],
                 ["opname", "Opname"],
+                ["retur", "Retur"],
               ] as const
             ).map(([key, label]) => (
               <button
@@ -1008,6 +1112,15 @@ export function StokPanels({
           )}
           {aksi === "opname" && (
             <AdjustForm
+              parts={parts}
+              onSuccess={(m) => {
+                setShowForms(false);
+                setPesan(m);
+              }}
+            />
+          )}
+          {aksi === "retur" && (
+            <ReturForm
               parts={parts}
               onSuccess={(m) => {
                 setShowForms(false);

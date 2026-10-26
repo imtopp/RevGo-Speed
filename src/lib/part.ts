@@ -5,8 +5,9 @@
  *    sudah mereferensikannya).
  * 2. Riwayat stok selain stok awal (pembelian via Stok Masuk / penyesuaian
  *    opname) → TOLAK (kas/riwayat nyata sudah tercatat, koreksi via Opname).
- * 3. Riwayat HANYA stok awal (gerakan IN ber-note "Stok awal") atau bersih
- *    total → BOLEH dihapus; pembatalan kas stok awal di-reversal terpisah.
+ * 3. Riwayat HANYA stok awal (gerakan IN ber-note "Stok awal" / "Stok awal
+ *    (konsinyasi)") atau bersih total → BOLEH dihapus; pembatalan kas stok
+ *    awal di-reversal terpisah (konsinyasi tanpa kas → tanpa reversal).
  */
 export type AlasanTolakHapus =
   | "dipakai-transaksi"
@@ -20,7 +21,8 @@ export function alasanTolakHapusPart(input: {
 }): AlasanTolakHapus {
   if (input.serviceParts > 0 || input.saleItems > 0) return "dipakai-transaksi";
   const hanyaStokAwal = input.movements.every(
-    (m) => m.type === "IN" && m.note === "Stok awal",
+    (m) =>
+      m.type === "IN" && (m.note === "Stok awal" || m.note === "Stok awal (konsinyasi)"),
   );
   if (!hanyaStokAwal) return "bukan-stok-awal";
   return null;

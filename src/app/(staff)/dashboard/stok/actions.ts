@@ -121,8 +121,12 @@ export async function createPart(
   const buyPrice = Number(formData.get("buyPrice") ?? 0);
   const sellPrice = Number(formData.get("sellPrice") ?? 0);
   const supplierId = String(formData.get("supplierId") ?? "").trim();
+  const consignment = formData.get("consignment") === "on";
 
   if (!branchId || !name) return { error: "Cabang dan nama wajib diisi." };
+  if (consignment && !supplierId) {
+    return { error: "Part konsinyasi wajib memilih supplier (pemilik barang)." };
+  }
   if (
     !Number.isFinite(quantity) ||
     !Number.isFinite(minStock) ||
@@ -181,11 +185,14 @@ export async function createPart(
         buyPrice,
         sellPrice,
         supplierId: supplierId || null,
+        consignment,
       },
     });
     // Stok awal = pembelian: modal tertahan di barang, jadi uangnya keluar
     // sekarang juga dalam transaksi yang sama — saldo kas/laporan tetap
     // sama dengan uang fisik (kas tidak "hilang" tanpa baris).
+    // Kecuali konsinyasi: barang titipan supplier — belum dibeli, stok masuk
+    // tanpa kas (kas keluar baru saat bayar supplier via kas manual).
     if (quantity > 0) {
       await tx.stockMovement.create({
         data: {
@@ -193,12 +200,12 @@ export async function createPart(
           type: "IN",
           quantity,
           cost: buyPrice,
-          note: "Stok awal",
+          note: consignment ? "Stok awal (konsinyasi)" : "Stok awal",
           userId: session.user.id,
           supplierId: supplierId || null,
         },
       });
-      if (total > 0) {
+      if (total > 0 && !consignment) {
         await tx.cashflow.create({
           data: {
             type: "EXPENSE",
@@ -214,6 +221,13 @@ export async function createPart(
     }
   });
   revalidatePath("/dashboard/stok");
+  if (consignment) {
+    return {
+      success: `Part "${name}" ditambahkan (konsinyasi, tanpa kas${
+        quantity > 0 ? " — bayar supplier via kas manual" : ""
+      }).`,
+    };
+  }
   return {
     success:
       total > 0
@@ -237,8 +251,12 @@ export async function updatePart(
   const minStock = Number(formData.get("minStock") ?? 0);
   const sellPrice = Number(formData.get("sellPrice") ?? 0);
   const supplierId = String(formData.get("supplierId") ?? "").trim();
+  const consignment = formData.get("consignment") === "on";
 
   if (!id || !name) return { error: "Data tidak lengkap." };
+  if (consignment && !supplierId) {
+    return { error: "Part konsinyasi wajib memilih supplier (pemilik barang)." };
+  }
   if (minStock < 0 || sellPrice < 0) {
     return { error: "Nilai tidak boleh negatif." };
   }
@@ -270,6 +288,7 @@ export async function updatePart(
         minStock,
         sellPrice,
         supplierId: supplierId || null,
+        consignment,
       },
     });
     const session = await auth();
@@ -295,7 +314,8 @@ export async function updatePart(
  * - riwayat selain stok awal (Stok Masuk/opname) → tolak (koreksi via Opname);
  * - riwayat HANYA stok awal → boleh, termasuk **reversal kas otomatis**:
  *   INCOME "Pembatalan Stok Awal" bertanggal gerakan aslinya (append-only —
- *   baris kas asli tidak pernah diedit/dihapus), net kas 0.
+ *   baris kas asli tidak pernah diedit/dihapus), net kas 0. Stok awal
+ *   konsinyasi tanpa baris kas → tanpa reversal sama sekali.
  */
 export async function deletePart(
   _prev: StokState,
@@ -342,6 +362,9 @@ export async function deletePart(
     let total = 0;
     for (const m of movements) {
       if (!m.cost || m.cost <= 0 || m.quantity <= 0) continue;
+      // Konsinyasi tidak pernah membuat baris kas — jangan dicocokkan dengan
+      // EXPENSE part lain (jumlah bisa kembar) supaya tidak membalik kas salah.
+      if (m.note?.toLowerCase().includes("konsinyasi")) continue;
       const amount = m.quantity * m.cost;
       const orig = await tx.cashflow.findFirst({
         where: {
@@ -476,36 +499,132 @@ export async function stockIn(
         type: "IN",
         quantity,
         cost: buyPrice,
-        note: note || "Pembelian stok",
+        note: part.consignment
+          ? `Konsinyasi${note ? `: ${note}` : ""}`
+          : note || "Pembelian stok",
         userId: session.user.id,
         supplierId: supplierId || null,
       },
     });
-    await tx.cashflow.create({
-      data: {
-        type: "EXPENSE",
-        category: "Pembelian Part",
-        amount: total,
-        account: accountFromMethod(method),
-        branchId: part.branchId,
-        description: `${quantity} ${part.unit} ${part.name}${supplierId ? " (pembelian)" : ""}`,
-        createdBy: session.user.id,
-      },
-    });
+    // Konsinyasi: barang titipan supplier — stok & batch cost masuk (HPP benar),
+    // tapi TIDAK ada kas keluar (kas baru saat bayar supplier via kas manual).
+    if (!part.consignment) {
+      await tx.cashflow.create({
+        data: {
+          type: "EXPENSE",
+          category: "Pembelian Part",
+          amount: total,
+          account: accountFromMethod(method),
+          branchId: part.branchId,
+          description: `${quantity} ${part.unit} ${part.name}${supplierId ? " (pembelian)" : ""}`,
+          createdBy: session.user.id,
+        },
+      });
+    }
     await logAudit(tx, session.user, {
       action: "STOCK_IN",
       entityType: "Part",
       entityId: partId,
       branchId: part.branchId,
-      summary: `Beli ${quantity} ${part.unit} ${part.name} @${buyPrice.toLocaleString("id-ID")} = ${total.toLocaleString("id-ID")} (${accountFromMethod(method)})`,
+      summary: part.consignment
+        ? `Konsinyasi ${quantity} ${part.unit} ${part.name} @${buyPrice.toLocaleString("id-ID")} (tanpa kas)`
+        : `Beli ${quantity} ${part.unit} ${part.name} @${buyPrice.toLocaleString("id-ID")} = ${total.toLocaleString("id-ID")} (${accountFromMethod(method)})`,
       before: { buyPrice: fresh.buyPrice, quantity: fresh.quantity },
       after: { buyPrice: avgBaru, quantity: fresh.quantity + quantity },
     });
   });
 
   revalidatePath("/dashboard/stok");
+  if (part.consignment) {
+    return {
+      success: `Stok masuk ${quantity} ${part.unit} ${part.name} (konsinyasi, tanpa kas).`,
+    };
+  }
   return {
     success: `Stok masuk ${quantity} ${part.unit} ${part.name}. Kas keluar ${total.toLocaleString("id-ID")} (${accountFromMethod(method)}).`,
+  };
+}
+
+// ─── Retur Konsinyasi ───────────────────────────────────────────────────
+
+/**
+ * Retur konsinyasi: tarik balik barang titipan yang tidak laku ke supplier.
+ * Stok OUT atomik, TANPA kas (barang belum pernah dibeli) dan TANPA beban
+ * opname (bukan temuan). Pembayaran supplier untuk yang terjual → kas manual
+ * "Bayar konsinyasi" lewat menu Kas.
+ */
+export async function returKonsinyasi(
+  _prev: StokState,
+  formData: FormData,
+): Promise<StokState> {
+  const session = await requireStokRole();
+  const partId = String(formData.get("partId") ?? "").trim();
+  const quantity = Number(formData.get("quantity") ?? 0);
+  const note = String(formData.get("note") ?? "").trim();
+
+  if (
+    !partId ||
+    !Number.isFinite(quantity) ||
+    quantity <= 0 ||
+    quantity > MAX_RUPIAH
+  ) {
+    return { error: "Part dan jumlah retur tidak valid." };
+  }
+
+  const part = await prisma.part.findUnique({
+    where: { id: partId },
+    include: { supplier: { select: { nama: true } } },
+  });
+  if (!part) return { error: "Part tidak ditemukan." };
+  const branchIdStaff = await getStaffBranchId();
+  if (branchIdStaff && part.branchId !== branchIdStaff) {
+    return { error: "Part bukan di cabang Anda." };
+  }
+  if (!part.consignment) {
+    return {
+      error: "Hanya part konsinyasi yang bisa diretur. Part biasa koreksi lewat Opname.",
+    };
+  }
+  if (part.quantity < quantity) {
+    return { error: `Stok ${part.name} kurang (tersisa ${part.quantity}).` };
+  }
+
+  await prisma.$transaction(async (tx) => {
+    await tx.part.update({
+      where: { id: partId },
+      data: { quantity: { decrement: quantity } },
+    });
+    await tx.stockMovement.create({
+      data: {
+        partId,
+        type: "OUT",
+        quantity,
+        cost: part.buyPrice,
+        note: `Retur konsinyasi${note ? `: ${note}` : ""}`,
+        userId: session.user.id,
+        supplierId: part.supplierId,
+      },
+    });
+    // Tanpa cashflow sengaja: barang titipan, tidak ada uang yang bergerak.
+    await logAudit(tx, session.user, {
+      action: "STOCK_RETURN",
+      entityType: "Part",
+      entityId: partId,
+      branchId: part.branchId,
+      summary: `Retur ${quantity} ${part.unit} ${part.name}${
+        part.supplier ? ` ke ${part.supplier.nama}` : ""
+      } — tanpa kas (konsinyasi)`,
+      before: { quantity: part.quantity },
+      after: { quantity: part.quantity - quantity },
+    });
+  });
+
+  revalidatePath("/dashboard/stok");
+  revalidatePath("/dashboard/laporan");
+  return {
+    success: `Retur ${quantity} ${part.unit} ${part.name} ke supplier${
+      part.supplier ? ` (${part.supplier.nama})` : ""
+    }. Tanpa kas — barang konsinyasi.`,
   };
 }
 

@@ -85,4 +85,40 @@ describe("alasanTolakHapusPart", () => {
       }),
     ).toBe("bukan-stok-awal");
   });
+
+  it("stok awal konsinyasi (tanpa kas) → boleh", () => {
+    expect(
+      alasanTolakHapusPart({
+        serviceParts: 0,
+        saleItems: 0,
+        movements: [{ type: "IN", note: "Stok awal (konsinyasi)" }],
+      }),
+    ).toBeNull();
+  });
+
+  it("stok masuk konsinyasi (IN, note Konsinyasi) → tolak", () => {
+    expect(
+      alasanTolakHapusPart({
+        serviceParts: 0,
+        saleItems: 0,
+        movements: [
+          { type: "IN", note: "Stok awal (konsinyasi)" },
+          { type: "IN", note: "Konsinyasi: PO-001" },
+        ],
+      }),
+    ).toBe("bukan-stok-awal");
+  });
+
+  it("retur konsinyasi (OUT) → tolak", () => {
+    expect(
+      alasanTolakHapusPart({
+        serviceParts: 0,
+        saleItems: 0,
+        movements: [
+          { type: "IN", note: "Stok awal (konsinyasi)" },
+          { type: "OUT", note: "Retur konsinyasi" },
+        ],
+      }),
+    ).toBe("bukan-stok-awal");
+  });
 });

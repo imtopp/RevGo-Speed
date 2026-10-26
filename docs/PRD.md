@@ -1,6 +1,6 @@
 # PRD — RevGo Speed
 
-**Versi:** 1.3 (Sinkronisasi PRD ↔ kode: POS part, refund kelebihan, HPP FIFO)
+**Versi:** 1.5 (Konsinyasi + stok awal part = belanja, hapus part, SKU auto)
 **Tanggal:** 26 Oktober 2026
 **Status:** Rilis 1 selesai — semua fase A–E terpasang, siap produksi; Rilis 1.5 berjalan: FR-11 (audit) terpasang, FR-12 menyusul
 
@@ -13,6 +13,7 @@
 - v1.2 — **audit & anti-fraud (FR-11, terpasang):** AuditLog append-only (diff before→after, transaksi DB sama), **void pembayaran Owner-only** + reversal kas otomatis, halaman **Audit** (peringatan: void / jasa < katalog / part < jual / opname); semua Σ terbayar mengabaikan pembayaran void; auditLogs ikut backup. **FR-12 rekonsiliasi kas harian** & notifikasi event-driven (tanpa daemon Vercel) didefinisikan (fase 1.5).
 - v1.3 — audit PRD ↔ kode (26 Okt): **penjualan part tanpa servis/POS** (`PartSale`) resmi masuk FR-6/8 (keluar dari daftar fase 2); **refund kelebihan bayar** owner-only (`PaymentKind REFUND`, FR-5); **HPP batch FIFO** (`PartBatchUsage` + koreksi `correctStockCost`) menggantikan narasi snapshot sederhana (FR-6); **booking walk-in tanpa akun customer** (FR-3); **ganti password wajib saat login pertama** + ganti password mandiri (FR-0); **aturan bayar ditahan** saat pengerjaan (FR-5); **selisih opname → beban/temuan** laporan (FR-8); **rate limit 2 lapis** (NFR). + **App. B** praktik implementasi (kualitas di atas minimum FR).
 - v1.4 — **stok awal part = belanja (26 Okt):** membuat part dengan qty > 0 & harga beli > 0 otomatis catat **Kas Keluar** atomik (kantong sesuai cara bayar, FR-6/§3.2) — modal tertahan di barang ikut terbaca di saldo & laporan; koreksi harga batch stok awal otomatis ikut menggeser kas (deteksi via baris `Pembelian Part`). **Barang consignment/konsinyasi** tercatat di §7 (fase 2+). + **Hapus part guard bertingkat** (tolak part dipakai servis/penjualan & riwayat selain stok awal; part stok-awal-saja boleh dihapus + **reversal kas otomatis**, AuditLog `PART_DELETE`), **SKU auto** `PART-0001` saat dikosongkan (FR-6), **cari/filter/hitungan daftar part** (FR-6).
+- v1.5 — **konsinyasi (26 Okt, dinaikkan dari §7):** flag `consignment` per part (wajib supplier) — stok masuk (stok awal & Stok Masuk) **tanpa Kas Keluar** (batch cost tetap → HPP benar), aksi **Retur Konsinyasi** (OUT atomik tanpa kas & tanpa beban laporan, AuditLog `STOCK_RETURN`), pembayaran supplier via **kas manual**; **bukan utang** — tanpa model pembayaran tempo. Hapus part: stok awal konsinyasi **tanpa reversal** (tidak pernah ada baris kas). FR-6/§3.2; §7 baris konsinyasi dihapus.
 
 ---
 
@@ -123,9 +124,12 @@ PENDING / WAITING_APPROVAL / CONFIRMED / CHECKED_IN ──(batal)→ CANCELLED (
 [Stok Masuk] pembelian (qty + harga beli + supplier)
       ├→ jumlah part bertambah
       └→ otomatis catat Kas Keluar (kantong BANK/TUNAI sesuai cara bayar) jika harga beli diisi
+         — kecuali part konsinyasi: TANPA kas (barang titipan supplier, bayar via kas manual)
 [Stok awal part] qty > 0 + harga beli saat bikin part → otomatis catat Kas Keluar (kantong sesuai cara bayar) — modal tertahan di barang
+         — kecuali konsinyasi: batch cost tercatat (HPP), tanpa kas
 [Pakai di servis] otomatis stok keluar + alokasi batch FIFO (HPP per job)
 [Jual part tanpa servis (POS)] stok keluar FIFO atomik + kas masuk (harga jual dari data part)
+[Retur Konsinyasi] barang titipan tidak laku → stok OUT atomik, TANPA kas & TANPA beban laporan; bayar supplier yang terjual via kas manual
 [Penyesuaian] opname koreksi per part (wajib alasan); selisih → beban/temuan laporan; opname massal periodik: fase 2
 [Peringatan] quantity ≤ minStock → kartu "stok menipis" di dashboard
 ```
@@ -187,10 +191,11 @@ PENDING / WAITING_APPROVAL / CONFIRMED / CHECKED_IN ──(batal)→ CANCELLED (
 ### FR-6 Stok part & supplier — **Rilis 1**
 - **Master supplier** (nama, HP, catatan) — dicatat di setiap stok masuk.
 - CRUD part per cabang: SKU unik per cabang, nama, kategori, satuan, qty, min. stok, harga beli & jual. **SKU dikosongkan → auto urut per cabang** (`PART-0001`, mengisi bolong); SKU manual tetap boleh, dicek unik, dan **tidak bisa diubah** setelah part dibuat.
-- **Hapus part (guard bertingkat):** (a) pernah dipakai servis/penjualan → **tidak bisa** (HPP & tagihan tercatat); (b) riwayat selain stok awal (pembelian via Stok Masuk / penyesuaian opname) → **tidak bisa** — koreksi via Opname/Ubah; (c) riwayat **hanya stok awal** → **boleh**, termasuk **reversal kas otomatis** dalam transaksi yang sama: `INCOME Pembatalan Stok Awal` bertanggal gerakan aslinya (append-only, baris kas asli tidak diubah, net kas 0). Setiap hapus tercatat di AuditLog.
+- **Hapus part (guard bertingkat):** (a) pernah dipakai servis/penjualan → **tidak bisa** (HPP & tagihan tercatat); (b) riwayat selain stok awal (pembelian via Stok Masuk / penyesuaian opname / retur) → **tidak bisa** — koreksi via Opname/Ubah; (c) riwayat **hanya stok awal** → **boleh**, termasuk **reversal kas otomatis** dalam transaksi yang sama: `INCOME Pembatalan Stok Awal` bertanggal gerakan aslinya (append-only, baris kas asli tidak diubah, net kas 0). Stok awal **konsinyasi** tanpa baris kas → **tanpa reversal** (jangan dicocokkan dengan kas part lain). Setiap hapus tercatat di AuditLog. *(Hapus = membatalkan entri salah input; data salah ketik → Ubah, harga salah → koreksi batch.)*
+- **Konsinyasi (barang titipan supplier):** flag per part (wajib pilih supplier) — **bukan utang**. (a) stok awal & Stok Masuk part konsinyasi → gerakan IN + batch cost tercatat (HPP/FIFO benar) tapi **tanpa Kas Keluar**; (b) yang terjual → bayar supplier lewat **kas manual** (mis. "Bayar konsinyasi"); (c) yang tidak laku → aksi **Retur Konsinyasi** (stok OUT atomik, qty ≤ stok, **tanpa kas & tanpa beban laporan** — bukan opname, AuditLog `STOCK_RETURN`); (d) penanda badge "konsinyasi" di daftar part.
 - **Daftar part:** pencarian (nama/SKU/kategori) + filter kategori + hitungan hasil — tidak perlu scroll.
-- **Stok awal saat membuat part** (qty > 0 & harga beli > 0) = pembelian → otomatis **Kas Keluar** dalam transaksi yang sama (kantong sesuai cara bayar); qty 0 atau harga beli 0 tanpa kas. Pesan sukses menyebut konsekuensi kasnya.
-- Stok masuk (+qty, otomatis Kas Keluar dgn kantong sesuai cara bayar); keluar via servis; penyesuaian per part (wajib alasan).
+- **Stok awal saat membuat part** (qty > 0 & harga beli > 0) = pembelian → otomatis **Kas Keluar** dalam transaksi yang sama (kantong sesuai cara bayar), **kecuali part konsinyasi** (tanpa kas); qty 0 atau harga beli 0 tanpa kas. Pesan sukses menyebut konsekuensi kasnya.
+- Stok masuk (+qty, otomatis Kas Keluar dgn kantong sesuai cara bayar — konsinyasi tanpa kas); keluar via servis; penyesuaian per part (wajib alasan).
 - **HPP batch (FIFO):** setiap stok masuk membentuk **batch** (`PartBatchUsage`) — harga pakai **rata-rata tertimbang**; unit terpakai dialokasikan FIFO dari batch terkait; `ServicePart.cost` = campuran batch unit tersebut (dasar laba per job). **Koreksi harga beli batch** terbatas pada unit terpakai dari batch terkait (`correctStockCost`) — merambat ke HPP servis & `PartSaleItem`; harga jual tidak berubah.
 - **Penjualan part tanpa servis (POS/OTC):** jual langsung dari tab Jual — stok keluar + alokasi FIFO **atomik**, kas `INCOME` otomatis, harga jual dari data part (input kasir dibuang), riwayat penjualan + laba per penjualan, ikut laporan & CSV. Harga jual di bawah harga beli wajib konfirmasi.
 - Riwayat pergerakan; kartu stok menipis; nilai persediaan; **harga beli saat dipakai di-snapshot ke servis** (dasar laba per job).
@@ -269,8 +274,7 @@ Akses: Admin/Owner (input hitung), Owner (review).
 ---
 
 ## 7. Di Luar Cakupan (fase 2+, kecuali dinaikkan)
-- **Purchasing:** PO & penerimaan berjenjang, retur pembelian, pembelian tempo → **hutang supplier**.
-- **Barang consignment / konsinyasi** (stok titipan supplier): kepemilikan & risiko tetap di supplier — stok masuk **tanpa** Kas Keluar, kas keluar baru saat pelunasan/tempo ke supplier. Butuh penanda per part + alur jual/utang terpisah dari pembelian biasa.
+- **Purchasing:** PO & penerimaan berjenjang, retur pembelian (non-konsinyasi), pembelian tempo → **hutang supplier**. *(Konsinyasi dinaikkan ke FR-6 — tanpa utang, dengan Retur Konsinyasi.)*
 - **Opname massal periodik** (MVP: penyesuaian per part); laporan part lambat laku/matian.
 - **Shift kasir**; saldo awal akun; akun bank multi. *(Rekonsiliasi selisih kas fisik dinaikkan → FR-12.)*
 - **Notifikasi event-driven** — mekanisme: dikirim **dari dalam server action** setelah commit (kas manual/void/opname besar) via outbound Telegram Bot / WA Business Cloud API / email; rekap terjadwal via **Vercel Cron** (`vercel.json`) — **tanpa service latar belakang** (Vercel serverless tak punya daemon). Notifikasi = best-effort; **AuditLog tetap sumber kebenaran**. Konten menyusul: status booking, “siap diambil”, pengingat servis berikutnya, garansi jasa.

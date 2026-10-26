@@ -171,8 +171,11 @@ model Part {
   branch     Branch    @relation(fields: [branchId], references: [id])
   supplierId String?
   supplier   Supplier? @relation(fields: [supplierId], references: [id])
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
+  /// Barang titipan supplier (konsinyasi): kepemilikan di supplier —
+  /// stok masuk tanpa kas, tidak laku → retur. Bukan utang.
+  consignment Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   movements    StockMovement[]
   serviceParts ServicePart[]
