@@ -56,7 +56,7 @@ function ActionPanel({
   return (
     <div className="mt-3 space-y-3 border-t border-slate-200 pt-3">
       {assignable && (
-        <form action={assignAction} className="flex items-end gap-2">
+        <form onReset={(e) => e.preventDefault()} action={assignAction} className="flex items-end gap-2">
           <input type="hidden" name="id" value={user.id} />
           <div className="flex-1">
             <label className="block text-xs font-medium text-muted-foreground">
@@ -88,7 +88,7 @@ function ActionPanel({
       )}
 
       {!isOwner && (
-        <form action={resetAction} className="flex items-end gap-2">
+        <form onReset={(e) => e.preventDefault()} action={resetAction} className="flex items-end gap-2">
           <input type="hidden" name="id" value={user.id} />
           <div className="flex-1">
             <label className="block text-xs font-medium text-muted-foreground">
@@ -112,7 +112,7 @@ function ActionPanel({
       )}
 
       {!isOwner && (
-        <form action={toggleAction}>
+        <form onReset={(e) => e.preventDefault()} action={toggleAction}>
           <input type="hidden" name="id" value={user.id} />
           <SubmitButton
             pendingText="..."

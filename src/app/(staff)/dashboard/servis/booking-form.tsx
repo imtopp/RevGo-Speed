@@ -45,6 +45,7 @@ export function BookingForm({
 
   return (
     <form
+      onReset={(e) => e.preventDefault()}
       action={action}
       className="space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card"
     >

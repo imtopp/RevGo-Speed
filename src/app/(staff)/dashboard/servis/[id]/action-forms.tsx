@@ -136,7 +136,7 @@ function EstimateForm({
   );
   const pilih = catalog.find((c) => c.id === catalogId);
   return (
-    <form action={formAction} className="space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
+    <form onReset={(e) => e.preventDefault()} action={formAction} className="space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
       <input type="hidden" name="id" value={service.id} />
       <p className="text-sm font-semibold text-foreground">Isi Estimasi</p>
       <Msg state={state} />
@@ -197,7 +197,7 @@ function RescheduleForm({ service }: { service: ServiceInfo }) {
   const { state, formAction } = useForm(changeSchedule);
   const [jadwal, setJadwal] = useState("");
   return (
-    <form action={formAction} className="space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
+    <form onReset={(e) => e.preventDefault()} action={formAction} className="space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
       <input type="hidden" name="id" value={service.id} />
       <p className="text-sm font-semibold text-foreground">Ubah Jadwal Kedatangan</p>
       <p className="text-xs text-warning">
@@ -238,7 +238,7 @@ function ReassignMechanicForm({
 }) {
   const { state, formAction } = useForm(reassignMechanic);
   return (
-    <form action={formAction} className="space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
+    <form onReset={(e) => e.preventDefault()} action={formAction} className="space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
       <input type="hidden" name="id" value={service.id} />
       <p className="text-sm font-semibold text-foreground">Ganti Mekanik</p>
       <p className="text-xs text-slate-400">
@@ -265,7 +265,7 @@ function ReassignMechanicForm({
 function ApproveForm({ service }: { service: ServiceInfo }) {
   const { state, formAction } = useForm(approveInPerson);
   return (
-    <form action={formAction} className="space-y-2 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
+    <form onReset={(e) => e.preventDefault()} action={formAction} className="space-y-2 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
       <input type="hidden" name="id" value={service.id} />
       <Msg state={state} />
       <SubmitButton className={btnPrimary}>
@@ -278,7 +278,7 @@ function ApproveForm({ service }: { service: ServiceInfo }) {
 function CheckInForm({ service }: { service: ServiceInfo }) {
   const { state, formAction } = useForm(checkInUnit);
   return (
-    <form action={formAction} className="space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
+    <form onReset={(e) => e.preventDefault()} action={formAction} className="space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
       <input type="hidden" name="id" value={service.id} />
       <p className="text-sm font-semibold text-foreground">
         Pemeriksaan Awal (Terima Unit)
@@ -314,7 +314,7 @@ function CheckInForm({ service }: { service: ServiceInfo }) {
 function StartWorkForm({ service }: { service: ServiceInfo }) {
   const { state, formAction } = useForm(startWork);
   return (
-    <form action={formAction} className="space-y-2 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
+    <form onReset={(e) => e.preventDefault()} action={formAction} className="space-y-2 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
       <input type="hidden" name="id" value={service.id} />
       <Msg state={state} />
       <SubmitButton className={btnPrimary}>Mulai Kerja</SubmitButton>
@@ -325,7 +325,7 @@ function StartWorkForm({ service }: { service: ServiceInfo }) {
 function DiagnosisForm({ service }: { service: ServiceInfo }) {
   const { state, formAction } = useForm(saveDiagnosis);
   return (
-    <form action={formAction} className="space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
+    <form onReset={(e) => e.preventDefault()} action={formAction} className="space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
       <input type="hidden" name="id" value={service.id} />
       <p className="text-sm font-semibold text-foreground">Diagnosis</p>
       <Msg state={state} />
@@ -344,7 +344,7 @@ function AddPartForm({
 }) {
   const { state, formAction } = useForm(addServicePart);
   return (
-    <form action={formAction} className="space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
+    <form onReset={(e) => e.preventDefault()} action={formAction} className="space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
       <input type="hidden" name="serviceId" value={serviceId} />
       <p className="text-sm font-semibold text-foreground">Catat Part Terpakai</p>
       <Msg state={state} />
@@ -365,7 +365,7 @@ function AddPartForm({
 function WaitingPartsForm({ service }: { service: ServiceInfo }) {
   const { state, formAction } = useForm(markWaitingParts);
   return (
-    <form action={formAction} className="space-y-2 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
+    <form onReset={(e) => e.preventDefault()} action={formAction} className="space-y-2 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
       <input type="hidden" name="id" value={service.id} />
       <Msg state={state} />
       <SubmitButton className={btnSecondary}>Tandai Menunggu Part</SubmitButton>
@@ -376,7 +376,7 @@ function WaitingPartsForm({ service }: { service: ServiceInfo }) {
 function ResumeForm({ service }: { service: ServiceInfo }) {
   const { state, formAction } = useForm(resumeWork);
   return (
-    <form action={formAction} className="space-y-2 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
+    <form onReset={(e) => e.preventDefault()} action={formAction} className="space-y-2 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
       <input type="hidden" name="id" value={service.id} />
       <Msg state={state} />
       <SubmitButton className={btnPrimary}>Stok Ready → Lanjut Kerja</SubmitButton>
@@ -387,7 +387,7 @@ function ResumeForm({ service }: { service: ServiceInfo }) {
 function FinishForm({ service }: { service: ServiceInfo }) {
   const { state, formAction } = useForm(mechanicFinish);
   return (
-    <form action={formAction} className="space-y-2 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
+    <form onReset={(e) => e.preventDefault()} action={formAction} className="space-y-2 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
       <input type="hidden" name="id" value={service.id} />
       <Msg state={state} />
       <SubmitButton className={btnPrimary}>
@@ -403,7 +403,7 @@ function FinishForm({ service }: { service: ServiceInfo }) {
 function QcForm({ service }: { service: ServiceInfo }) {
   const { state, formAction } = useForm(qcDone);
   return (
-    <form action={formAction} className="space-y-2 rounded-xl bg-emerald-50 p-4 ring-1 ring-emerald-200">
+    <form onReset={(e) => e.preventDefault()} action={formAction} className="space-y-2 rounded-xl bg-emerald-50 p-4 ring-1 ring-emerald-200">
       <input type="hidden" name="id" value={service.id} />
       <p className="text-sm font-semibold text-emerald-800">
         Quality Control — verifikasi sebelum serah terima
@@ -430,7 +430,7 @@ function TungguQc() {
 function CancelForm({ service }: { service: ServiceInfo }) {
   const { state, formAction } = useForm(cancelService);
   return (
-    <form action={formAction} className="space-y-2 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
+    <form onReset={(e) => e.preventDefault()} action={formAction} className="space-y-2 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
       <input type="hidden" name="id" value={service.id} />
       <p className="text-sm font-semibold text-danger">Batalkan Servis</p>
       <Msg state={state} />

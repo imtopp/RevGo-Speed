@@ -15,7 +15,7 @@ export function RegisterForm() {
   );
 
   return (
-    <form action={action} className="mt-6 space-y-4">
+    <form onReset={(e) => e.preventDefault()} action={action} className="mt-6 space-y-4">
       {state.error && (
         <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-danger">
           {state.error}

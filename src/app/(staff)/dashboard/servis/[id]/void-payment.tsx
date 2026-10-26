@@ -26,7 +26,7 @@ export function VoidPaymentForm({ paymentId }: { paymentId: string }) {
   }
 
   return (
-    <form action={action} className="mt-2 w-full space-y-2 text-left">
+    <form onReset={(e) => e.preventDefault()} action={action} className="mt-2 w-full space-y-2 text-left">
       <input type="hidden" name="paymentId" value={paymentId} />
       <input
         name="reason"

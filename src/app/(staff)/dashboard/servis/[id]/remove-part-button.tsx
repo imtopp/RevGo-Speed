@@ -13,7 +13,7 @@ export function RemovePartButton({ servicePartId }: { servicePartId: string }) {
     {},
   );
   return (
-    <form action={formAction} className="flex flex-col items-end gap-1">
+    <form onReset={(e) => e.preventDefault()} action={formAction} className="flex flex-col items-end gap-1">
       <input type="hidden" name="id" value={servicePartId} />
       <button
         type="submit"

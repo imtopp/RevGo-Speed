@@ -32,6 +32,7 @@ export function PaymentForm({
 
   return (
     <form
+      onReset={(e) => e.preventDefault()}
       action={action}
       className={
         compact

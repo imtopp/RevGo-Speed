@@ -53,6 +53,7 @@ export function LogoUploader({ value }: { value: string }) {
       </div>
 
       <form
+        onReset={(e) => e.preventDefault()}
         action={action}
         className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center"
       >
@@ -84,6 +85,7 @@ export function LogoUploader({ value }: { value: string }) {
           …atau pakai URL gambar
         </summary>
         <form
+          onReset={(e) => e.preventDefault()}
           action={urlAction}
           className="mt-2 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end"
         >

@@ -83,14 +83,14 @@ export function RespondForm({ id }: { id: string }) {
     <div className="mt-2 space-y-2">
       <Msg state={state} />
       <div className="flex gap-2">
-        <form action={action} className="flex-1">
+        <form onReset={(e) => e.preventDefault()} action={action} className="flex-1">
           <input type="hidden" name="id" value={id} />
           <input type="hidden" name="decision" value="approve" />
           <SubmitButton className="w-full rounded-lg bg-success py-2 text-sm font-medium text-white active:opacity-90 disabled:opacity-60">
             Setujui
           </SubmitButton>
         </form>
-        <form action={action} className="flex-1">
+        <form onReset={(e) => e.preventDefault()} action={action} className="flex-1">
           <input type="hidden" name="id" value={id} />
           <input type="hidden" name="decision" value="reject" />
           <SubmitButton className="w-full rounded-lg bg-surface py-2 text-sm font-medium text-danger ring-1 ring-red-200 active:opacity-90 disabled:opacity-60">
@@ -141,7 +141,7 @@ function VehicleRow({
   if (edit) {
     return (
       <div className="rounded-lg border border-slate-200 p-3">
-        <form action={uAction} className="space-y-2">
+        <form onReset={(e) => e.preventDefault()} action={uAction} className="space-y-2">
           <input type="hidden" name="id" value={vehicle.id} />
           {!uState.success && <Msg state={uState} />}
           <div>
@@ -232,6 +232,7 @@ function VehicleRow({
             Ubah
           </button>
           <form
+            onReset={(e) => e.preventDefault()}
             action={dAction}
             onSubmit={(e) => {
               if (!confirm("Hapus kendaraan ini dari daftarmu?")) e.preventDefault();
@@ -320,6 +321,7 @@ export function BookingSection({
 
       {showBooking && (
         <form
+          onReset={(e) => e.preventDefault()}
           action={bookingAction}
           className="space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card"
         >
@@ -434,7 +436,7 @@ export function BookingSection({
           </button>
         </div>
         {showAddVehicle && (
-          <form action={vehicleAction} className="space-y-3">
+          <form onReset={(e) => e.preventDefault()} action={vehicleAction} className="space-y-3">
             <p className="text-sm font-semibold text-foreground">
               Tambah Kendaraan
             </p>

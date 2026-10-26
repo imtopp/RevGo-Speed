@@ -57,6 +57,7 @@ export function CatalogList({ items }: { items: Item[] }) {
 
             {editing && (
               <form
+                onReset={(e) => e.preventDefault()}
                 action={action}
                 className="mt-3 space-y-3 border-t border-slate-200 pt-3"
               >

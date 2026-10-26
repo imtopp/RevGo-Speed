@@ -43,7 +43,7 @@ export function RefundForm({
   }
 
   return (
-    <form action={action} className="space-y-2 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
+    <form onReset={(e) => e.preventDefault()} action={action} className="space-y-2 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
       <input type="hidden" name="serviceId" value={serviceId} />
       <p className="text-sm font-semibold text-foreground">
         Kembalikan kelebihan {formatRupiah(kelebihan)}
