@@ -6,6 +6,7 @@ import { getStaffBranchId } from "@/lib/guard";
 import { logAudit } from "@/lib/audit";
 import { samakanKategori } from "@/lib/category";
 import { skuBerikutnya } from "@/lib/sku";
+import { alasanTolakHapusPart } from "@/lib/part";
 import { revalidatePath } from "next/cache";
 import {
   movingAverageBuyPrice,
@@ -289,10 +290,12 @@ export async function updatePart(
 }
 
 /**
- * Hapus part — guard ketat: hanya part BERSIH (belum pernah ada gerakan stok,
- * belum dipakai servis, belum terjual) yang boleh dihapus. Part ber-riwayat
- * dikoreksi via Opname/Ubah supaya cashflow & HPP tidak terganggu. Part tanpa
- * gerakan berarti belum pernah membuat baris kas, jadi kas dijamin aman.
+ * Hapus part — guard bertingkat (lihat alasanTolakHapusPart):
+ * - dipakai servis/penjualan → tolak (HPP & tagihan terpengaruh);
+ * - riwayat selain stok awal (Stok Masuk/opname) → tolak (koreksi via Opname);
+ * - riwayat HANYA stok awal → boleh, termasuk **reversal kas otomatis**:
+ *   INCOME "Pembatalan Stok Awal" bertanggal gerakan aslinya (append-only —
+ *   baris kas asli tidak pernah diedit/dihapus), net kas 0.
  */
 export async function deletePart(
   _prev: StokState,
@@ -314,35 +317,102 @@ export async function deletePart(
     return { error: "Part bukan di cabang Anda." };
   }
 
-  const adaRiwayat =
-    part._count.movements > 0 ||
-    part._count.serviceParts > 0 ||
-    part._count.saleItems > 0;
-  if (adaRiwayat) {
+  const movements = await prisma.stockMovement.findMany({
+    where: { partId: id },
+    select: { id: true, type: true, quantity: true, cost: true, note: true, createdAt: true },
+    orderBy: { createdAt: "asc" },
+  });
+  const alasan = alasanTolakHapusPart({
+    serviceParts: part._count.serviceParts,
+    saleItems: part._count.saleItems,
+    movements,
+  });
+  if (alasan === "dipakai-transaksi") {
     return {
-      error: `Part "${part.name}" tidak bisa dihapus: sudah punya riwayat (gerakan stok / servis / penjualan). Koreksi stok lewat Opname, ubah data lewat Ubah.`,
+      error: `Part "${part.name}" tidak bisa dihapus: sudah dipakai servis/penjualan (HPP & tagihan tercatat). Stok bisa dikoreksi lewat Opname.`,
+    };
+  }
+  if (alasan === "bukan-stok-awal") {
+    return {
+      error: `Part "${part.name}" tidak bisa dihapus: riwayatnya bukan cuma stok awal (ada pembelian via Stok Masuk / penyesuaian). Koreksi stok lewat Opname, ubah data lewat Ubah.`,
     };
   }
 
-  await prisma.$transaction(async (tx) => {
+  const kasDibatalkan = await prisma.$transaction(async (tx) => {
+    let total = 0;
+    for (const m of movements) {
+      if (!m.cost || m.cost <= 0 || m.quantity <= 0) continue;
+      const amount = m.quantity * m.cost;
+      const orig = await tx.cashflow.findFirst({
+        where: {
+          type: "EXPENSE",
+          category: "Pembelian Part",
+          amount,
+          branchId: part.branchId,
+          createdAt: {
+            gte: new Date(m.createdAt.getTime() - 86_400_000),
+            lte: new Date(m.createdAt.getTime() + 86_400_000),
+          },
+        },
+        orderBy: { createdAt: "asc" },
+      });
+      if (!orig) continue; // stok awal tanpa baris kas (data lama) → tanpa reversal
+      const sudahDibatalkan = await tx.cashflow.findFirst({
+        where: {
+          type: "INCOME",
+          category: "Pembatalan Stok Awal",
+          amount,
+          branchId: part.branchId,
+          description: `Pembatalan stok awal: ${m.quantity} ${part.unit} ${part.name}`,
+        },
+      });
+      if (sudahDibatalkan) continue;
+      await tx.cashflow.create({
+        data: {
+          type: "INCOME",
+          category: "Pembatalan Stok Awal",
+          amount,
+          account: orig.account,
+          branchId: part.branchId,
+          description: `Pembatalan stok awal: ${m.quantity} ${part.unit} ${part.name}`,
+          createdBy: session.user.id,
+          createdAt: m.createdAt,
+        },
+      });
+      total += amount;
+    }
+
+    await tx.stockMovement.deleteMany({ where: { partId: id } });
     await tx.part.delete({ where: { id } });
     await logAudit(tx, session.user, {
       action: "PART_DELETE",
       entityType: "Part",
       entityId: id,
       branchId: part.branchId,
-      summary: `${part.name} (${part.sku}) dihapus — belum pernah dipakai`,
+      summary:
+        `${part.name} (${part.sku}) dihapus — hanya riwayat stok awal` +
+        (total > 0 ? ` · reversal kas ${total.toLocaleString("id-ID")}` : ""),
       before: {
         sku: part.sku,
         name: part.name,
         quantity: part.quantity,
         buyPrice: part.buyPrice,
         sellPrice: part.sellPrice,
+        reversedCash: total,
       },
     });
+    return total;
   });
+
   revalidatePath("/dashboard/stok");
-  return { success: `Part "${part.name}" dihapus.` };
+  revalidatePath("/dashboard/kas");
+  revalidatePath("/dashboard/laporan");
+  return {
+    success:
+      kasDibatalkan > 0
+        ? `Part "${part.name}" dihapus. Kas masuk ${kasDibatalkan.toLocaleString("id-ID")} (pembatalan stok awal).`
+        : `Part "${part.name}" dihapus.`,
+  };
 }
 
 // ─── Stok Masuk (Pembelian) ───────────────────────────────────────────

@@ -164,9 +164,10 @@ function PartForm({
           <label className="block text-sm font-medium text-foreground">SKU</label>
           <input
             name="sku"
-            placeholder="Kosongkan → auto PART-0001"
+            placeholder="OLI-001"
             className={`${inputCls} uppercase`}
           />
+          <p className="mt-1 text-xs text-slate-400">Kosongkan → auto PART-0001</p>
         </div>
         <div>
           <label className="block text-sm font-medium text-foreground">Nama</label>
