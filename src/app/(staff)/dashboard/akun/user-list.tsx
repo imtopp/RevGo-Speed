@@ -49,8 +49,9 @@ function ActionPanel({
   );
 
   const isOwner = user.role === "OWNER";
-  const isSysAdmin = user.role === "SYS_ADMIN";
-  const assignable = !isOwner && !isSysAdmin;
+  // Hanya Admin/Mekanik yang punya penempatan cabang — customer bukan staf,
+  // Owner/SysAdmin memang lintas cabang.
+  const assignable = user.role === "ADMIN" || user.role === "MECHANIC";
 
   return (
     <div className="mt-3 space-y-3 border-t border-slate-200 pt-3">
@@ -64,9 +65,12 @@ function ActionPanel({
             <select
               name="branchId"
               defaultValue={user.branch?.id ?? ""}
+              required
               className="mt-1 w-full rounded-lg border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-slate-900"
             >
-              <option value="">— Lintas cabang —</option>
+              <option value="" disabled>
+                Pilih cabang…
+              </option>
               {branches.map((b) => (
                 <option key={b.id} value={b.id}>
                   {b.name}
@@ -173,8 +177,10 @@ export function UserList({
                 {user.email ?? "tanpa email — tidak bisa login"}
               </p>
               <p className="mt-1 text-xs text-slate-400">
-                {ROLE_LABEL[user.role] ?? user.role} ·{" "}
-                {user.branch?.name ?? "Lintas cabang"} ·{" "}
+                {ROLE_LABEL[user.role] ?? user.role}
+                {user.role !== "CUSTOMER" && (
+                  <> · {user.branch?.name ?? "Lintas cabang"}</>
+                )} ·{" "}
                 {user.isActive ? "Aktif" : "Nonaktif"}
               </p>
             </div>

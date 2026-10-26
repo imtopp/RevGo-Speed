@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { isOwnerOrSysAdmin } from "@/lib/guard";
+import { validasiAssignCabang, validasiCabangBaru } from "@/lib/staff-branch";
 import { hashPassword } from "@/lib/password";
 import { logAudit } from "@/lib/audit";
 import { revalidatePath } from "next/cache";
@@ -39,6 +40,8 @@ export async function createStaff(
   if (role === "SYS_ADMIN" && session.user.role !== "OWNER") {
     return { error: "Hanya Owner yang bisa membuat akun SysAdmin." };
   }
+  const errCabang = validasiCabangBaru(role, branchId);
+  if (errCabang) return { error: errCabang };
 
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) return { error: "Email sudah terpakai." };
@@ -149,9 +152,8 @@ export async function assignBranch(
 
   const user = await prisma.user.findUnique({ where: { id } });
   if (!user) return { error: "User tidak ditemukan." };
-  if (user.role === "OWNER" || user.role === "SYS_ADMIN") {
-    return { error: "Owner & SysAdmin lintas cabang, tidak di-assign." };
-  }
+  const errCabang = validasiAssignCabang(user.role, branchId);
+  if (errCabang) return { error: errCabang };
 
   await prisma.$transaction(async (tx) => {
     await tx.user.update({

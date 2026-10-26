@@ -1,6 +1,6 @@
 # PRD — RevGo Speed
 
-**Versi:** 1.7 (Upload logo otomatis resize/konversi)
+**Versi:** 1.8 (Penguatan kelola akun — cabang wajib, customer terpisah)
 **Tanggal:** 26 Oktober 2026
 **Status:** Rilis 1 selesai — semua fase A–E terpasang, siap produksi; Rilis 1.5 berjalan: FR-11 (audit) terpasang, FR-12 menyusul
 
@@ -16,6 +16,7 @@
 - v1.5 — **konsinyasi (26 Okt, dinaikkan dari §7):** flag `consignment` per part (wajib supplier) — stok masuk (stok awal & Stok Masuk) **tanpa Kas Keluar** (batch cost tetap → HPP benar), aksi **Retur Konsinyasi** (OUT atomik tanpa kas & tanpa beban laporan, AuditLog `STOCK_RETURN`), pembayaran supplier via **kas manual**; **bukan utang** — tanpa model pembayaran tempo. Hapus part: stok awal konsinyasi **tanpa reversal** (tidak pernah ada baris kas). FR-6/§3.2; §7 baris konsinyasi dihapus.
 - v1.6 — **backup & restore penuh (26 Okt, FR-10):** akses backup **Owner + SysAdmin** (sesuai nav & PRD — sebelumnya kode mengunci Owner); export **seluruh tabel** (tambah `RateLimitBuckets` — daftar tunggal `src/lib/backup.ts`); **Restore dari file JSON** (`POST /api/backup/import`, konfirmasi ketik `RESTORE`): replace **SEMUA data dalam 1 transaksi** (gagal = rollback, data lama utuh), jejak AuditLog `SYSTEM_IMPORT`, rate limit paling ketat. **⚠️ Aturan sinkronisasi:** setiap perubahan `schema.prisma` (tambah/hapus model, ubah kolom/tipe) **wajib** disinkronkan dengan `src/lib/backup.ts` + export/import route — unit test `backup.test.ts` membaca `schema.prisma` dan **gagal otomatis** bila lupa.
 - v1.7 — **upload logo otomatis (26 Okt, FR-10):** SysAdmin/Owner cukup pilih file — server **auto-orient (EXIF), resize maks 512px, konversi WebP** (sharp), hasil disimpan sebagai **data URL** di `SystemSetting.logo_url` (ikut backup & branding otomatis; tanpa layanan storage eksternal). Terima PNG/JPEG/WebP/SVG ≤ 5 MB; opsi lama **pakai URL https tetap ada**. Validasi tipe/ukuran & sanitasi `data:image/webp|png|jpeg` terpusat di `src/lib/logo.ts` (unit test); body limit server action dinaikkan ke 6 MB (`next.config.ts`).
+- v1.8 — **penguatan kelola akun (26 Okt, FR-10):** **Admin & Mekanik wajib terikat 1 cabang** — validasi server `src/lib/staff-branch.ts` (unit test) menolak buat/assign tanpa cabang (sebelumnya opsi "Lintas cabang" bisa dipilih → efektif lintas padahal desain `getStaffBranchId` hanya utk Owner/SysAdmin); opsi lintas cabang hanya untuk **SysAdmin**; **akun customer dipisah** dari daftar staff (section terpisah — sebelumnya customer ikut tampil & kebagian form assign cabang).
 
 ---
 
@@ -226,7 +227,7 @@ Akses: **Owner + SysAdmin**; perubahan tercatat (siapa, kapan).
 - **Jam operasional per cabang** (hari aktif, jam buka/tutup) → tampil saat booking; patokan tindak lanjut admin.
 - **Kebijakan DP & pembatalan:** `TANPA_REFUND` / `REFUND_PENUH` (MVP: panduan + eksekusi manual lewat kas; otomatis fase 2).
 - **Parameter:** nama tampilan aplikasi, **logo** (upload file — auto-resize 512px WebP; atau URL https), **prefix kode servis** (mis. `SV-`).
-- **Kelola akun staff:** buat akun Admin/Mekanik/SysAdmin, assign cabang, reset password, nonaktifkan.
+- **Kelola akun staff:** buat akun Admin/Mekanik/SysAdmin, assign cabang, reset password, nonaktifkan. **Admin & Mekanik wajib terikat 1 cabang** (server menolak tanpa cabang); lintas cabang hanya untuk SysAdmin. **Akun customer ditampilkan terpisah** dari daftar staff (reset/nonaktifkan saja, tanpa assign cabang).
 - **Backup data:** unduh salinan **seluruh tabel** database (JSON export) — rutinitas SysAdmin.
 - **Restore data (v1.6):** pulihkan penuh dari file backup JSON — replace **semua data** dalam **1 transaksi DB** (gagal di tengah = rollback, data lama utuh); wajib ketik `RESTORE` untuk konfirmasi; jejak `SYSTEM_IMPORT` di AuditLog; rate limit paling ketat. Akses Owner + SysAdmin.
 - **⚠️ Sinkronisasi skema (wajib):** export & import dikontrol **daftar tunggal** `src/lib/backup.ts` (`BACKUP_TABLES`). Setiap perubahan `prisma/schema.prisma` (tambah/hapus model, ubah kolom/tipe) **wajib** disinkronkan ke daftar itu; `src/lib/backup.test.ts` membaca `schema.prisma` dan **gagal otomatis** bila lupa — jangan di-skip/di-disable.

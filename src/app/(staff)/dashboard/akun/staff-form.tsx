@@ -9,11 +9,15 @@ type Branch = { id: string; name: string };
 export function StaffForm({ branches }: { branches: Branch[] }) {
   const [open, setOpen] = useState(false);
   const [pesan, setPesan] = useState<string | null>(null);
+  const [role, setRole] = useState("ADMIN");
   const [state, action] = useActionState<StaffState, FormData>(
     createStaff,
     {},
   );
   const [stateSebelumnya, setStateSebelumnya] = useState(state);
+
+  // Admin/Mekanik wajib terikat 1 cabang — lintas cabang hanya untuk SysAdmin.
+  const wajibCabang = role === "ADMIN" || role === "MECHANIC";
 
   // Sukses → tutup form + notif sementara; gagal → form tetap terbuka.
   if (state !== stateSebelumnya) {
@@ -113,7 +117,8 @@ export function StaffForm({ branches }: { branches: Branch[] }) {
           </label>
           <select
             name="role"
-            defaultValue="ADMIN"
+            value={role}
+            onChange={(e) => setRole(e.target.value)}
             className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-base outline-none focus:border-slate-900"
           >
             <option value="SYS_ADMIN">System Administrator</option>
@@ -123,14 +128,21 @@ export function StaffForm({ branches }: { branches: Branch[] }) {
         </div>
         <div>
           <label className="block text-sm font-medium text-foreground">
-            Cabang (Admin/Mekanik)
+            {wajibCabang ? "Cabang" : "Cabang (opsional)"}
           </label>
           <select
             name="branchId"
             defaultValue=""
+            required={wajibCabang}
             className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-base outline-none focus:border-slate-900"
           >
-            <option value="">— Lintas cabang (SysAdmin) —</option>
+            {wajibCabang ? (
+              <option value="" disabled>
+                Pilih cabang…
+              </option>
+            ) : (
+              <option value="">— Lintas cabang (SysAdmin) —</option>
+            )}
             {branches.map((b) => (
               <option key={b.id} value={b.id}>
                 {b.name}
