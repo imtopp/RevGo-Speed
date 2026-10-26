@@ -53,6 +53,7 @@ export function StaffForm({ branches }: { branches: Branch[] }) {
       {open && (
         <form
           action={action}
+          onReset={(e) => e.preventDefault()}
           className="space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card"
         >
           {state.error && (

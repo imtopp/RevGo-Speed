@@ -183,6 +183,7 @@ export function BranchManager({ branches }: { branches: Branch[] }) {
       {showCreate && (
         <form
           action={createAction}
+          onReset={(e) => e.preventDefault()}
           className="space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card"
         >
           <BranchFields />
@@ -226,6 +227,7 @@ export function BranchManager({ branches }: { branches: Branch[] }) {
             {editingId === branch.id && (
               <form
                 action={editAction}
+                onReset={(e) => e.preventDefault()}
                 className="mt-3 space-y-3 border-t border-slate-200 pt-3"
               >
                 <input type="hidden" name="id" value={branch.id} />

@@ -64,7 +64,7 @@ export function ManualCashflowForm({
       )}
 
       {open && (
-    <form action={action} className="space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
+    <form action={action} onReset={(e) => e.preventDefault()} className="space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
       <p className="text-sm font-semibold text-foreground">Entri Kas Manual</p>
       {state.error && (
         <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-danger">{state.error}</p>

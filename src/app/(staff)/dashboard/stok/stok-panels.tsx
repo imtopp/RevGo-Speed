@@ -149,7 +149,7 @@ function PartForm({
   }
 
   return (
-    <form action={action} className="space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
+    <form action={action} onReset={(e) => e.preventDefault()} className="space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
       <p className="text-sm font-semibold text-foreground">Tambah Part Baru</p>
       <Msg state={state} />
       {!isLocked && (
@@ -290,7 +290,7 @@ function StockInForm({
   }
 
   return (
-    <form action={action} className="space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
+    <form action={action} onReset={(e) => e.preventDefault()} className="space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
       <p className="text-sm font-semibold text-foreground">Stok Masuk (Pembelian)</p>
       <Msg state={state} />
       <div>
@@ -377,7 +377,7 @@ function SellForm({ parts }: { parts: Part[] }) {
       {pesan && (
         <p className="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700">{pesan}</p>
       )}
-      <form key={resetKey} action={action} className="space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
+      <form key={resetKey} action={action} onReset={(e) => e.preventDefault()} className="space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
       <p className="text-sm font-semibold text-foreground">
         Jual Part (Tanpa Servis)
       </p>
@@ -460,7 +460,7 @@ function AdjustForm({
   }
 
   return (
-    <form action={action} className="space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
+    <form action={action} onReset={(e) => e.preventDefault()} className="space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
       <p className="text-sm font-semibold text-foreground">Penyesuaian Stok</p>
       <Msg state={state} />
       <div>
@@ -511,7 +511,7 @@ function SupplierPanel({ suppliers }: { suppliers: Supplier[] }) {
       {pesan && (
         <p className="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700">{pesan}</p>
       )}
-      <form key={resetKey} action={createAction} className="space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
+      <form key={resetKey} action={createAction} onReset={(e) => e.preventDefault()} className="space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
         <p className="text-sm font-semibold text-foreground">Tambah Supplier</p>
         {createState.error && (
           <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-danger">
@@ -568,7 +568,7 @@ function SupplierPanel({ suppliers }: { suppliers: Supplier[] }) {
 function SupplierEdit({ supplier }: { supplier: Supplier }) {
   const [state, action] = useActionState<StokState, FormData>(updateSupplier, {});
   return (
-    <form action={action} className="mt-3 space-y-3 border-t border-slate-200 pt-3">
+    <form action={action} onReset={(e) => e.preventDefault()} className="mt-3 space-y-3 border-t border-slate-200 pt-3">
       <input type="hidden" name="id" value={supplier.id} />
       <Msg state={state} />
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -646,6 +646,7 @@ function PartRow({
           </button>
           <form
             action={delAction}
+            onReset={(e) => e.preventDefault()}
             onSubmit={(e) => {
               if (
                 !confirm(
@@ -678,7 +679,7 @@ function PartEdit({ part, kategoris }: { part: Part; kategoris: string[] }) {
   const [sellPrice, setSellPrice] = useState(part.sellPrice);
   const rugi = sellPrice < part.buyPrice;
   return (
-    <form action={action} className="mt-3 space-y-3 border-t border-slate-200 pt-3">
+    <form action={action} onReset={(e) => e.preventDefault()} className="mt-3 space-y-3 border-t border-slate-200 pt-3">
       <input type="hidden" name="id" value={part.id} />
       <Msg state={state} />
       <label className="flex items-start gap-2 rounded-lg bg-slate-50 p-3 text-sm text-foreground ring-1 ring-slate-200">
@@ -764,7 +765,7 @@ function ReturForm({
 
   const partsKonsti = parts.filter((p) => p.consignment);
   return (
-    <form action={action} className="space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
+    <form action={action} onReset={(e) => e.preventDefault()} className="space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
       <p className="text-sm font-semibold text-foreground">Retur Konsinyasi</p>
       <Msg state={state} />
       {partsKonsti.length === 0 ? (
@@ -806,7 +807,7 @@ function ReturForm({
 function CostEdit({ movementId, cost }: { movementId: string; cost: number }) {
   const [state, action] = useActionState<StokState, FormData>(correctStockCost, {});
   return (
-    <form action={action} className="mt-3 space-y-2 border-t border-slate-200 pt-3">
+    <form action={action} onReset={(e) => e.preventDefault()} className="mt-3 space-y-2 border-t border-slate-200 pt-3">
       <input type="hidden" name="movementId" value={movementId} />
       <Msg state={state} />
       <div>
