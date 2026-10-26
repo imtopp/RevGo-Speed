@@ -8,6 +8,13 @@
  * diperlukan. Unit test `src/lib/backup.test.ts` membaca `schema.prisma`
  * dan GAGAL otomatis kalau daftar ini tidak sinkron — jangan di-skip.
  *
+ * Tambah KOLON (bukan model): export otomatis ikut (findMany tanpa select);
+ * import file lama → kolom baru terisi @default(...). Karena itu kolom baru
+ * WAJIB punya `@default(...)` atau nullable (aturan expand–contract) —
+ * kolom wajib tanpa default membuat import file lama gagal (rollback, data
+ * lama utuh, tapi restore jadi tidak jalan). Ganti TIPE kolom: kedua arah
+ * bisa gagal di runtime → wajib migrasi data + penyesuaian kode baca/tulis.
+ *
  * Urutan `BACKUP_TABLES` = urutan CREATE (parent → child);
  * urutan DELETE (restore replace) = kebalikannya.
  */

@@ -229,6 +229,8 @@ Akses: **Owner + SysAdmin**; perubahan tercatat (siapa, kapan).
 - **Backup data:** unduh salinan **seluruh tabel** database (JSON export) — rutinitas SysAdmin.
 - **Restore data (v1.6):** pulihkan penuh dari file backup JSON — replace **semua data** dalam **1 transaksi DB** (gagal di tengah = rollback, data lama utuh); wajib ketik `RESTORE` untuk konfirmasi; jejak `SYSTEM_IMPORT` di AuditLog; rate limit paling ketat. Akses Owner + SysAdmin.
 - **⚠️ Sinkronisasi skema (wajib):** export & import dikontrol **daftar tunggal** `src/lib/backup.ts` (`BACKUP_TABLES`). Setiap perubahan `prisma/schema.prisma` (tambah/hapus model, ubah kolom/tipe) **wajib** disinkronkan ke daftar itu; `src/lib/backup.test.ts` membaca `schema.prisma` dan **gagal otomatis** bila lupa — jangan di-skip/di-disable.
+  - **Tambah kolom:** export otomatis ikut (`findMany` tanpa `select`); import file lama → kolom baru terisi `@default(...)` — karena itu **kolom baru wajib `@default(...)`/nullable** (expand–contract). Kolom wajib tanpa default → import file lama gagal (rollback, data lama utuh).
+  - **Ganti tipe/hapus kolom:** file lama bisa gagal diimport → wajib migrasi data + upgrade export/import bersamaan (2 fase deploy).
 
 ### FR-11 Audit & anti-fraud — **Rilis 1.5 (terpasang)**
 Akses: **Owner** (halaman Audit & void); log ditulis otomatis untuk semua peran.
