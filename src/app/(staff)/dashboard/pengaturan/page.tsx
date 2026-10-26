@@ -1,14 +1,15 @@
 import { prisma } from "@/lib/prisma";
 import { requireOwnerOrSysAdmin } from "@/lib/guard";
 import { SettingForm } from "./setting-form";
+import { LogoUploader } from "./logo-uploader";
 import { BranchManager } from "./branch-manager";
+import { Fragment } from "react";
 import Link from "next/link";
 
 export const metadata = { title: "Pengaturan" };
 
 const SETTING_FIELDS = [
   { key: "app_name", label: "Nama Aplikasi", placeholder: "Nama bengkel (tampil ke customer), mis. TBRT" },
-  { key: "logo_url", label: "Logo (URL gambar)", placeholder: "https://.../logo-bengkel.png" },
   {
     key: "dp_policy",
     label: "Kebijakan Refund DP",
@@ -62,11 +63,15 @@ export default async function PengaturanPage() {
         <h2 className="text-sm font-semibold text-foreground">Umum</h2>
         <div className="space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
           {SETTING_FIELDS.map((field) => (
-            <SettingForm
-              key={field.key}
-              field={field}
-              initialValue={settingMap.get(field.key) ?? ""}
-            />
+            <Fragment key={field.key}>
+              <SettingForm
+                field={field}
+                initialValue={settingMap.get(field.key) ?? ""}
+              />
+              {field.key === "app_name" && (
+                <LogoUploader value={settingMap.get("logo_url") ?? ""} />
+              )}
+            </Fragment>
           ))}
         </div>
       </section>

@@ -1,9 +1,16 @@
 "use server";
 
+import sharp from "sharp";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { isOwnerOrSysAdmin } from "@/lib/guard";
 import { logAudit } from "@/lib/audit";
+import {
+  LOGO_MAX_DATA_URL_CHARS,
+  isSafeLogoValue,
+  summarizeLogoValue,
+  validateLogoFileMeta,
+} from "@/lib/logo";
 import { revalidatePath } from "next/cache";
 
 export type SettingState = { error?: string; success?: string };
@@ -47,9 +54,9 @@ export async function updateSetting(
   if (!ALLOWED_SETTING_KEYS.has(key)) {
     return { error: "Key pengaturan tidak dikenal." };
   }
-  // Logo hanya https:// atau path relatif — sejalan dengan sanitasi di branding.ts.
-  if (key === "logo_url" && value && !value.startsWith("https://") && !value.startsWith("/")) {
-    return { error: "Logo harus URL https:// atau path gambar (diawali /)." };
+  // Logo: https://, path relatif /, atau data URL image — sejalan branding.ts.
+  if (key === "logo_url" && value && !isSafeLogoValue(value)) {
+    return { error: "Logo harus URL https://, path gambar (/), atau data URL image yang valid." };
   }
   const numerik = SETTING_NUMERIK[key];
   if (numerik) {
@@ -81,6 +88,66 @@ export async function updateSetting(
 
   revalidatePath("/dashboard/pengaturan");
   return { success: `Pengaturan "${key}" tersimpan.` };
+}
+
+/**
+ * Upload logo aplikasi: file → auto-orient, resize maks 512px, konversi WebP,
+ * lalu simpan sebagai data URL di SystemSetting.logo_url (ikut backup otomatis).
+ */
+export async function uploadLogo(
+  _prev: SettingState,
+  formData: FormData,
+): Promise<SettingState> {
+  const session = await requireOwnerOrSysAdminAction();
+
+  const file = formData.get("logo");
+  if (!(file instanceof File)) return { error: "Pilih file logo dulu." };
+  const metaError = validateLogoFileMeta({ type: file.type, size: file.size });
+  if (metaError) return { error: metaError };
+
+  const input = Buffer.from(await file.arrayBuffer());
+
+  const proses = async (quality: number): Promise<Buffer> =>
+    sharp(input)
+      .rotate() // auto-orient sesuai EXIF
+      .resize({ width: 512, height: 512, fit: "inside", withoutEnlargement: true })
+      .webp({ quality })
+      .toBuffer();
+
+  let output: Buffer;
+  try {
+    output = await proses(82);
+    if (output.length > 250_000) output = await proses(62);
+  } catch {
+    return { error: "File logo tidak bisa diproses. Pastikan gambar tidak rusak." };
+  }
+
+  const dataUrl = `data:image/webp;base64,${output.toString("base64")}`;
+  if (dataUrl.length > LOGO_MAX_DATA_URL_CHARS) {
+    return { error: "Hasil proses logo terlalu besar. Coba gambar sederhana." };
+  }
+
+  const prev = await prisma.systemSetting.findUnique({ where: { key: "logo_url" } });
+
+  await prisma.$transaction(async (tx) => {
+    await tx.systemSetting.upsert({
+      where: { key: "logo_url" },
+      update: { value: dataUrl, updatedBy: session.user.id },
+      create: { key: "logo_url", value: dataUrl, updatedBy: session.user.id },
+    });
+    await logAudit(tx, session.user, {
+      action: "SETTING_UPDATE",
+      entityType: "SystemSetting",
+      entityId: "logo_url",
+      summary: `Logo aplikasi diunggah (diproses otomatis: maks 512px WebP)`,
+      before: prev ? { value: summarizeLogoValue(prev.value) } : undefined,
+      after: { value: summarizeLogoValue(dataUrl) },
+    });
+  });
+
+  revalidatePath("/", "layout");
+  revalidatePath("/dashboard/pengaturan");
+  return { success: "Logo berhasil diproses & disimpan (maks 512px, WebP)." };
 }
 
 function bacaHariAktif(formData: FormData): string | null {

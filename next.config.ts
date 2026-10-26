@@ -5,6 +5,10 @@ const nextConfig: NextConfig = {
   serverExternalPackages: ["better-sqlite3", "@prisma/adapter-better-sqlite3"],
   devIndicators: false,
   poweredByHeader: false,
+  experimental: {
+    // Upload logo (pengaturan) mengirim file asli sampai 5 MB — default 1 MB terlalu kecil.
+    serverActions: { bodySizeLimit: "6mb" },
+  },
   // Next 16 memblokir dev asset & HMR dari origin di luar localhost ("cross-origin
   // dev protection"). Tanpa ini, akses via IP LAN (mis. hp customer/staf di
   // jaringan bengkel) memuat halaman tapi React tidak pernah hidrasi —

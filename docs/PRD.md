@@ -1,6 +1,6 @@
 # PRD — RevGo Speed
 
-**Versi:** 1.6 (Backup & restore penuh dari file, sinkronisasi skema)
+**Versi:** 1.7 (Upload logo otomatis resize/konversi)
 **Tanggal:** 26 Oktober 2026
 **Status:** Rilis 1 selesai — semua fase A–E terpasang, siap produksi; Rilis 1.5 berjalan: FR-11 (audit) terpasang, FR-12 menyusul
 
@@ -15,6 +15,7 @@
 - v1.4 — **stok awal part = belanja (26 Okt):** membuat part dengan qty > 0 & harga beli > 0 otomatis catat **Kas Keluar** atomik (kantong sesuai cara bayar, FR-6/§3.2) — modal tertahan di barang ikut terbaca di saldo & laporan; koreksi harga batch stok awal otomatis ikut menggeser kas (deteksi via baris `Pembelian Part`). **Barang consignment/konsinyasi** tercatat di §7 (fase 2+). + **Hapus part guard bertingkat** (tolak part dipakai servis/penjualan & riwayat selain stok awal; part stok-awal-saja boleh dihapus + **reversal kas otomatis**, AuditLog `PART_DELETE`), **SKU auto** `PART-0001` saat dikosongkan (FR-6), **cari/filter/hitungan daftar part** (FR-6).
 - v1.5 — **konsinyasi (26 Okt, dinaikkan dari §7):** flag `consignment` per part (wajib supplier) — stok masuk (stok awal & Stok Masuk) **tanpa Kas Keluar** (batch cost tetap → HPP benar), aksi **Retur Konsinyasi** (OUT atomik tanpa kas & tanpa beban laporan, AuditLog `STOCK_RETURN`), pembayaran supplier via **kas manual**; **bukan utang** — tanpa model pembayaran tempo. Hapus part: stok awal konsinyasi **tanpa reversal** (tidak pernah ada baris kas). FR-6/§3.2; §7 baris konsinyasi dihapus.
 - v1.6 — **backup & restore penuh (26 Okt, FR-10):** akses backup **Owner + SysAdmin** (sesuai nav & PRD — sebelumnya kode mengunci Owner); export **seluruh tabel** (tambah `RateLimitBuckets` — daftar tunggal `src/lib/backup.ts`); **Restore dari file JSON** (`POST /api/backup/import`, konfirmasi ketik `RESTORE`): replace **SEMUA data dalam 1 transaksi** (gagal = rollback, data lama utuh), jejak AuditLog `SYSTEM_IMPORT`, rate limit paling ketat. **⚠️ Aturan sinkronisasi:** setiap perubahan `schema.prisma` (tambah/hapus model, ubah kolom/tipe) **wajib** disinkronkan dengan `src/lib/backup.ts` + export/import route — unit test `backup.test.ts` membaca `schema.prisma` dan **gagal otomatis** bila lupa.
+- v1.7 — **upload logo otomatis (26 Okt, FR-10):** SysAdmin/Owner cukup pilih file — server **auto-orient (EXIF), resize maks 512px, konversi WebP** (sharp), hasil disimpan sebagai **data URL** di `SystemSetting.logo_url` (ikut backup & branding otomatis; tanpa layanan storage eksternal). Terima PNG/JPEG/WebP/SVG ≤ 5 MB; opsi lama **pakai URL https tetap ada**. Validasi tipe/ukuran & sanitasi `data:image/webp|png|jpeg` terpusat di `src/lib/logo.ts` (unit test); body limit server action dinaikkan ke 6 MB (`next.config.ts`).
 
 ---
 
@@ -224,7 +225,7 @@ PENDING / WAITING_APPROVAL / CONFIRMED / CHECKED_IN ──(batal)→ CANCELLED (
 Akses: **Owner + SysAdmin**; perubahan tercatat (siapa, kapan).
 - **Jam operasional per cabang** (hari aktif, jam buka/tutup) → tampil saat booking; patokan tindak lanjut admin.
 - **Kebijakan DP & pembatalan:** `TANPA_REFUND` / `REFUND_PENUH` (MVP: panduan + eksekusi manual lewat kas; otomatis fase 2).
-- **Parameter:** nama tampilan aplikasi, **logo** (URL), **prefix kode servis** (mis. `SV-`).
+- **Parameter:** nama tampilan aplikasi, **logo** (upload file — auto-resize 512px WebP; atau URL https), **prefix kode servis** (mis. `SV-`).
 - **Kelola akun staff:** buat akun Admin/Mekanik/SysAdmin, assign cabang, reset password, nonaktifkan.
 - **Backup data:** unduh salinan **seluruh tabel** database (JSON export) — rutinitas SysAdmin.
 - **Restore data (v1.6):** pulihkan penuh dari file backup JSON — replace **semua data** dalam **1 transaksi DB** (gagal di tengah = rollback, data lama utuh); wajib ketik `RESTORE` untuk konfirmasi; jejak `SYSTEM_IMPORT` di AuditLog; rate limit paling ketat. Akses Owner + SysAdmin.
@@ -406,7 +407,7 @@ Bagian ini mendokumentasikan perilaku nyata di kode yang **melampaui ketentuan m
 - Selisih opname tampil sebagai baris rupiah "beban/temuan"; tabel laba per servis per baris + link detail; parameter tanggal divalidasi ketat.
 
 ### Pengaturan & branding (FR-10)
-- Parameter booking & slot (lead time, horizon, buffer, kuota pit per cabang) tervalidasi rentang; server menolak key di luar allowlist + **sanitasi URL logo dua lapis** (tolak skema selain `https:`/`/`); duplikat nama cabang dicek.
+- Parameter booking & slot (lead time, horizon, buffer, kuota pit per cabang) tervalidasi rentang; server menolak key di luar allowlist + **sanitasi logo dua lapis** (`https:`/`/` atau **data URL image** hasil upload — tolak skema lain); duplikat nama cabang dicek.
 - Branding **merambat**: manifest/PWA, metadata browser, login/register, cetak nota, sampai nama file backup — bukan hanya header.
 
 ### Audit (FR-11)
