@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { createCatalog, type KatalogState } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
 import { NumberInput } from "@/components/number-input";
@@ -10,10 +10,30 @@ const inputCls =
 
 export function CatalogManager() {
   const [open, setOpen] = useState(false);
+  const [pesan, setPesan] = useState<string | null>(null);
   const [state, action] = useActionState<KatalogState, FormData>(
     createCatalog,
     {},
   );
+  const [stateSebelumnya, setStateSebelumnya] = useState(state);
+
+  // Sukses → tutup form + notif sementara di luar form (disesuaikan saat
+  // state action berubah — pola React "adjusting state when props change").
+  // Gagal → form tetap terbuka, error tampil di dalam form.
+  if (state !== stateSebelumnya) {
+    setStateSebelumnya(state);
+    if (state.success) {
+      setOpen(false);
+      setPesan(state.success);
+    }
+  }
+
+  // Auto-hilangkan notif sukses.
+  useEffect(() => {
+    if (!pesan) return;
+    const t = setTimeout(() => setPesan(null), 5000);
+    return () => clearTimeout(t);
+  }, [pesan]);
 
   return (
     <div className="max-w-lg space-y-3">
@@ -25,6 +45,12 @@ export function CatalogManager() {
         {open ? "Tutup Tambah Jasa" : "+ Tambah Jasa"}
       </button>
 
+      {pesan && (
+        <p className="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700">
+          {pesan}
+        </p>
+      )}
+
       {open && (
         <form
           action={action}
@@ -33,11 +59,6 @@ export function CatalogManager() {
           {state.error && (
             <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-danger">
               {state.error}
-            </p>
-          )}
-          {state.success && (
-            <p className="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700">
-              {state.success}
             </p>
           )}
           <div>
