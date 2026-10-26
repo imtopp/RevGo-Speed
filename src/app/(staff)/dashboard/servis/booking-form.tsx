@@ -289,7 +289,7 @@ export function BookingForm({
 
       <SubmitButton
         pendingText="Membuat..."
-        disabled={!plateValid}
+        disabled={!plateValid || (tipeKedatangan === "reservasi" && !jadwal)}
         className="w-full rounded-lg bg-primary py-2.5 text-sm font-medium text-white active:opacity-90 disabled:opacity-60"
       >
         Buat Booking

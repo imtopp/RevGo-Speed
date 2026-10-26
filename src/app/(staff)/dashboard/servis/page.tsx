@@ -7,6 +7,7 @@ import {
   formatRupiah,
   formatTanggalPendek,
   ACTIVE_STATUSES,
+  windowHariWIB,
 } from "@/lib/service-status";
 import { BookingForm } from "./booking-form";
 import { PendingLink } from "@/components/pending-link";
@@ -30,7 +31,7 @@ const FILTERS: { key: string; label: string }[] = [
 export default async function ServisPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string; booking?: string }>;
+  searchParams: Promise<{ status?: string; booking?: string; tanggal?: string }>;
 }) {
   await requireStaffRole(["OWNER", "ADMIN"]);
   const branchIdStaff = await getStaffBranchId();
@@ -39,14 +40,27 @@ export default async function ServisPage({
   const rawFilter = params.status ?? "aktif";
   const filter = FILTERS.some((f) => f.key === rawFilter) ? rawFilter : "aktif";
   const showBooking = params.booking === "1";
+  // Filter tanggal (hari WIB) — lolos validasi dulu, nilai asing jangan masuk query.
+  const rentangTanggal = windowHariWIB(params.tanggal);
+  const tanggal = rentangTanggal ? params.tanggal! : null;
 
   const where = {
     ...(branchIdStaff ? { branchId: branchIdStaff } : {}),
+    ...(rentangTanggal ? { scheduledAt: rentangTanggal } : {}),
     ...(filter === "semua"
       ? {}
       : filter === "aktif"
         ? { status: { in: ACTIVE_STATUSES } }
         : { status: filter as ServiceStatus }),
+  };
+
+  // Query string konsisten: tab/tombol tidak boleh melepas filter status,
+  // booking, maupun tanggal yang sedang aktif.
+  const qs = (status: string, denganBooking: boolean) => {
+    const p = new URLSearchParams({ status });
+    if (denganBooking) p.set("booking", "1");
+    if (tanggal) p.set("tanggal", tanggal);
+    return `/dashboard/servis?${p.toString()}`;
   };
 
   const [services, branches, catalog, modelRows] = await Promise.all([
@@ -91,7 +105,7 @@ export default async function ServisPage({
           </Link>
         </div>
         <PendingLink
-          href={showBooking ? "/dashboard/servis" : "/dashboard/servis?booking=1"}
+          href={qs(filter, !showBooking)}
           className="rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white active:opacity-90"
         >
           {showBooking ? "Tutup Booking Servis" : "+ Booking Servis"}
@@ -113,7 +127,7 @@ export default async function ServisPage({
           return (
             <PendingLink
               key={f.key}
-              href={`/dashboard/servis?status=${f.key}${showBooking ? "&booking=1" : ""}`}
+              href={qs(f.key, showBooking)}
               className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-medium ${
                 active
                   ? "bg-primary text-white"
@@ -125,6 +139,39 @@ export default async function ServisPage({
           );
         })}
       </div>
+
+      {/* Filter tanggal — janji FR-3: filter status + tanggal */}
+      <form method="get" className="flex flex-wrap items-center gap-2">
+        <input type="hidden" name="status" value={filter} />
+        {showBooking && <input type="hidden" name="booking" value="1" />}
+        <label
+          htmlFor="filter-tanggal"
+          className="text-xs font-medium text-muted-foreground"
+        >
+          Tanggal kedatangan
+        </label>
+        <input
+          id="filter-tanggal"
+          type="date"
+          name="tanggal"
+          defaultValue={tanggal ?? ""}
+          className="rounded-lg border border-slate-300 bg-surface px-3 py-1.5 text-sm text-foreground outline-none focus:border-slate-400"
+        />
+        <button
+          type="submit"
+          className="rounded-lg bg-surface px-3 py-1.5 text-xs font-medium text-foreground ring-1 ring-slate-200 shadow-card active:opacity-90"
+        >
+          Terapkan
+        </button>
+        {tanggal && (
+          <Link
+            href={qs(filter, showBooking)}
+            className="text-xs font-medium text-muted-foreground underline underline-offset-2"
+          >
+            Semua tanggal
+          </Link>
+        )}
+      </form>
 
       {/* Papan kerja: list servis */}
       <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">

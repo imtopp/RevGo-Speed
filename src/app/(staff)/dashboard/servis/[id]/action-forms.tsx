@@ -216,7 +216,11 @@ function RescheduleForm({ service }: { service: ServiceInfo }) {
         onChange={setJadwal}
         pakaiLeadTime={false}
       />
-      <SubmitButton pendingText="Menyimpan..." className={btnSecondary}>
+      <SubmitButton
+        pendingText="Menyimpan..."
+        disabled={!jadwal}
+        className={btnSecondary}
+      >
         Simpan Jadwal Baru
       </SubmitButton>
     </form>

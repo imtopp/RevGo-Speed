@@ -75,22 +75,31 @@ function AlertCard({
   );
 }
 
+const HALAMAN_SIZE = 200;
+
 export default async function AuditPage({
   searchParams,
 }: {
-  searchParams: Promise<{ action?: string }>;
+  searchParams: Promise<{ action?: string; page?: string }>;
 }) {
   await requireStaffRole(["OWNER"]);
-  const { action } = await searchParams;
+  const { action, page: pageRaw } = await searchParams;
   const filterAction = action && action in ACTION_LABEL ? action : null;
+  // Nomor halaman dari URL — nilai asing jangan jadi skip negatif/NaN.
+  const halaman =
+    pageRaw && /^\d+$/.test(pageRaw) ? Math.max(1, Number(pageRaw)) : 1;
+  const skip = (halaman - 1) * HALAMAN_SIZE;
+  const whereLog = filterAction ? { action: filterAction } : {};
 
-  const [logs, voidedCount, voidedPayments, laborRaw, partRaw, adjustLogs] =
+  const [logs, totalLogs, voidedCount, voidedPayments, laborRaw, partRaw, adjustLogs] =
     await Promise.all([
       prisma.auditLog.findMany({
-        where: filterAction ? { action: filterAction } : {},
+        where: whereLog,
         orderBy: { createdAt: "desc" },
-        take: 200,
+        skip,
+        take: HALAMAN_SIZE,
       }),
+      prisma.auditLog.count({ where: whereLog }),
       prisma.payment.count({ where: { voidedAt: { not: null } } }),
       prisma.payment.findMany({
         where: { voidedAt: { not: null } },
@@ -130,6 +139,14 @@ export default async function AuditPage({
     (s) => s.catalog && s.laborCost > 0 && s.laborCost < s.catalog.hargaDasar,
   );
   const partFlags = partRaw.filter((sp) => sp.price < sp.part.sellPrice);
+  const adaSebelum = halaman > 1;
+  const adaSesudah = skip + logs.length < totalLogs;
+  const hrefHalaman = (n: number) => {
+    const q = new URLSearchParams();
+    if (filterAction) q.set("action", filterAction);
+    if (n > 1) q.set("page", String(n));
+    return `/dashboard/audit?${q.toString()}`;
+  };
 
   return (
     <div className="space-y-4">
@@ -209,12 +226,18 @@ export default async function AuditPage({
             Log aksi {filterAction ? `· ${ACTION_LABEL[filterAction]}` : ""}
           </h2>
           <span className="text-xs text-muted-foreground">
-            {logs.length} entri terakhir
+            {totalLogs === 0
+              ? "0 entri"
+              : logs.length === 0
+                ? `Halaman kosong dari ${totalLogs.toLocaleString("id-ID")} entri`
+                : `Menampilkan ${skip + 1}–${skip + logs.length} dari ${totalLogs.toLocaleString("id-ID")} entri`}
           </span>
         </div>
         {logs.length === 0 ? (
           <p className="mt-3 text-sm text-muted-foreground">
-            Belum ada log untuk filter ini.
+            {totalLogs === 0
+              ? "Belum ada log untuk filter ini."
+              : "Tidak ada entri di halaman ini."}
           </p>
         ) : (
           <ul className="mt-3 divide-y divide-slate-100">
@@ -255,6 +278,33 @@ export default async function AuditPage({
               </li>
             ))}
           </ul>
+        )}
+        {(adaSebelum || adaSesudah) && (
+          <div className="mt-3 flex items-center justify-between gap-2">
+            {adaSebelum ? (
+              <Link
+                href={hrefHalaman(halaman - 1)}
+                className="rounded-lg border border-slate-300 bg-surface px-3 py-1.5 text-xs font-medium text-foreground active:opacity-90"
+              >
+                ← Sebelumnya
+              </Link>
+            ) : (
+              <span />
+            )}
+            <span className="text-xs text-muted-foreground">
+              Halaman {halaman.toLocaleString("id-ID")}
+            </span>
+            {adaSesudah ? (
+              <Link
+                href={hrefHalaman(halaman + 1)}
+                className="rounded-lg border border-slate-300 bg-surface px-3 py-1.5 text-xs font-medium text-foreground active:opacity-90"
+              >
+                Berikutnya →
+              </Link>
+            ) : (
+              <span />
+            )}
+          </div>
         )}
       </div>
     </div>

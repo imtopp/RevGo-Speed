@@ -161,7 +161,12 @@ export function SlotPicker({
                   key={t.date}
                   type="button"
                   disabled={nonaktif}
-                  onClick={() => setTanggalDipilih(t.date)}
+                  onClick={() => {
+                    setTanggalDipilih(t.date);
+                    // Slot terpilih berasal dari tanggal lain — kosongkan
+                    // supaya tidak ikut terkirim saat user ganti tanggal.
+                    if (value && value.slice(0, 10) !== t.date) onChange("");
+                  }}
                   title={labelPanjang(t.date)}
                   className={`w-14 shrink-0 rounded-lg border px-1 py-1.5 text-center active:opacity-90 ${
                     aktif

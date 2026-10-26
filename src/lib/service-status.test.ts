@@ -9,6 +9,7 @@ import {
   formatRupiah,
   formatTanggal,
   formatTanggalPendek,
+  windowHariWIB,
 } from "./service-status";
 import type { ServiceStatus } from "@db/prisma/client";
 
@@ -106,5 +107,33 @@ describe("formatTanggal & formatTanggalPendek", () => {
     const d = new Date("2026-10-24T07:30:00");
     expect(formatTanggalPendek(d)).not.toMatch(/2026/);
     expect(formatTanggal(d)).toMatch(/\d{2}\.\d{2}/);
+  });
+});
+
+describe("windowHariWIB (filter tanggal papan servis)", () => {
+  it("format valid → window WIB setengah terbuka [00:00, 00:00 berikutnya)", () => {
+    expect(windowHariWIB("2026-10-26")).toEqual({
+      gte: "2026-10-26T00:00:00+07:00",
+      lt: "2026-10-27T00:00:00+07:00",
+    });
+  });
+
+  it("lintas bulan, tahun, & tahun kabisat", () => {
+    expect(windowHariWIB("2026-12-31")).toEqual({
+      gte: "2026-12-31T00:00:00+07:00",
+      lt: "2027-01-01T00:00:00+07:00",
+    });
+    expect(windowHariWIB("2028-02-28")?.lt).toBe("2028-02-29T00:00:00+07:00");
+    expect(windowHariWIB("2026-02-28")?.lt).toBe("2026-03-01T00:00:00+07:00");
+  });
+
+  it("nilai kosong / asing / tanggal mustahil → null (tanpa Invalid Date)", () => {
+    expect(windowHariWIB(null)).toBeNull();
+    expect(windowHariWIB(undefined)).toBeNull();
+    expect(windowHariWIB("")).toBeNull();
+    expect(windowHariWIB("26-10-2026")).toBeNull();
+    expect(windowHariWIB("2026-10-26; DROP TABLE")).toBeNull();
+    expect(windowHariWIB("2026-13-01")).toBeNull();
+    expect(windowHariWIB("2026-02-31")).toBeNull();
   });
 });

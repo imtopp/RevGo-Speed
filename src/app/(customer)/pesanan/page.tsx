@@ -37,6 +37,7 @@ export default async function PesananPage() {
         vehicle: true,
         branch: { select: { name: true } },
         payments: true,
+        parts: { select: { price: true, quantity: true } },
       },
     }),
     prisma.vehicle.findMany({
@@ -144,6 +145,10 @@ export default async function PesananPage() {
           const totalDibayar = s.payments
             .filter((p) => !p.voidedAt)
             .reduce((sum, p) => sum + p.amount, 0);
+          const totalTagihan =
+            s.laborCost +
+            s.parts.reduce((sum, p) => sum + p.price * p.quantity, 0);
+          const sisa = totalTagihan - totalDibayar;
           return (
             <div
               key={s.id}
@@ -194,9 +199,25 @@ export default async function PesananPage() {
                 </div>
               )}
 
-              {s.status === "DONE" && totalDibayar > 0 && (
-                <p className="mt-2 text-sm text-success">
-                  Terbayar {formatRupiah(totalDibayar)}
+              {s.status === "DONE" && (sisa > 0 || totalDibayar > 0) && (
+                <p className="mt-2 text-sm">
+                  {sisa > 0 ? (
+                    <>
+                      <span className="font-semibold text-danger">
+                        Sisa tagihan {formatRupiah(sisa)}
+                      </span>
+                      {totalDibayar > 0 && (
+                        <span className="text-muted-foreground">
+                          {" "}
+                          · terbayar {formatRupiah(totalDibayar)}
+                        </span>
+                      )}
+                    </>
+                  ) : (
+                    <span className="text-success">
+                      Lunas · terbayar {formatRupiah(totalDibayar)}
+                    </span>
+                  )}
                 </p>
               )}
 

@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { requireStaffRole, getStaffBranchId } from "@/lib/guard";
 import { formatRupiah, STATUS_LABEL, bolehBayar, PESAN_BAYAR_DITAHAN } from "@/lib/service-status";
 import { PaymentForm } from "../kas/payment-form";
+import { BranchPicker } from "../stok/branch-picker";
 import Link from "next/link";
 
 export const metadata = { title: "Piutang" };
@@ -50,12 +51,21 @@ export default async function PiutangPage({
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-xl font-bold tracking-tight">Piutang</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {outstanding.length} servis belum lunas · total{" "}
-          {formatRupiah(totalPiutang)}
-        </p>
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <h1 className="text-xl font-bold tracking-tight">Piutang</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {outstanding.length} servis belum lunas · total{" "}
+            {formatRupiah(totalPiutang)}
+          </p>
+        </div>
+        {!branchIdStaff && branches.length > 1 && (
+          <BranchPicker
+            branches={branches}
+            current={activeBranchId}
+            basePath="/dashboard/piutang"
+          />
+        )}
       </div>
 
       {outstanding.length === 0 && (

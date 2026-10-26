@@ -404,10 +404,16 @@ export function BookingSection({
           </div>
           <SubmitButton
             pendingText="Mengirim..."
+            disabled={!jadwal}
             className="w-full rounded-lg bg-primary py-2.5 text-sm font-medium text-white active:opacity-90 disabled:opacity-60"
           >
             Kirim Booking
           </SubmitButton>
+          {!jadwal && (
+            <p className="text-center text-xs text-muted-foreground">
+              Pilih jam kedatangan dulu — tombol kirim aktif setelah slot dipilih.
+            </p>
+          )}
         </form>
       )}
 

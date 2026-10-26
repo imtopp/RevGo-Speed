@@ -108,3 +108,30 @@ export function formatTanggalWIB(d: Date | string | null): string {
     timeZone: "Asia/Jakarta",
   }).format(date);
 }
+
+/**
+ * Window hari WIB untuk filter tanggal tunggal di param URL ("YYYY-MM-DD").
+ * Timestamp disimpan UTC, tapi hari yang dipilih user = hari WIB (+07:00);
+ * hasilnya rentang setengah terbuka [00:00, 00:00 hari berikutnya) siap pakai
+ * di filter Prisma (`scheduledAt: windowHariWIB(...)`).
+ * Kembalikan null bila format salah atau tanggal tidak valid — nilai asing
+ * jangan pernah jadi Invalid Date (500) atau lolos ke query.
+ */
+export function windowHariWIB(
+  tanggal?: string | null,
+): { gte: string; lt: string } | null {
+  if (!tanggal || !/^\d{4}-\d{2}-\d{2}$/.test(tanggal)) return null;
+  const probe = new Date(`${tanggal}T00:00:00Z`);
+  // NaN = komponen tak terbaca; selain itu JS suka "meloloskan" tanggal
+  // guling (2026-02-31 → 3 Mar) — cocokkan round-trip-nya juga.
+  if (
+    Number.isNaN(probe.getTime()) ||
+    probe.toISOString().slice(0, 10) !== tanggal
+  )
+    return null;
+  const berikut = new Date(probe.getTime() + 24 * 60 * 60 * 1000);
+  return {
+    gte: `${tanggal}T00:00:00+07:00`,
+    lt: `${berikut.toISOString().slice(0, 10)}T00:00:00+07:00`,
+  };
+}
