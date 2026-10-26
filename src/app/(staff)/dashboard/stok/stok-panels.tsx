@@ -133,8 +133,10 @@ function PartForm({
   const [state, action] = useActionState<StokState, FormData>(createPart, {});
   const [buyPrice, setBuyPrice] = useState(0);
   const [sellPrice, setSellPrice] = useState(0);
+  const [quantity, setQuantity] = useState(0);
   const [stateSebelumnya, setStateSebelumnya] = useState(state);
   const rugi = sellPrice < buyPrice;
+  const totalStokAwal = quantity * buyPrice;
 
   // Sukses → beri tahu panel induk (tutup blok + notif luar); gagal → form tetap.
   if (state !== stateSebelumnya) {
@@ -179,7 +181,7 @@ function PartForm({
       <div className="grid grid-cols-3 gap-2">
         <div>
           <label className="block text-sm font-medium text-foreground">Stok Awal</label>
-          <NumberInput name="quantity" defaultValue={0} />
+          <NumberInput name="quantity" value={quantity} onChange={setQuantity} />
         </div>
         <div>
           <label className="block text-sm font-medium text-foreground">Min. Stok</label>
@@ -205,6 +207,20 @@ function PartForm({
           <NumberInput name="sellPrice" value={sellPrice} onChange={setSellPrice} />
         </div>
       </div>
+      {totalStokAwal > 0 && (
+        <div className="rounded-lg bg-slate-50 p-3 ring-1 ring-slate-200">
+          <label className="block text-sm font-medium text-foreground">Bayar Stok Awal</label>
+          <select name="method" defaultValue="CASH" className={inputCls}>
+            <option value="CASH">Tunai (Kas)</option>
+            <option value="TRANSFER">Transfer (Bank)</option>
+            <option value="QRIS">QRIS (Bank)</option>
+          </select>
+          <p className="mt-1 text-xs text-slate-400">
+            Stok awal = belanja: otomatis catat kas keluar {formatRupiah(totalStokAwal)} (qty ×
+            harga beli).
+          </p>
+        </div>
+      )}
       {rugi && (
         <div className="rounded-lg bg-amber-50 p-3 ring-1 ring-amber-200">
           <p className="text-xs font-medium text-amber-800">

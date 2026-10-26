@@ -12,6 +12,7 @@
 - v1.1 — audit konsistensi PRD ↔ implementasi: keputusan cakupan SysAdmin (risiko #6) & angka keuangan mekanik (risiko #5) **ditegakkan di kode**; detail disesuaikan dengan kode aktual (`CANCELLED` + `CHECKED_IN`, kategori kas bebas teks + label otomatis, parameter pengaturan +logo, cakupan laporan/cetak/pencarian, piutang urut tertua + kontak); dukungan **desktop responsif**, **design system**, aset logo.
 - v1.2 — **audit & anti-fraud (FR-11, terpasang):** AuditLog append-only (diff before→after, transaksi DB sama), **void pembayaran Owner-only** + reversal kas otomatis, halaman **Audit** (peringatan: void / jasa < katalog / part < jual / opname); semua Σ terbayar mengabaikan pembayaran void; auditLogs ikut backup. **FR-12 rekonsiliasi kas harian** & notifikasi event-driven (tanpa daemon Vercel) didefinisikan (fase 1.5).
 - v1.3 — audit PRD ↔ kode (26 Okt): **penjualan part tanpa servis/POS** (`PartSale`) resmi masuk FR-6/8 (keluar dari daftar fase 2); **refund kelebihan bayar** owner-only (`PaymentKind REFUND`, FR-5); **HPP batch FIFO** (`PartBatchUsage` + koreksi `correctStockCost`) menggantikan narasi snapshot sederhana (FR-6); **booking walk-in tanpa akun customer** (FR-3); **ganti password wajib saat login pertama** + ganti password mandiri (FR-0); **aturan bayar ditahan** saat pengerjaan (FR-5); **selisih opname → beban/temuan** laporan (FR-8); **rate limit 2 lapis** (NFR). + **App. B** praktik implementasi (kualitas di atas minimum FR).
+- v1.4 — **stok awal part = belanja (26 Okt):** membuat part dengan qty > 0 & harga beli > 0 otomatis catat **Kas Keluar** atomik (kantong sesuai cara bayar, FR-6/§3.2) — modal tertahan di barang ikut terbaca di saldo & laporan; koreksi harga batch stok awal otomatis ikut menggeser kas (deteksi via baris `Pembelian Part`). **Barang consignment/konsinyasi** tercatat di §7 (fase 2+).
 
 ---
 
@@ -122,6 +123,7 @@ PENDING / WAITING_APPROVAL / CONFIRMED / CHECKED_IN ──(batal)→ CANCELLED (
 [Stok Masuk] pembelian (qty + harga beli + supplier)
       ├→ jumlah part bertambah
       └→ otomatis catat Kas Keluar (kantong BANK/TUNAI sesuai cara bayar) jika harga beli diisi
+[Stok awal part] qty > 0 + harga beli saat bikin part → otomatis catat Kas Keluar (kantong sesuai cara bayar) — modal tertahan di barang
 [Pakai di servis] otomatis stok keluar + alokasi batch FIFO (HPP per job)
 [Jual part tanpa servis (POS)] stok keluar FIFO atomik + kas masuk (harga jual dari data part)
 [Penyesuaian] opname koreksi per part (wajib alasan); selisih → beban/temuan laporan; opname massal periodik: fase 2
@@ -185,6 +187,7 @@ PENDING / WAITING_APPROVAL / CONFIRMED / CHECKED_IN ──(batal)→ CANCELLED (
 ### FR-6 Stok part & supplier — **Rilis 1**
 - **Master supplier** (nama, HP, catatan) — dicatat di setiap stok masuk.
 - CRUD part per cabang: SKU unik per cabang, nama, kategori, satuan, qty, min. stok, harga beli & jual.
+- **Stok awal saat membuat part** (qty > 0 & harga beli > 0) = pembelian → otomatis **Kas Keluar** dalam transaksi yang sama (kantong sesuai cara bayar); qty 0 atau harga beli 0 tanpa kas. Pesan sukses menyebut konsekuensi kasnya.
 - Stok masuk (+qty, otomatis Kas Keluar dgn kantong sesuai cara bayar); keluar via servis; penyesuaian per part (wajib alasan).
 - **HPP batch (FIFO):** setiap stok masuk membentuk **batch** (`PartBatchUsage`) — harga pakai **rata-rata tertimbang**; unit terpakai dialokasikan FIFO dari batch terkait; `ServicePart.cost` = campuran batch unit tersebut (dasar laba per job). **Koreksi harga beli batch** terbatas pada unit terpakai dari batch terkait (`correctStockCost`) — merambat ke HPP servis & `PartSaleItem`; harga jual tidak berubah.
 - **Penjualan part tanpa servis (POS/OTC):** jual langsung dari tab Jual — stok keluar + alokasi FIFO **atomik**, kas `INCOME` otomatis, harga jual dari data part (input kasir dibuang), riwayat penjualan + laba per penjualan, ikut laporan & CSV. Harga jual di bawah harga beli wajib konfirmasi.
@@ -193,7 +196,7 @@ PENDING / WAITING_APPROVAL / CONFIRMED / CHECKED_IN ──(batal)→ CANCELLED (
 ### FR-7 Kas & piutang — **Rilis 1**
 - Daftar transaksi (100 terakhir) dengan **filter cabang** + **ringkasan saldo per kantong** (Kas & Bank); filter tanggal/kategori/jenis & ringkasan harian/bulanan → §7.
 - Tambah manual + pilih **sumber dana** (Tunai/Bank); koreksi via transaksi baru.
-- Kategori: entri manual **bebas teks** (mis. Operasional, Sewa, Gaji, Lain-lain); entri otomatis memakai label tetap — `Pembayaran Servis`/`DP Servis` (pembayaran servis) dan `Pembelian Part` (stok masuk).
+- Kategori: entri manual **bebas teks** (mis. Operasional, Sewa, Gaji, Lain-lain); entri otomatis memakai label tetap — `Pembayaran Servis`/`DP Servis` (pembayaran servis) dan `Pembelian Part` (stok masuk & stok awal part).
 - **Menu Piutang:** servis belum lunas → customer, kendaraan, tanggal DONE, sisa tagihan (urut tertua); total piutang; aksi cepat “catat pembayaran cicilan”.
 - Entri otomatis: pembayaran servis & pembelian part (FR-5, FR-6); penjualan part (POS) masuk kantong sesuai metode.
 
@@ -265,6 +268,7 @@ Akses: Admin/Owner (input hitung), Owner (review).
 
 ## 7. Di Luar Cakupan (fase 2+, kecuali dinaikkan)
 - **Purchasing:** PO & penerimaan berjenjang, retur pembelian, pembelian tempo → **hutang supplier**.
+- **Barang consignment / konsinyasi** (stok titipan supplier): kepemilikan & risiko tetap di supplier — stok masuk **tanpa** Kas Keluar, kas keluar baru saat pelunasan/tempo ke supplier. Butuh penanda per part + alur jual/utang terpisah dari pembelian biasa.
 - **Opname massal periodik** (MVP: penyesuaian per part); laporan part lambat laku/matian.
 - **Shift kasir**; saldo awal akun; akun bank multi. *(Rekonsiliasi selisih kas fisik dinaikkan → FR-12.)*
 - **Notifikasi event-driven** — mekanisme: dikirim **dari dalam server action** setelah commit (kas manual/void/opname besar) via outbound Telegram Bot / WA Business Cloud API / email; rekap terjadwal via **Vercel Cron** (`vercel.json`) — **tanpa service latar belakang** (Vercel serverless tak punya daemon). Notifikasi = best-effort; **AuditLog tetap sumber kebenaran**. Konten menyusul: status booking, “siap diambil”, pengingat servis berikutnya, garansi jasa.

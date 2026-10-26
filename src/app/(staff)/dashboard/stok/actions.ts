@@ -151,6 +151,12 @@ export async function createPart(
 
   const session = await auth();
   if (!session?.user) return { error: "Belum login." };
+  const method = String(formData.get("method") ?? "CASH") as PaymentMethod;
+  if (!["CASH", "TRANSFER", "QRIS"].includes(method)) {
+    return { error: "Metode bayar tidak valid." };
+  }
+  const total = quantity * buyPrice;
+
   await prisma.$transaction(async (tx) => {
     const p = await tx.part.create({
       data: {
@@ -166,8 +172,9 @@ export async function createPart(
         supplierId: supplierId || null,
       },
     });
-    // Stok awal dicatat sebagai batch pembelian pertama — riwayat & alokasi FIFO
-    // langsung lengkap sejak part dibuat.
+    // Stok awal = pembelian: modal tertahan di barang, jadi uangnya keluar
+    // sekarang juga dalam transaksi yang sama — saldo kas/laporan tetap
+    // sama dengan uang fisik (kas tidak "hilang" tanpa baris).
     if (quantity > 0) {
       await tx.stockMovement.create({
         data: {
@@ -180,10 +187,28 @@ export async function createPart(
           supplierId: supplierId || null,
         },
       });
+      if (total > 0) {
+        await tx.cashflow.create({
+          data: {
+            type: "EXPENSE",
+            category: "Pembelian Part",
+            amount: total,
+            account: accountFromMethod(method),
+            branchId,
+            description: `Stok awal: ${quantity} ${unit} ${name}`,
+            createdBy: session.user.id,
+          },
+        });
+      }
     }
   });
   revalidatePath("/dashboard/stok");
-  return { success: `Part "${name}" ditambahkan.` };
+  return {
+    success:
+      total > 0
+        ? `Part "${name}" ditambahkan. Kas keluar ${total.toLocaleString("id-ID")} (${accountFromMethod(method)}).`
+        : `Part "${name}" ditambahkan.`,
+  };
 }
 
 export async function updatePart(
@@ -603,8 +628,9 @@ export async function adjustStock(
  * 1. riwayat batch (StockMovement.cost), 2. rata-rata buyPrice part,
  * 3. HPP servis yang unitnya diambil dari batch ini (TERBATAS jumlah unit terpakai, dari jejak PartBatchUsage),
  * 4. kas koreksi senilai selisih penuh batch, bertanggal pembelian asli —
- *    HANYA bila pembelian aslinya tercatat di kas; stok awal/penyesuaian tidak
- *    memindahkan uang, jadi kas tidak diutak-atik (tidak membuat kas fiktif).
+ *    HANYA bila pembelian aslinya tercatat di kas; stok awal kini ikut tercatat
+ *    kas sejak v1.4, sedangkan penyesuaian/opname tidak memindahkan uang,
+ *    jadi kas tidak diutak-atik (tidak membuat kas fiktif).
  * Harga jual (sellPrice) tidak pernah disentuh.
  */
 export async function correctStockCost(
@@ -753,7 +779,7 @@ export async function correctStockCost(
       }
     }
     // 4. Kas koreksi bertanggal pembelian asli — hanya bila pembeliannya
-    //    memang tercatat di kas (stok awal/penyesuaian tidak ada kas aslinya).
+    //    memang tercatat di kas (stok awal ikut tercatat; penyesuaian tidak).
     kasDelta = mvF.quantity * (newCost - costLama);
     const origCash = await tx.cashflow.findFirst({
       where: {
