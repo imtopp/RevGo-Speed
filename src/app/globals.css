@@ -63,12 +63,22 @@ html {
   }
 }
 
+/* Orientasi nota — paksa portrait apa pun setting dialog print terakhir */
+@page {
+  size: portrait;
+  margin: 10mm;
+}
+
 /* Sembunyikan chrome app saat cetak (halaman nota/struk) */
 @media print {
   header,
   nav,
+  aside,
   .no-print {
     display: none !important;
+  }
+  main {
+    padding: 0 !important;
   }
   body,
   .print-area {
