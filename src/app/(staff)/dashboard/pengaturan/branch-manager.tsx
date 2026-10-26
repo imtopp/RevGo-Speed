@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { createBranch, updateBranch, type BranchState } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
 import { NumberInput } from "@/components/number-input";
@@ -146,6 +146,23 @@ export function BranchManager({ branches }: { branches: Branch[] }) {
     BranchState,
     FormData
   >(updateBranch, {});
+  const [pesanCreate, setPesanCreate] = useState<string | null>(null);
+  const [stateSebelumnya, setStateSebelumnya] = useState(createState);
+
+  // Sukses → tutup form tambah + notif sementara; gagal → form tetap terbuka.
+  if (createState !== stateSebelumnya) {
+    setStateSebelumnya(createState);
+    if (createState.success) {
+      setShowCreate(false);
+      setPesanCreate(createState.success);
+    }
+  }
+
+  useEffect(() => {
+    if (!pesanCreate) return;
+    const t = setTimeout(() => setPesanCreate(null), 5000);
+    return () => clearTimeout(t);
+  }, [pesanCreate]);
 
   return (
     <div className="space-y-3">
@@ -157,6 +174,12 @@ export function BranchManager({ branches }: { branches: Branch[] }) {
         {showCreate ? "Tutup" : "+ Tambah Cabang"}
       </button>
 
+      {pesanCreate && (
+        <p className="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700">
+          {pesanCreate}
+        </p>
+      )}
+
       {showCreate && (
         <form
           action={createAction}
@@ -165,9 +188,6 @@ export function BranchManager({ branches }: { branches: Branch[] }) {
           <BranchFields />
           {createState.error && (
             <p className="text-sm text-danger">{createState.error}</p>
-          )}
-          {createState.success && (
-            <p className="text-sm text-green-600">{createState.success}</p>
           )}
           <SubmitButton
             pendingText="Menyimpan..."

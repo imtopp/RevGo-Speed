@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { createStaff, type StaffState } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
 
@@ -8,10 +8,27 @@ type Branch = { id: string; name: string };
 
 export function StaffForm({ branches }: { branches: Branch[] }) {
   const [open, setOpen] = useState(false);
+  const [pesan, setPesan] = useState<string | null>(null);
   const [state, action] = useActionState<StaffState, FormData>(
     createStaff,
     {},
   );
+  const [stateSebelumnya, setStateSebelumnya] = useState(state);
+
+  // Sukses → tutup form + notif sementara; gagal → form tetap terbuka.
+  if (state !== stateSebelumnya) {
+    setStateSebelumnya(state);
+    if (state.success) {
+      setOpen(false);
+      setPesan(state.success);
+    }
+  }
+
+  useEffect(() => {
+    if (!pesan) return;
+    const t = setTimeout(() => setPesan(null), 5000);
+    return () => clearTimeout(t);
+  }, [pesan]);
 
   return (
     <div className="max-w-lg space-y-3">
@@ -23,21 +40,22 @@ export function StaffForm({ branches }: { branches: Branch[] }) {
         {open ? "Tutup Form Akun" : "+ Buat Akun Staff"}
       </button>
 
+      {pesan && (
+        <p className="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700">
+          {pesan}
+        </p>
+      )}
+
       {open && (
         <form
           action={action}
           className="space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card"
         >
-      {state.error && (
-        <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-danger">
-          {state.error}
-        </p>
-      )}
-      {state.success && (
-        <p className="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700">
-          {state.success}
-        </p>
-      )}
+          {state.error && (
+            <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-danger">
+              {state.error}
+            </p>
+          )}
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div>

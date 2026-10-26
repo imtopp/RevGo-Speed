@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { requireStaffRole, getStaffBranchId } from "@/lib/guard";
 import { formatRupiah } from "@/lib/service-status";
-import { ManualCashflowForm, RiwayatList, ToggleManualForm } from "./kas-panels";
+import { ManualCashflowForm, RiwayatList } from "./kas-panels";
 import { BranchPicker } from "../stok/branch-picker";
 
 export const metadata = { title: "Kas" };
@@ -75,13 +75,11 @@ export default async function KasPage({
         </div>
       </div>
 
-      <ToggleManualForm>
-        <ManualCashflowForm
-          branches={branches}
-          activeBranchId={activeBranchId}
-          isLocked={!!branchIdStaff}
-        />
-      </ToggleManualForm>
+      <ManualCashflowForm
+        branches={branches}
+        activeBranchId={activeBranchId}
+        isLocked={!!branchIdStaff}
+      />
 
       <div>
         <p className="mb-2 text-sm font-semibold text-foreground">

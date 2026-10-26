@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState, useId, useTransition } from "react";
+import { useActionState, useEffect, useState, useId, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   createPart,
@@ -121,17 +121,27 @@ function PartForm({
   activeBranchId,
   isLocked,
   kategoris,
+  onSuccess,
 }: {
   branches: Branch[];
   suppliers: Supplier[];
   activeBranchId: string | null;
   isLocked: boolean;
   kategoris: string[];
+  onSuccess?: (msg: string) => void;
 }) {
   const [state, action] = useActionState<StokState, FormData>(createPart, {});
   const [buyPrice, setBuyPrice] = useState(0);
   const [sellPrice, setSellPrice] = useState(0);
+  const [stateSebelumnya, setStateSebelumnya] = useState(state);
   const rugi = sellPrice < buyPrice;
+
+  // Sukses → beri tahu panel induk (tutup blok + notif luar); gagal → form tetap.
+  if (state !== stateSebelumnya) {
+    setStateSebelumnya(state);
+    if (state.success) onSuccess?.(state.success);
+  }
+
   return (
     <form action={action} className="space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
       <p className="text-sm font-semibold text-foreground">Tambah Part Baru</p>
@@ -214,8 +224,24 @@ function PartForm({
   );
 }
 
-function StockInForm({ parts, suppliers }: { parts: Part[]; suppliers: Supplier[] }) {
+function StockInForm({
+  parts,
+  suppliers,
+  onSuccess,
+}: {
+  parts: Part[];
+  suppliers: Supplier[];
+  onSuccess?: (msg: string) => void;
+}) {
   const [state, action] = useActionState<StokState, FormData>(stockIn, {});
+  const [stateSebelumnya, setStateSebelumnya] = useState(state);
+
+  // Sukses → beri tahu panel induk (tutup blok + notif luar); gagal → form tetap.
+  if (state !== stateSebelumnya) {
+    setStateSebelumnya(state);
+    if (state.success) onSuccess?.(state.success);
+  }
+
   return (
     <form action={action} className="space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
       <p className="text-sm font-semibold text-foreground">Stok Masuk (Pembelian)</p>
@@ -271,9 +297,32 @@ function SellForm({ parts }: { parts: Part[] }) {
   const [state, action] = useActionState<StokState, FormData>(sellPart, {});
   const [picked, setPicked] = useState<Part | null>(null);
   const [qty, setQty] = useState(1);
+  const [pesan, setPesan] = useState<string | null>(null);
+  const [resetKey, setResetKey] = useState(0);
+  const [stateSebelumnya, setStateSebelumnya] = useState(state);
   const total = qty * (picked?.sellPrice ?? 0);
+
+  // Sukses → notif luar + reset isi form (remount via key); gagal → form tetap.
+  if (state !== stateSebelumnya) {
+    setStateSebelumnya(state);
+    if (state.success) {
+      setPesan(state.success);
+      setResetKey((k) => k + 1);
+    }
+  }
+
+  useEffect(() => {
+    if (!pesan) return;
+    const t = setTimeout(() => setPesan(null), 5000);
+    return () => clearTimeout(t);
+  }, [pesan]);
+
   return (
-    <form action={action} className="space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
+    <div className="space-y-3">
+      {pesan && (
+        <p className="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700">{pesan}</p>
+      )}
+      <form key={resetKey} action={action} className="space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
       <p className="text-sm font-semibold text-foreground">
         Jual Part (Tanpa Servis)
       </p>
@@ -335,11 +384,26 @@ function SellForm({ parts }: { parts: Part[] }) {
         Catat Penjualan
       </SubmitButton>
     </form>
+    </div>
   );
 }
 
-function AdjustForm({ parts }: { parts: Part[] }) {
+function AdjustForm({
+  parts,
+  onSuccess,
+}: {
+  parts: Part[];
+  onSuccess?: (msg: string) => void;
+}) {
   const [state, action] = useActionState<StokState, FormData>(adjustStock, {});
+  const [stateSebelumnya, setStateSebelumnya] = useState(state);
+
+  // Sukses → beri tahu panel induk (tutup blok + notif luar); gagal → form tetap.
+  if (state !== stateSebelumnya) {
+    setStateSebelumnya(state);
+    if (state.success) onSuccess?.(state.success);
+  }
+
   return (
     <form action={action} className="space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
       <p className="text-sm font-semibold text-foreground">Penyesuaian Stok</p>
@@ -368,12 +432,37 @@ function AdjustForm({ parts }: { parts: Part[] }) {
 function SupplierPanel({ suppliers }: { suppliers: Supplier[] }) {
   const [createState, createAction] = useActionState<StokState, FormData>(createSupplier, {});
   const [editId, setEditId] = useState<string | null>(null);
+  const [pesan, setPesan] = useState<string | null>(null);
+  const [resetKey, setResetKey] = useState(0);
+  const [stateSebelumnya, setStateSebelumnya] = useState(createState);
+
+  // Sukses → notif luar + reset isi form (remount via key); gagal → form tetap.
+  if (createState !== stateSebelumnya) {
+    setStateSebelumnya(createState);
+    if (createState.success) {
+      setPesan(createState.success);
+      setResetKey((k) => k + 1);
+    }
+  }
+
+  useEffect(() => {
+    if (!pesan) return;
+    const t = setTimeout(() => setPesan(null), 5000);
+    return () => clearTimeout(t);
+  }, [pesan]);
 
   return (
     <div className="space-y-3">
-      <form action={createAction} className="space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
+      {pesan && (
+        <p className="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700">{pesan}</p>
+      )}
+      <form key={resetKey} action={createAction} className="space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
         <p className="text-sm font-semibold text-foreground">Tambah Supplier</p>
-        <Msg state={createState} />
+        {createState.error && (
+          <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-danger">
+            {createState.error}
+          </p>
+        )}
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <div>
             <label className="block text-sm font-medium text-foreground">Nama</label>
@@ -641,8 +730,16 @@ export function StokPanels({
 }) {
   const [showForms, setShowForms] = useState(false);
   const [aksi, setAksi] = useState<"part" | "masuk" | "opname">("part");
+  const [pesan, setPesan] = useState<string | null>(null);
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+
+  // Notif sukses dari form aksi stok — tampil di luar blok, hilang 5 detik.
+  useEffect(() => {
+    if (!pesan) return;
+    const t = setTimeout(() => setPesan(null), 5000);
+    return () => clearTimeout(t);
+  }, [pesan]);
 
   if (tab === "supplier") {
     return <SupplierPanel suppliers={suppliers} />;
@@ -779,6 +876,10 @@ export function StokPanels({
         {showForms ? "Tutup Aksi Stok" : "+ Aksi Stok"}
       </button>
 
+      {pesan && (
+        <p className="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700">{pesan}</p>
+      )}
+
       {showForms && (
         <div className="space-y-3">
           <div className="grid grid-cols-3 gap-1 rounded-xl bg-surface p-1 ring-1 ring-slate-200 shadow-card">
@@ -810,10 +911,31 @@ export function StokPanels({
               activeBranchId={activeBranchId}
               isLocked={isLockedBranch}
               kategoris={kategoris}
+              onSuccess={(m) => {
+                setShowForms(false);
+                setPesan(m);
+              }}
             />
           )}
-          {aksi === "masuk" && <StockInForm parts={parts} suppliers={suppliers} />}
-          {aksi === "opname" && <AdjustForm parts={parts} />}
+          {aksi === "masuk" && (
+            <StockInForm
+              parts={parts}
+              suppliers={suppliers}
+              onSuccess={(m) => {
+                setShowForms(false);
+                setPesan(m);
+              }}
+            />
+          )}
+          {aksi === "opname" && (
+            <AdjustForm
+              parts={parts}
+              onSuccess={(m) => {
+                setShowForms(false);
+                setPesan(m);
+              }}
+            />
+          )}
         </div>
       )}
 
