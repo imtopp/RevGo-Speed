@@ -1,8 +1,8 @@
 # PRD — RevGo Speed
 
-**Versi:** 1.2 (Rilis 1 selesai + audit & anti-fraud)
-**Tanggal:** 24 Oktober 2026
-**Status:** �o. Rilis 1 selesai �?" semua fase A�?"E terpasang, siap produksi; FR-11 (audit) terpasang, FR-12 menyusul
+**Versi:** 1.3 (Sinkronisasi PRD ↔ kode: POS part, refund kelebihan, HPP FIFO)
+**Tanggal:** 26 Oktober 2026
+**Status:** Rilis 1 selesai — semua fase A–E terpasang, siap produksi; Rilis 1.5 berjalan: FR-11 (audit) terpasang, FR-12 menyusul
 
 **Riwayat:**
 - v0.1 — draft awal (4 modul rilis 1, multi-cabang, DP+lunas).
@@ -11,6 +11,7 @@
 - v1.0 — **rebrand RevLedger → RevGo Speed** (hostname & branding); migrasi SQLite → **Neon PostgreSQL**; deploy **Vercel** (production) + Neon (DB); semua fase A–E selesai.
 - v1.1 — audit konsistensi PRD ↔ implementasi: keputusan cakupan SysAdmin (risiko #6) & angka keuangan mekanik (risiko #5) **ditegakkan di kode**; detail disesuaikan dengan kode aktual (`CANCELLED` + `CHECKED_IN`, kategori kas bebas teks + label otomatis, parameter pengaturan +logo, cakupan laporan/cetak/pencarian, piutang urut tertua + kontak); dukungan **desktop responsif**, **design system**, aset logo.
 - v1.2 — **audit & anti-fraud (FR-11, terpasang):** AuditLog append-only (diff before→after, transaksi DB sama), **void pembayaran Owner-only** + reversal kas otomatis, halaman **Audit** (peringatan: void / jasa < katalog / part < jual / opname); semua Σ terbayar mengabaikan pembayaran void; auditLogs ikut backup. **FR-12 rekonsiliasi kas harian** & notifikasi event-driven (tanpa daemon Vercel) didefinisikan (fase 1.5).
+- v1.3 — audit PRD ↔ kode (26 Okt): **penjualan part tanpa servis/POS** (`PartSale`) resmi masuk FR-6/8 (keluar dari daftar fase 2); **refund kelebihan bayar** owner-only (`PaymentKind REFUND`, FR-5); **HPP batch FIFO** (`PartBatchUsage` + koreksi `correctStockCost`) menggantikan narasi snapshot sederhana (FR-6); **booking walk-in tanpa akun customer** (FR-3); **ganti password wajib saat login pertama** + ganti password mandiri (FR-0); **aturan bayar ditahan** saat pengerjaan (FR-5); **selisih opname → beban/temuan** laporan (FR-8); **rate limit 2 lapis** (NFR).
 
 ---
 
@@ -111,7 +112,7 @@ PENDING / WAITING_APPROVAL / CONFIRMED / CHECKED_IN ──(batal)→ CANCELLED (
 - Pemeriksaan awal (`CHECKED_IN`): km/odometer, level BBM (opsional), **kondisi yang sudah ada** (goresan/penyok — teks), keluhan disepakati (prefill booking), waktu terima otomatis. Bukti kondisi awal → acuan serah terima.
 - Kerja tambahan di tengah pengerjaan: konfirmasi WA/telepon dulu, lalu update estimasi (approval per-item: fase 2).
 - Total tagihan = Σ(part terpakai × harga jual) + biaya jasa. Biaya jasa bisa diubah admin (default katalog; negosiasi tercatat).
-- DP hanya jika jenis jasa `allowDp`; kebijakan refund mengikuti Pengaturan sistem (FR-10).
+- DP hanya jika jenis jasa `allowDp`; kebijakan refund mengikuti Pengaturan sistem (FR-10). **Pembayaran ditahan saat servis berjalan** — DP saat booking, pelunasan hanya setelah QC lolos (`DONE`) (FR-5).
 - **Piutang:** unit **boleh diserahkan dengan sisa tagihan** (discretion admin) → sisa tercatat & tampil di menu Piutang sampai lunas.
 - Stok tidak boleh negatif: part kurang → `WAITING_PARTS` sampai stok masuk dicatat.
 
@@ -121,8 +122,9 @@ PENDING / WAITING_APPROVAL / CONFIRMED / CHECKED_IN ──(batal)→ CANCELLED (
 [Stok Masuk] pembelian (qty + harga beli + supplier)
       ├→ jumlah part bertambah
       └→ otomatis catat Kas Keluar (kantong BANK/TUNAI sesuai cara bayar) jika harga beli diisi
-[Pakai di servis] otomatis stok keluar + SNAPSHOT harga beli saat itu (HPP per job)
-[Penyesuaian] opname koreksi per part (wajib alasan); opname massal periodik: fase 2
+[Pakai di servis] otomatis stok keluar + alokasi batch FIFO (HPP per job)
+[Jual part tanpa servis (POS)] stok keluar FIFO atomik + kas masuk (harga jual dari data part)
+[Penyesuaian] opname koreksi per part (wajib alasan); selisih → beban/temuan laporan; opname massal periodik: fase 2
 [Peringatan] quantity ≤ minStock → kartu "stok menipis" di dashboard
 ```
 
@@ -132,7 +134,7 @@ PENDING / WAITING_APPROVAL / CONFIRMED / CHECKED_IN ──(batal)→ CANCELLED (
 - **Manual:** admin/owner mencatat kas masuk/keluar lain (sewa, gaji, listrik) + memilih **sumber dana** (Tunai / Bank).
 - **Saldo tidak pernah diketik manual** — selalu hasil jumlah mutasi (prinsip buku kas yang bisa dipercaya).
 - **Piutang:** daftar servis dengan sisa tagihan (belum lunas) + total piutang, urut tertua, lengkap dengan kontak customer — halaman khusus di menu Kas.
-- Semua transaksi: jenis, kategori, nominal, kantong, cabang, pembuat, waktu — **append-only** (tanpa ubah/hapus diam-diam): koreksi kas = **transaksi baru** (entri penyesuaian/reversal); koreksi pembayaran = **void ber-alaran oleh Owner** (reversal kas otomatis, FR-11). Setiap aksi kritikal tercatat di **AuditLog** (pelaku, waktu, diff before→after) — lihat FR-11.
+- Semua transaksi: jenis, kategori, nominal, kantong, cabang, pembuat, waktu — **append-only** (tanpa ubah/hapus diam-diam): koreksi kas = **transaksi baru** (entri penyesuaian/reversal); koreksi pembayaran = **void ber-alaran oleh Owner** (reversal kas otomatis, FR-11) atau **refund kelebihan bayar** (owner-only, FR-5). Setiap aksi kritikal tercatat di **AuditLog** (pelaku, waktu, diff before→after) — lihat FR-11.
 
 ---
 
@@ -141,6 +143,8 @@ PENDING / WAITING_APPROVAL / CONFIRMED / CHECKED_IN ──(batal)→ CANCELLED (
 ### FR-0 Akun, sesi & peran — ✅ sudah ada (tambah SysAdmin)
 - Register customer mandiri, login semua peran, sesi JWT, guard server-side per role, logout, nav adaptif per role.
 - Peran: OWNER, CUSTOMER, ADMIN, MECHANIC → **tambah `SYS_ADMIN`** (migrasi Fase A).
+- **Ganti password wajib saat login pertama** (proxy redirect ke `/ganti-password`) + halaman ganti password mandiri untuk semua peran.
+- Akun customer **opsional** untuk booking (lihat FR-3 — walk-in tanpa akun).
 
 ### FR-1 Multi-cabang — **Rilis 1**
 - Model **Cabang** (nama, alamat, telepon, jam operasional, aktif); owner & SysAdmin kelola; staff di-assign 1 cabang.
@@ -158,26 +162,32 @@ PENDING / WAITING_APPROVAL / CONFIRMED / CHECKED_IN ──(batal)→ CANCELLED (
 
 **Admin:**
 - Daftar booking masuk (filter status/tanggal); isi/ubah estimasi + jadwal + mekanik → kirim (`WAITING_APPROVAL`).
-- **Booking manual (walk-in/telepon):** pencarian cepat **by plat** (kendaraan & customer otomatis ditemukan; bila belum ada, data baru diisi manual: nama/email/HP). Pencarian by nama/HP → §7.
+- **Booking manual (walk-in/telepon):** pencarian cepat **by plat** — **tanpa wajib akun customer**: bila kendaraan/customer belum ada, data baru diisi manual (nama + HP disimpan sebagai snapshot di kendaraan/servis; `email`/`passwordHash` opsional). Validasi live format plat nomor (border merah + pesan, tombol nonaktif saat salah). Pencarian by nama/HP → §7.
+- **Isi estimasi:** pilih jenis jasa → harga katalog terisi otomatis (bisa dinegosiasi, tercatat); **Setujui di Tempat** ditolak bila biaya jasa Rp0. Jadwal diubah terpisah dari form estimasi (peringatan bila estimasi sudah dikirim). Ganti mekanik kapan saja — pilihan difilter agar tidak bentrok jadwal.
 - Approve di tempat (catatan “disetujui langsung”) → `CONFIRMED`; batalkan dengan alasan sebelum pengerjaan.
 
 ### FR-4 Penerimaan, papan kerja & proses servis — **Rilis 1**
 - **Papan kerja admin:** servis aktif dikelompokkan per status (menunggu approval, dikonfirmasi, unit di tempat, dikerjakan, menunggu part, siap bayar) — satu layar antrian operasional.
 - **Penerimaan unit (precheck):** saat unit datang, admin/mekanik isi pemeriksaan awal (km, BBM, kondisi existing, keluhan disepakati) → `CHECKED_IN`. Wajib terisi sebelum `IN_PROGRESS`.
 - **Mekanik:** tugas saya; `IN_PROGRESS` (waktu mulai), diagnosis, catat part (dari stok cabang — keluar otomatis + snapshot HPP), biaya jasa, kerja selesai.
-- **QC:** verifikasi admin/owner sebelum `DONE` (manual dulu; checklist digital fase 2) → `DONE` = siap diambil.
+- **QC:** verifikasi admin/owner sebelum `DONE` (manual dulu; checklist digital fase 2) → `DONE` = siap diambil. QC berjalan **berurutan setelah kerja selesai**.
+- **Koreksi input:** hapus part terpakai (stok kembali utuh) — khusus **Owner/Admin**; mekanik hanya melihat jejak. Semua perubahan tercatat di AuditLog.
 - Riwayat servis lengkap: alur status, estimasi & approval, precheck, diagnosis, part, biaya, pembayaran, durasi (waktu mulai–selesai), pelaku.
 
 ### FR-5 Pembayaran (lunas, DP, piutang) — **Rilis 1**
 - Per servis: total, total dibayar, sisa tagihan. Pembayaran: nominal, metode (Tunai/QRIS/Transfer → kantong kas/bank), jenis (**DP**/**Pelunasan**), petugas, waktu.
 - Lunas sekali; atau DP (jika `allowDp`) + pelunasan sisa; **atau serah terima dengan sisa → piutang** (FR-7).
+- **Aturan bayar ditahan:** DP hanya saat booking; pelunasan setelah servis **selesai** (QC lolos → `DONE`) — saat `IN_PROGRESS`/`WAITING_PARTS` pembayaran ditahan (pesan di UI & guard server-side).
 - Status bayar otomatis: `BELUM` / `SEBAGIAN (Rp x, sisa Rp y)` / `LUNAS`.
 - Setiap pembayaran → entri Kas otomatis di kantong yang benar (FR-7). Refund mengikuti kebijakan FR-10.
+- **Refund kelebihan bayar (khusus Owner):** bila total terbayar > tagihan, Owner mengembalikan kelebihan — baris `Payment` negatif (`kind = REFUND`) + kas `EXPENSE` dalam 1 transaksi; ikut AuditLog & semua Σ terbayar; baris refund tidak bisa di-void.
 
 ### FR-6 Stok part & supplier — **Rilis 1**
 - **Master supplier** (nama, HP, catatan) — dicatat di setiap stok masuk.
 - CRUD part per cabang: SKU unik per cabang, nama, kategori, satuan, qty, min. stok, harga beli & jual.
 - Stok masuk (+qty, otomatis Kas Keluar dgn kantong sesuai cara bayar); keluar via servis; penyesuaian per part (wajib alasan).
+- **HPP batch (FIFO):** setiap stok masuk membentuk **batch** (`PartBatchUsage`) — harga pakai **rata-rata tertimbang**; unit terpakai dialokasikan FIFO dari batch terkait; `ServicePart.cost` = campuran batch unit tersebut (dasar laba per job). **Koreksi harga beli batch** terbatas pada unit terpakai dari batch terkait (`correctStockCost`) — merambat ke HPP servis & `PartSaleItem`; harga jual tidak berubah.
+- **Penjualan part tanpa servis (POS/OTC):** jual langsung dari tab Jual — stok keluar + alokasi FIFO **atomik**, kas `INCOME` otomatis, harga jual dari data part (input kasir dibuang), riwayat penjualan + laba per penjualan, ikut laporan & CSV. Harga jual di bawah harga beli wajib konfirmasi.
 - Riwayat pergerakan; kartu stok menipis; nilai persediaan; **harga beli saat dipakai di-snapshot ke servis** (dasar laba per job).
 
 ### FR-7 Kas & piutang — **Rilis 1**
@@ -185,13 +195,14 @@ PENDING / WAITING_APPROVAL / CONFIRMED / CHECKED_IN ──(batal)→ CANCELLED (
 - Tambah manual + pilih **sumber dana** (Tunai/Bank); koreksi via transaksi baru.
 - Kategori: entri manual **bebas teks** (mis. Operasional, Sewa, Gaji, Lain-lain); entri otomatis memakai label tetap — `Pembayaran Servis`/`DP Servis` (pembayaran servis) dan `Pembelian Part` (stok masuk).
 - **Menu Piutang:** servis belum lunas → customer, kendaraan, tanggal DONE, sisa tagihan (urut tertua); total piutang; aksi cepat “catat pembayaran cicilan”.
-- Entri otomatis: pembayaran servis & pembelian part (FR-5, FR-6).
+- Entri otomatis: pembayaran servis & pembelian part (FR-5, FR-6); penjualan part (POS) masuk kantong sesuai metode.
 
 ### FR-8 Laporan owner & admin — **Rilis 1**
 - Periode (Hari ini / Bulan ini / Rentang custom) + filter cabang.
-- **Ringkasan:** omzet (kas masuk bayar), laba kotor (pendapatan − HPP ter-snapshot), jumlah servis selesai, saldo kas periode.
+- **Ringkasan:** omzet (kas masuk bayar servis), **penjualan part (tanpa servis) + labanya** (baris terpisah dari omzet servis), laba kotor (pendapatan − HPP ter-snapshot), jumlah servis selesai, saldo kas periode. Filter omzet per-cabang mengikuti cabang pembayaran (termasuk pembayaran tanpa servis).
 - **Rekap per kantong** (Tunai/Bank) + **rincian laba per servis**.
-- **Export CSV** (ringkasan + detail kas per periode). Owner lintas cabang; Admin cabangnya.
+- **Selisih opname** masuk sebagai beban/temuan pada laba periode.
+- **Export CSV** (ringkasan + detail kas per periode + penjualan part). Owner lintas cabang; Admin cabangnya.
 - Belum ada → §7: laba bersih per kategori, rincian piutang di laporan, DP vs pelunasan, durasi rata-rata, tingkat persetujuan estimasi, performa mekanik, part terlaris.
 
 ### FR-9 PWA, mobile & cetak — **Rilis 1**
@@ -209,7 +220,7 @@ Akses: **Owner + SysAdmin**; perubahan tercatat (siapa, kapan).
 ### FR-11 Audit & anti-fraud — **Rilis 1.5 (terpasang)**
 Akses: **Owner** (halaman Audit & void); log ditulis otomatis untuk semua peran.
 - **AuditLog append-only:** setiap aksi kritikal dicatat **dalam transaksi DB yang sama** dengan aksinya (aksi sukses ⇔ log ada — tidak ada log yatim, jejak tidak bisa hilang diam-diam). Isi: pelaku (id, nama, peran), aksi, entitas, cabang, ringkasan, **diff before→after (JSONB)**, waktu. Tanpa UI ubah/hapus; ikut ter-backup (FR-10).
-- **Aksi yang dicatat:** pembayaran (buat/void), kas manual, stok masuk (beli), penyesuaian stok, ubah harga part, servis (buat + **setiap transisi status** termasuk alasan batal), part servis (tambah/kembali), ubah pengaturan & cabang, kelola akun (buat/reset password/nonaktif/assign). Password **tidak pernah** masuk log.
+- **Aksi yang dicatat:** pembayaran (buat/void/**refund kelebihan**), penjualan part (POS), kas manual, stok masuk (beli), penyesuaian stok, ubah harga part, **koreksi harga beli batch (HPP)**, servis (buat + **setiap transisi status** termasuk alasan batal), part servis (tambah/kembali), ubah pengaturan & cabang, kelola akun (buat/reset password/nonaktif/assign). Password **tidak pernah** masuk log.
 - **Void pembayaran (khusus Owner):** alasan wajib (min. 4 karakter); menandai `voidedAt`/`voidReason`/`voidedBy` **+ membuat entri kas reversal** (EXPENSE, kategori `Pembatalan Bayar`) dalam **1 transaksi DB**; semua Σ terbayar/laporan/cetak **mengabaikan** pembayaran void; baris void tetap tampil (coret + alasan) di detail servis & Audit.
 - **Halaman Audit (Owner):** kartu peringatan — pembayaran void, **jasa < harga katalog**, **part < harga jual**, stok disesuaikan — plus daftar log (filter per aksi, detail diff before→after).
 - **Kriteria:** owner bisa menelusuri "siapa, kapan, apa" untuk semua aksi uang dalam < 1 menit.
@@ -244,7 +255,7 @@ Akses: Admin/Owner (input hitung), Owner (review).
 ## 6. Kebutuhan Non-Fungsional
 - **Mobile-first:** target HP; diuji 360–430px; PWA installable; **responsif desktop** (sidebar md+, uji s.d. lebar xl).
 - **Offline:** hanya halaman cache untuk dibaca; mutasi butuh koneksi.
-- **Keamanan:** scrypt ✅; autorisasi server-side; query selalu ter-filter cabang/role; **jejak audit append-only** (FR-11) untuk aksi uang & perubahan kritikal.
+- **Keamanan:** scrypt ✅; **rate limit 2 lapis** (login & aksi berisiko, `RateLimitBucket`); autorisasi server-side; query selalu ter-filter cabang/role; **jejak audit append-only** (FR-11) untuk aksi uang & perubahan kritikal.
 - **Skala:** ratusan transaksi/hari/cabang — **Neon PostgreSQL** (production & staging via branch).
 - **Deploy:** **Vercel** (app) + **Neon** (Postgres, branch `production` sebagai default; koneksi `sslmode=verify-full`).
 - **Bahasa:** Indonesia; Rupiah (integer, format `Rp`).
@@ -260,7 +271,7 @@ Akses: Admin/Owner (input hitung), Owner (review).
 - QC digital (checklist + foto), foto precheck/DVI, tanda tangan approval digital.
 - Approval estimasi **per-item** & change order di tengah pengerjaan; pekerjaan tertunda (declined → follow-up).
 - Eksekusi refund DP otomatis; **diskon** per item/nota; **PPN/pajak**.
-- Sublet (kerja keluar: spooring, cat, bubut); penjualan part over-the-counter (POS); transfer stok antar cabang; harga/katalog per cabang.
+- Sublet (kerja keluar: spooring, cat, bubut); transfer stok antar cabang; harga/katalog per cabang.
 - Laporan lanjutan: laba bersih per kategori, rincian piutang di laporan, DP vs pelunasan, durasi rata-rata, tingkat persetujuan estimasi, performa mekanik, part terlaris; **cetak estimasi & daftar piutang**; opsi agregat “Semua Cabang”; pencarian customer by nama/HP; filter transaksi kas (tanggal/kategori/jenis/kantong) & ringkasan harian/bulanan.
 - Grafik trend penjualan, aging piutang, komisi & payroll mekanik, absensi, CRM loyalitas/poin, cetak via printer Bluetooth/thermal, multi-bahasa, SaaS, integrasi payment gateway, laporan akuntansi penuh (neraca/jurnal/PSAK).
 
@@ -278,7 +289,7 @@ Akses: Admin/Owner (input hitung), Owner (review).
 
 Setiap fase selesai = fitur terpasang + role-guard teruji + `build`/`lint` hijau + smoke test alur utama.
 
-**Rilis 1.5 (berjalan):** FR-11 audit & anti-fraud ✓ terpasang + E2E teruji; FR-12 rekonsiliasi kas harian (menyusul); notifikasi event-driven (fase 2, mekanisme terdefinisi).
+**Rilis 1.5 (berjalan):** FR-11 audit & anti-fraud ✓ terpasang + E2E teruji; **POS penjualan part** & **refund kelebihan bayar** terpasang (v1.3); FR-12 rekonsiliasi kas harian (menyusul); notifikasi event-driven (fase 2, mekanisme terdefinisi).
 
 ---
 
