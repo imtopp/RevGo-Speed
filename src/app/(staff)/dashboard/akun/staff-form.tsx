@@ -39,7 +39,7 @@ export function StaffForm({ branches }: { branches: Branch[] }) {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="w-full rounded-xl bg-primary py-3 text-sm font-semibold text-white active:opacity-90"
+        className="w-full rounded-xl bg-primary py-3 text-sm font-semibold text-white active:opacity-90 sm:w-auto sm:px-6"
       >
         {open ? "Tutup Form Akun" : "+ Buat Akun Staff"}
       </button>
@@ -154,7 +154,7 @@ export function StaffForm({ branches }: { branches: Branch[] }) {
 
       <SubmitButton
         pendingText="Membuat..."
-        className="w-full rounded-lg bg-primary py-2.5 text-sm font-medium text-white active:opacity-90 disabled:opacity-60"
+        className="w-full rounded-lg bg-primary py-2.5 text-sm font-medium text-white active:opacity-90 disabled:opacity-60 sm:w-auto sm:px-6"
       >
         Buat Akun
       </SubmitButton>
