@@ -561,13 +561,29 @@ function SupplierEdit({ supplier }: { supplier: Supplier }) {
   );
 }
 
-function PartRow({ part, kategoris }: { part: Part; kategoris: string[] }) {
+function PartRow({
+  part,
+  kategoris,
+  onSuccess,
+}: {
+  part: Part;
+  kategoris: string[];
+  onSuccess?: (msg: string) => void;
+}) {
   const [open, setOpen] = useState(false);
   const [delState, delAction] = useActionState<StokState, FormData>(
     deletePart,
     {},
   );
+  const [delSebelumnya, setDelSebelumnya] = useState(delState);
   const low = part.quantity <= part.minStock;
+
+  // Hapus sukses → kabari induk (notif luar: info reversal kas); gagal → inline.
+  if (delState !== delSebelumnya) {
+    setDelSebelumnya(delState);
+    if (delState.success) onSuccess?.(delState.success);
+  }
+
   return (
     <div className="rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
       <div className="flex items-start justify-between gap-2">
@@ -597,19 +613,19 @@ function PartRow({ part, kategoris }: { part: Part; kategoris: string[] }) {
             onSubmit={(e) => {
               if (
                 !confirm(
-                  `Hapus part "${part.name}"? Hanya bisa bila belum pernah dipakai.`,
+                  `Hapus part "${part.name}"? Hanya bisa bila riwayatnya cuma stok awal.`,
                 )
               )
                 e.preventDefault();
             }}
           >
             <input type="hidden" name="id" value={part.id} />
-            <button
-              type="submit"
-              className="text-xs font-medium text-danger underline underline-offset-2"
+            <SubmitButton
+              pendingText="Menghapus…"
+              className="text-xs font-medium text-danger underline underline-offset-2 disabled:opacity-60"
             >
               Hapus
-            </button>
+            </SubmitButton>
           </form>
         </div>
       </div>
@@ -1046,7 +1062,12 @@ export function StokPanels({
           </div>
         )}
         {partsTampil.map((p) => (
-          <PartRow key={p.id} part={p} kategoris={kategoris} />
+          <PartRow
+            key={p.id}
+            part={p}
+            kategoris={kategoris}
+            onSuccess={(m) => setPesan(m)}
+          />
         ))}
       </div>
     </div>
