@@ -27,6 +27,7 @@ const ACTION_LABEL: Record<string, string> = {
   ACCOUNT_RESET_PASSWORD: "Reset password",
   ACCOUNT_TOGGLE: "Aktif/nonaktif akun",
   ACCOUNT_ASSIGN: "Assign cabang",
+  SYSTEM_IMPORT: "Restore backup",
 };
 
 const CHIPS: { action: string | null; label: string }[] = [

@@ -1,6 +1,6 @@
 # PRD — RevGo Speed
 
-**Versi:** 1.5 (Konsinyasi + stok awal part = belanja, hapus part, SKU auto)
+**Versi:** 1.6 (Backup & restore penuh dari file, sinkronisasi skema)
 **Tanggal:** 26 Oktober 2026
 **Status:** Rilis 1 selesai — semua fase A–E terpasang, siap produksi; Rilis 1.5 berjalan: FR-11 (audit) terpasang, FR-12 menyusul
 
@@ -14,6 +14,7 @@
 - v1.3 — audit PRD ↔ kode (26 Okt): **penjualan part tanpa servis/POS** (`PartSale`) resmi masuk FR-6/8 (keluar dari daftar fase 2); **refund kelebihan bayar** owner-only (`PaymentKind REFUND`, FR-5); **HPP batch FIFO** (`PartBatchUsage` + koreksi `correctStockCost`) menggantikan narasi snapshot sederhana (FR-6); **booking walk-in tanpa akun customer** (FR-3); **ganti password wajib saat login pertama** + ganti password mandiri (FR-0); **aturan bayar ditahan** saat pengerjaan (FR-5); **selisih opname → beban/temuan** laporan (FR-8); **rate limit 2 lapis** (NFR). + **App. B** praktik implementasi (kualitas di atas minimum FR).
 - v1.4 — **stok awal part = belanja (26 Okt):** membuat part dengan qty > 0 & harga beli > 0 otomatis catat **Kas Keluar** atomik (kantong sesuai cara bayar, FR-6/§3.2) — modal tertahan di barang ikut terbaca di saldo & laporan; koreksi harga batch stok awal otomatis ikut menggeser kas (deteksi via baris `Pembelian Part`). **Barang consignment/konsinyasi** tercatat di §7 (fase 2+). + **Hapus part guard bertingkat** (tolak part dipakai servis/penjualan & riwayat selain stok awal; part stok-awal-saja boleh dihapus + **reversal kas otomatis**, AuditLog `PART_DELETE`), **SKU auto** `PART-0001` saat dikosongkan (FR-6), **cari/filter/hitungan daftar part** (FR-6).
 - v1.5 — **konsinyasi (26 Okt, dinaikkan dari §7):** flag `consignment` per part (wajib supplier) — stok masuk (stok awal & Stok Masuk) **tanpa Kas Keluar** (batch cost tetap → HPP benar), aksi **Retur Konsinyasi** (OUT atomik tanpa kas & tanpa beban laporan, AuditLog `STOCK_RETURN`), pembayaran supplier via **kas manual**; **bukan utang** — tanpa model pembayaran tempo. Hapus part: stok awal konsinyasi **tanpa reversal** (tidak pernah ada baris kas). FR-6/§3.2; §7 baris konsinyasi dihapus.
+- v1.6 — **backup & restore penuh (26 Okt, FR-10):** akses backup **Owner + SysAdmin** (sesuai nav & PRD — sebelumnya kode mengunci Owner); export **seluruh tabel** (tambah `RateLimitBuckets` — daftar tunggal `src/lib/backup.ts`); **Restore dari file JSON** (`POST /api/backup/import`, konfirmasi ketik `RESTORE`): replace **SEMUA data dalam 1 transaksi** (gagal = rollback, data lama utuh), jejak AuditLog `SYSTEM_IMPORT`, rate limit paling ketat. **⚠️ Aturan sinkronisasi:** setiap perubahan `schema.prisma` (tambah/hapus model, ubah kolom/tipe) **wajib** disinkronkan dengan `src/lib/backup.ts` + export/import route — unit test `backup.test.ts` membaca `schema.prisma` dan **gagal otomatis** bila lupa.
 
 ---
 
@@ -225,7 +226,9 @@ Akses: **Owner + SysAdmin**; perubahan tercatat (siapa, kapan).
 - **Kebijakan DP & pembatalan:** `TANPA_REFUND` / `REFUND_PENUH` (MVP: panduan + eksekusi manual lewat kas; otomatis fase 2).
 - **Parameter:** nama tampilan aplikasi, **logo** (URL), **prefix kode servis** (mis. `SV-`).
 - **Kelola akun staff:** buat akun Admin/Mekanik/SysAdmin, assign cabang, reset password, nonaktifkan.
-- **Backup data:** unduh salinan database (JSON export) — rutinitas SysAdmin.
+- **Backup data:** unduh salinan **seluruh tabel** database (JSON export) — rutinitas SysAdmin.
+- **Restore data (v1.6):** pulihkan penuh dari file backup JSON — replace **semua data** dalam **1 transaksi DB** (gagal di tengah = rollback, data lama utuh); wajib ketik `RESTORE` untuk konfirmasi; jejak `SYSTEM_IMPORT` di AuditLog; rate limit paling ketat. Akses Owner + SysAdmin.
+- **⚠️ Sinkronisasi skema (wajib):** export & import dikontrol **daftar tunggal** `src/lib/backup.ts` (`BACKUP_TABLES`). Setiap perubahan `prisma/schema.prisma` (tambah/hapus model, ubah kolom/tipe) **wajib** disinkronkan ke daftar itu; `src/lib/backup.test.ts` membaca `schema.prisma` dan **gagal otomatis** bila lupa — jangan di-skip/di-disable.
 
 ### FR-11 Audit & anti-fraud — **Rilis 1.5 (terpasang)**
 Akses: **Owner** (halaman Audit & void); log ditulis otomatis untuk semua peran.
@@ -269,7 +272,7 @@ Akses: Admin/Owner (input hitung), Owner (review).
 - **Skala:** ratusan transaksi/hari/cabang — **Neon PostgreSQL** (production & staging via branch).
 - **Deploy:** **Vercel** (app) + **Neon** (Postgres, branch `production` sebagai default; koneksi `sslmode=verify-full`).
 - **Bahasa:** Indonesia; Rupiah (integer, format `Rp`).
-- **Backup:** unduh DB tersedia (FR-10); Neon menyediakan **PITR** (point-in-time restore) sebagai backup otomatis.
+- **Backup:** unduh DB tersedia (FR-10); **restore penuh dari file** tersedia (v1.6, FR-10); Neon menyediakan **PITR** (point-in-time restore) sebagai backup otomatis.
 
 ---
 

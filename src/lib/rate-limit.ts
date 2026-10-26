@@ -9,6 +9,7 @@ const AUTH: RateRule = { limit: 20, windowMs: 60_000, scope: "auth" };
 const LOGIN_POST: RateRule = { limit: 10, windowMs: 60_000, scope: "auth-page" };
 const AUTH_GET: RateRule = { limit: 60, windowMs: 60_000, scope: "auth-page" };
 const EXPORT: RateRule = { limit: 10, windowMs: 60_000, scope: "export" };
+const IMPORT: RateRule = { limit: 5, windowMs: 60_000, scope: "import" };
 const MUTATE: RateRule = { limit: 60, windowMs: 60_000, scope: "mutate" };
 
 /**
@@ -29,6 +30,10 @@ export function ruleFor(path: string, method: string): RateRule | null {
     path.startsWith("/api/laporan/export")
   ) {
     return EXPORT;
+  }
+  // Restore = destruktif (replace seluruh data) — paling ketat.
+  if (path.startsWith("/api/backup/import")) {
+    return IMPORT;
   }
   if (
     method === "POST" ||

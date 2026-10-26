@@ -2,76 +2,37 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { getAppName } from "@/lib/branding";
+import { BACKUP_TABLES } from "@/lib/backup";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
   const session = await auth();
-  // OWNER-only: ekspor memuat passwordHash semua user — jangan sampai
-  // SysAdmin (atau di bawahnya) mengekstrak hash milik owner.
-  if (session?.user?.role !== "OWNER") {
+  // OWNER + SysAdmin: ekspor memuat passwordHash semua user —
+  // jangan sampai Admin (atau di bawahnya) mengekstrak hash.
+  const role = session?.user?.role;
+  if (role !== "OWNER" && role !== "SYS_ADMIN") {
     return NextResponse.json({ error: "Tidak punya akses." }, { status: 403 });
   }
 
-  const [
-    branches,
-    users,
-    vehicles,
-    suppliers,
-    serviceCatalog,
-    parts,
-    stockMovements,
-    services,
-    serviceParts,
-    partBatchUsage,
-    partSales,
-    partSaleItems,
-    payments,
-    cashflows,
-    systemSettings,
-    auditLogs,
-  ] = await Promise.all([
-    prisma.branch.findMany(),
-    prisma.user.findMany(),
-    prisma.vehicle.findMany(),
-    prisma.supplier.findMany(),
-    prisma.serviceCatalog.findMany(),
-    prisma.part.findMany(),
-    prisma.stockMovement.findMany(),
-    prisma.service.findMany(),
-    prisma.servicePart.findMany(),
-    prisma.partBatchUsage.findMany(),
-    prisma.partSale.findMany(),
-    prisma.partSaleItem.findMany(),
-    prisma.payment.findMany(),
-    prisma.cashflow.findMany(),
-    prisma.systemSetting.findMany(),
-    prisma.auditLog.findMany(),
-  ]);
+  // Daftar tabel ikut src/lib/backup.ts — tambah model schema.prisma
+  // → wajib update juga di sana (dicek unit test).
+  const delegates = prisma as unknown as Record<
+    string,
+    { findMany: () => Promise<unknown[]> }
+  >;
+  const rows = await Promise.all(BACKUP_TABLES.map((t) => delegates[t.delegate].findMany()));
+  const data: Record<string, unknown[]> = {};
+  BACKUP_TABLES.forEach((t, i) => {
+    data[t.key] = rows[i];
+  });
 
   const appName = await getAppName();
 
   const payload = {
     exportedAt: new Date().toISOString(),
     app: appName,
-    data: {
-      branches,
-      users,
-      vehicles,
-      suppliers,
-      serviceCatalog,
-      parts,
-      stockMovements,
-      services,
-      serviceParts,
-      partBatchUsage,
-      partSales,
-      partSaleItems,
-      payments,
-      cashflows,
-      systemSettings,
-      auditLogs,
-    },
+    data,
   };
 
   const slug = appName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "app";

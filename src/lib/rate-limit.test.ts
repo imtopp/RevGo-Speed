@@ -26,6 +26,12 @@ describe("ruleFor", () => {
     expect(ruleFor("/api/laporan/export", "GET")?.limit).toBe(10);
   });
 
+  it("import/restore dibatasi paling ketat (destruktif)", () => {
+    const r = ruleFor("/api/backup/import", "POST");
+    expect(r?.limit).toBe(5);
+    expect(r?.scope).toBe("import");
+  });
+
   it("membatasi SEMUA mutasi (server action & API), bukan cuma auth", () => {
     for (const path of [
       "/dashboard/servis",
