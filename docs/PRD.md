@@ -11,7 +11,7 @@
 - v1.0 — **rebrand RevLedger → RevGo Speed** (hostname & branding); migrasi SQLite → **Neon PostgreSQL**; deploy **Vercel** (production) + Neon (DB); semua fase A–E selesai.
 - v1.1 — audit konsistensi PRD ↔ implementasi: keputusan cakupan SysAdmin (risiko #6) & angka keuangan mekanik (risiko #5) **ditegakkan di kode**; detail disesuaikan dengan kode aktual (`CANCELLED` + `CHECKED_IN`, kategori kas bebas teks + label otomatis, parameter pengaturan +logo, cakupan laporan/cetak/pencarian, piutang urut tertua + kontak); dukungan **desktop responsif**, **design system**, aset logo.
 - v1.2 — **audit & anti-fraud (FR-11, terpasang):** AuditLog append-only (diff before→after, transaksi DB sama), **void pembayaran Owner-only** + reversal kas otomatis, halaman **Audit** (peringatan: void / jasa < katalog / part < jual / opname); semua Σ terbayar mengabaikan pembayaran void; auditLogs ikut backup. **FR-12 rekonsiliasi kas harian** & notifikasi event-driven (tanpa daemon Vercel) didefinisikan (fase 1.5).
-- v1.3 — audit PRD ↔ kode (26 Okt): **penjualan part tanpa servis/POS** (`PartSale`) resmi masuk FR-6/8 (keluar dari daftar fase 2); **refund kelebihan bayar** owner-only (`PaymentKind REFUND`, FR-5); **HPP batch FIFO** (`PartBatchUsage` + koreksi `correctStockCost`) menggantikan narasi snapshot sederhana (FR-6); **booking walk-in tanpa akun customer** (FR-3); **ganti password wajib saat login pertama** + ganti password mandiri (FR-0); **aturan bayar ditahan** saat pengerjaan (FR-5); **selisih opname → beban/temuan** laporan (FR-8); **rate limit 2 lapis** (NFR).
+- v1.3 — audit PRD ↔ kode (26 Okt): **penjualan part tanpa servis/POS** (`PartSale`) resmi masuk FR-6/8 (keluar dari daftar fase 2); **refund kelebihan bayar** owner-only (`PaymentKind REFUND`, FR-5); **HPP batch FIFO** (`PartBatchUsage` + koreksi `correctStockCost`) menggantikan narasi snapshot sederhana (FR-6); **booking walk-in tanpa akun customer** (FR-3); **ganti password wajib saat login pertama** + ganti password mandiri (FR-0); **aturan bayar ditahan** saat pengerjaan (FR-5); **selisih opname → beban/temuan** laporan (FR-8); **rate limit 2 lapis** (NFR). + **App. B** praktik implementasi (kualitas di atas minimum FR).
 
 ---
 
@@ -346,3 +346,58 @@ Setiap fase selesai = fitur terpasang + role-guard teruji + `build`/`lint` hijau
 - (Opsional Fase E) `Service.catalogId?` untuk analitik jenis jasa
 
 **Tidak berubah:** model User/Vehicle/StockMovement/ServicePart/Payment sudah sesuai struktur — hanya menambah scoping, enum, dan field di atas.
+
+---
+
+## App. B — Praktik implementasi (kualitas di atas minimum FR) — v1.3
+
+Bagian ini mendokumentasikan perilaku nyata di kode yang **melampaui ketentuan minimum** §4 — bukan fitur baru, melainkan *cara* fitur lama dieksekusi agar lebih efisien, ramah-pengguna, dan aman. Dipertahankan sebagai standar saat menambah fitur berikutnya.
+
+### Booking & slot (FR-3) — cegah error, bukan tangani error
+- Slot/tanggal **sudah `disabled` sejak awal** (tutup/penuh/lewat/lead-time) dengan alasan tooltip — user **tidak bisa memilih slot yang pasti ditolak**; PRD hanya mensyaratkan "ditolak + alternatif".
+- Fetch ketersediaan **dua tahap** (tanggal dulu, slot saat dipilih) + auto-pilih tanggal pertama kosong + `Cache-Control: no-store`; alternatif penolakan **dikelompokkan per tanggal** dan tampil inline di form.
+- Booking dibuat dalam transaksi + **`pg_advisory_xact_lock` per cabang+tanggal** (anti double-booking paralel — di luar PRD).
+- Validasi plat live saat mengetik; datalist tipe difilter menurut merek + cek silang server ("X bukan tipe merek Y"); estimasi & durasi auto-isi dari katalog.
+- Tombol Setuju/Tolak tampil di kartu aktif **dan** riwayat; reject otomatis mengisi `cancelReason`; penjelasan "langkah berikutnya" per status di kartu.
+
+### Papan kerja & navigasi (FR-4)
+- 9 tab filter status via URL dengan **guard enum** (parameter asing ditolak sebelum masuk query); **`PendingLink`** memberi spinner "Memuat…" agar ganti filter tidak terasa aplikasi hang; state form booking dipertahankan antar filter; empty state per filter.
+
+### Proses servis & QC (FR-4)
+- QC **berurutan dua lapis**: mekanik harus `finishedAt` dulu (client + server); mekanik tak melihat tombol QC — panel "Menunggu QC admin".
+- Prefill keluhan booking di precheck & diagnosis; timestamp terima otomatis; ganti mekanik **anti-bentrok dua lapis** (UI hanya menawarkan mekanik bebas + server `validasiMekanik`); jadwal terpisah dengan recheck kapasitas ber-lock.
+- Hapus part terpakai: **Owner/Admin saja** (mekanik memegang part fisik), restock atomik + audit; guard servis belum DONE/CANCELLED.
+- Sticky action bar mobile + label aksi berikutnya per status; panel "Aksi lainnya" collapsible agar user tak tenggelam form.
+
+### Pembayaran (FR-5)
+- **"Sisa Rp X" live** di header form; form sembunyi otomatis saat lunas; server tolak overpay dengan pesan bersisa; hasil sukses **"Lunas!" / "Terima N. Sisa M."** — posisi tagihan selalu terlihat tanpa reload.
+- Anti-paralel: `SELECT … FOR UPDATE` + recheck agregat sebelum insert; refund kelebihan **angka dihitung dari DB** (bukan input user).
+- Guard "pembayaran ditahan" dieksekusi di **UI dan server** dengan pesan yang menjelaskan alasan + solusi.
+
+### Stok & POS (FR-6)
+- **PartPicker**: pencarian multi-token (nama/SKU/kategori, ranking), **Enter = pilih + submit**, auto-pick single match saat blur, hasil stok habis ditandai `HABIS` & disabled, cap 50 baris.
+- **NumberInput**: format ribuan live (`150.000`) dengan hidden input digit murni untuk server; mode negatif khusus opname; unit test sendiri.
+- Harga jual **read-only dari data part** (kasir tidak bisa mengetik harga); live total preview; harga di bawah beli → peringatan amber **live** + checkbox konfirmasi + cek server.
+- Kategori: datalist saran lintas cabang + **normalisasi anti-typo di server** (merge case-insensitive).
+- Anti-race stok: decrement via `updateMany({ quantity: { gte } })` + `FOR UPDATE` — stok mustahil negatif meski request paralel; stok awal part langsung jadi batch FIFO pertama.
+- Pesan sukses menyebut konsekuensi: "Kas keluar X (KAS/BANK)", ringkasan efek koreksi HPP.
+
+### Kas & piutang (FR-7)
+- Kartu saldo per kantong dihitung dari **seluruh riwayat** (`groupBy`), bukan 100 baris yang ditampilkan — daftar ringkas, angka tetap akurat.
+- Aksi cepat cicilan **inline di kartu piutang** (tak perlu pindah halaman), hanya muncul bila status menerima bayar; empty state "Semua lunas".
+
+### Laporan (FR-8)
+- **Export CSV 3 bagian**: servis (kode + TOTAL + SELISIH OPNAME + **LABA BERSIH**), penjualan part, arus kas — lengkap dengan **guard formula-injection Excel** (sel `= + - @` diprefiks `'`).
+- Selisih opname tampil sebagai baris rupiah "beban/temuan"; tabel laba per servis per baris + link detail; parameter tanggal divalidasi ketat.
+
+### Pengaturan & branding (FR-10)
+- Parameter booking & slot (lead time, horizon, buffer, kuota pit per cabang) tervalidasi rentang; server menolak key di luar allowlist + **sanitasi URL logo dua lapis** (tolak skema selain `https:`/`/`); duplikat nama cabang dicek.
+- Branding **merambat**: manifest/PWA, metadata browser, login/register, cetak nota, sampai nama file backup — bukan hanya header.
+
+### Audit (FR-11)
+- Chip filter aksi (pill, divalidasi enum — parameter asing diabaikan), diff before→after collapsible, kartu peringatan berincian (kode servis, plat, nominal, alasan) + sisa "…N lagi".
+
+### Pola UX lintas modul (standar, di luar FR)
+- **Auto-close form sukses + flash notif otomatis hilang** (katalog, akun, kas manual, cabang, stok, customer) — error → form tetap terbuka.
+- Spinner `SubmitButton` di semua aksi server, `PendingLink` untuk ganti-query, **skeleton meniru layout nyata** per halaman, empty state mengarahkan aksi berikutnya.
+- Format Rupiah/tanggal Indonesia dari satu modul util; angka moneter selalu **integer**; badge warna status dari token tunggal `STATUS_COLOR`.
