@@ -28,7 +28,6 @@ export default async function CustomerLayout({
             Sandi
           </Link>
           <form
-            onReset={(e) => e.preventDefault()}
             action={async () => {
               "use server";
               await signOut({ redirectTo: "/login" });

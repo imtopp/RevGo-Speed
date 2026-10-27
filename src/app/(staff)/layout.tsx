@@ -35,7 +35,6 @@ export default async function StaffLayout({ children }: { children: React.ReactN
             Ganti Password
           </Link>
           <form
-            onReset={(e) => e.preventDefault()}
             action={async () => {
               "use server";
               await signOut({ redirectTo: "/login" });
@@ -76,7 +75,6 @@ export default async function StaffLayout({ children }: { children: React.ReactN
               Sandi
             </Link>
             <form
-              onReset={(e) => e.preventDefault()}
               action={async () => {
                 "use server";
                 await signOut({ redirectTo: "/login" });
