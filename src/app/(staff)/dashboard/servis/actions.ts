@@ -42,15 +42,22 @@ async function cekCabangServis(branchId: string): Promise<string | null> {
   return null;
 }
 
-async function generateServiceCode(branchId: string): Promise<string> {
-  const prefixSetting = await prisma.systemSetting.findUnique({
+async function generateServiceCode(
+  tx: Prisma.TransactionClient,
+  branchId: string,
+): Promise<string> {
+  // Advisory lock penomoran — serialisasi count+1 antar booking paralel di
+  // cabang yang sama. Tanpa ini dua booking bisa menghasilkan kode sama →
+  // bentrok unique Service.code (transaksi gagal, pesan error kasar).
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`service-code:${branchId}`}))`;
+  const prefixSetting = await tx.systemSetting.findUnique({
     where: { key: "service_code_prefix" },
   });
   const prefix = prefixSetting?.value ?? "SV-";
-  const branch = await prisma.branch.findUnique({ where: { id: branchId } });
+  const branch = await tx.branch.findUnique({ where: { id: branchId } });
   const branchCode = (branch?.name ?? "X").slice(0, 2).toUpperCase();
   const year = new Date().getFullYear().toString().slice(-2);
-  const count = await prisma.service.count({
+  const count = await tx.service.count({
     where: { branchId, createdAt: { gte: new Date(new Date().getFullYear(), 0, 1) } },
   });
   return `${prefix}${branchCode}${year}-${String(count + 1).padStart(4, "0")}`;
@@ -118,9 +125,10 @@ export async function createBooking(
     if (epoch === null) return { error: "Jadwal kedatangan tidak valid." };
   }
 
-  const code = await generateServiceCode(branchId);
-
   const hasil = await prisma.$transaction(async (tx) => {
+    // Kode dihitung DI DALAM transaksi setelah advisory lock — jangan di luar
+    // (race count+1 antar booking paralel → bentrok unique code).
+    const code = await generateServiceCode(tx, branchId);
     const jadwalEpoch = reservasi && epoch !== null ? epoch : Date.now();
     await kunciSlot(tx, branchId, jadwalEpoch);
 
@@ -246,7 +254,7 @@ export async function createBooking(
         estimasiMenit: durasiMenit,
       },
     });
-    return { ok: true as const, passwordSementara, peringatan };
+    return { ok: true as const, code, passwordSementara, peringatan };
   });
 
   if (!hasil.ok) {
@@ -257,8 +265,8 @@ export async function createBooking(
   return {
     success:
       (reservasi
-        ? `Reservasi ${code} dibuat untuk ${plateNumber}.`
-        : `Booking ${code} dibuat untuk ${plateNumber} (walk-in).`) +
+        ? `Reservasi ${hasil.code} dibuat untuk ${plateNumber}.`
+        : `Booking ${hasil.code} dibuat untuk ${plateNumber} (walk-in).`) +
       hasil.peringatan +
       (hasil.passwordSementara
         ? ` Akun customer baru dibuat — password sementara: ${hasil.passwordSementara} (beritahu customer, sarankan diganti).`

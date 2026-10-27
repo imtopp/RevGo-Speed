@@ -6,6 +6,7 @@ import { normalizeMerek, normalizeTipe, modelTidakSesuaiMerek, normalizePlate, M
 import { cekSlotTersedia, kunciSlot } from "@/lib/booking";
 import { DURASI_DEFAULT_MENIT, parseJadwal, pesanDitolak } from "@/lib/availability";
 import { revalidatePath } from "next/cache";
+import type { Prisma } from "@db/prisma/client";
 
 export type CustomerState = { error?: string; success?: string };
 
@@ -17,15 +18,22 @@ async function requireCustomer() {
   return session;
 }
 
-async function generateServiceCode(branchId: string): Promise<string> {
-  const prefixSetting = await prisma.systemSetting.findUnique({
+async function generateServiceCode(
+  tx: Prisma.TransactionClient,
+  branchId: string,
+): Promise<string> {
+  // Advisory lock penomoran — serialisasi count+1 antar booking paralel di
+  // cabang yang sama, cegah bentrok unique Service.code (klik booking
+  // barengan dari dua device bisa menghasilkan kode sama).
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`service-code:${branchId}`}))`;
+  const prefixSetting = await tx.systemSetting.findUnique({
     where: { key: "service_code_prefix" },
   });
   const prefix = prefixSetting?.value ?? "SV-";
-  const branch = await prisma.branch.findUnique({ where: { id: branchId } });
+  const branch = await tx.branch.findUnique({ where: { id: branchId } });
   const branchCode = (branch?.name ?? "X").slice(0, 2).toUpperCase();
   const year = new Date().getFullYear().toString().slice(-2);
-  const count = await prisma.service.count({
+  const count = await tx.service.count({
     where: { branchId, createdAt: { gte: new Date(new Date().getFullYear(), 0, 1) } },
   });
   return `${prefix}${branchCode}${year}-${String(count + 1).padStart(4, "0")}`;
@@ -70,8 +78,10 @@ export async function customerBooking(
   }
   const durasiMenit = catalog?.estimasiMenit ?? DURASI_DEFAULT_MENIT;
 
-  const code = await generateServiceCode(branchId);
   const hasil = await prisma.$transaction(async (tx) => {
+    // Kode dihitung di DALAM transaksi setelah advisory lock (anti race
+    // count+1 antar booking paralel → bentrok unique code).
+    const code = await generateServiceCode(tx, branchId);
     await kunciSlot(tx, branchId, epoch);
     const cek = await cekSlotTersedia({
       branchId,
@@ -97,14 +107,14 @@ export async function customerBooking(
         estimasiMenit: durasiMenit,
       },
     });
-    return { ok: true as const, id: created.id };
+    return { ok: true as const, id: created.id, code: created.code };
   });
   if (!hasil.ok) {
     return { error: pesanDitolak(hasil) };
   }
 
   revalidatePath("/pesanan");
-  return { success: `Booking ${code} terkirim. Menunggu konfirmasi bengkel.` };
+  return { success: `Booking ${hasil.code} terkirim. Menunggu konfirmasi bengkel.` };
 }
 
 export async function customerAddVehicle(

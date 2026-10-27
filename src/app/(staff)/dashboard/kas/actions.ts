@@ -254,7 +254,9 @@ export async function voidPayment(
       // sendiri, kunci batch asal dilepas, supaya Σ batch terbuka = stok.
       if (!sale) throw new Error("Pembayaran tidak terikat penjualan.");
       const branchId = payment.branchId ?? sale.branchId;
-      await tx.cashflow.create({
+      // Satu kas pengembalian mewakili semua gerakan retur multi-item
+      // (kolom cashflowId di StockMovement, nullable).
+      const cfVoid = await tx.cashflow.create({
         data: {
           type: "EXPENSE",
           category: "Pembatalan Penjualan Part",
@@ -274,6 +276,7 @@ export async function voidPayment(
             quantity: item.quantity,
             cost: costPerUnit,
             note: `Penjualan ${sale.code} dibatalkan`,
+            cashflowId: cfVoid.id,
           },
         });
         await tx.part.update({

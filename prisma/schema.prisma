@@ -196,6 +196,11 @@ model StockMovement {
   user       User?             @relation(fields: [userId], references: [id])
   supplierId String?
   supplier   Supplier?         @relation(fields: [supplierId], references: [id])
+  /// Kas yang mewakili gerakan ini — diisi hanya saat gerakan stok sebab
+  /// uang bergerak (stok awal, pembelian, penjualan, void penjualan).
+  /// Nullable: data lama & gerakan tanpa uang (retur/opname) tanpa relasi.
+  cashflowId String?
+  cashflow   Cashflow?         @relation(fields: [cashflowId], references: [id])
   createdAt  DateTime          @default(now())
 
   batchUsages PartBatchUsage[]
@@ -343,6 +348,9 @@ model Cashflow {
   createdBy     String?
   createdByUser User?           @relation(fields: [createdBy], references: [id])
   createdAt     DateTime        @default(now())
+  /// Gerakan stok yang dibuat kas ini (bila ada) — 1 kas boleh mewakili
+  /// banyak gerakan (mis. void penjualan multi-item), 1 gerakan ≤ 1 kas.
+  movements     StockMovement[]
 }
 
 model AuditLog {

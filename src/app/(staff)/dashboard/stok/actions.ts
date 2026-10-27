@@ -223,19 +223,10 @@ export async function createPart(
     // Kecuali konsinyasi: barang titipan supplier — belum dibeli, stok masuk
     // tanpa kas (kas keluar baru saat bayar supplier via kas manual).
     if (quantity > 0) {
-      await tx.stockMovement.create({
-        data: {
-          partId: p.id,
-          type: "IN",
-          quantity,
-          cost: buyPrice,
-          note: consignment ? "Stok awal (konsinyasi)" : "Stok awal",
-          userId: session.user.id,
-          supplierId: supplierId || null,
-        },
-      });
+      // Kas dulu (bila ada) → gerakan stok menunjuk kasnya (cashflowId).
+      let cashflowId: string | null = null;
       if (total > 0 && !consignment) {
-        await tx.cashflow.create({
+        const cf = await tx.cashflow.create({
           data: {
             type: "EXPENSE",
             category: "Pembelian Part",
@@ -246,7 +237,20 @@ export async function createPart(
             createdBy: session.user.id,
           },
         });
+        cashflowId = cf.id;
       }
+      await tx.stockMovement.create({
+        data: {
+          partId: p.id,
+          type: "IN",
+          quantity,
+          cost: buyPrice,
+          note: consignment ? "Stok awal (konsinyasi)" : "Stok awal",
+          userId: session.user.id,
+          supplierId: supplierId || null,
+          cashflowId,
+        },
+      });
     }
   });
   revalidatePath("/dashboard/stok");
@@ -576,6 +580,24 @@ export async function stockIn(
       where: { id: partId },
       data: { quantity: { increment: quantity }, buyPrice: avgBaru },
     });
+    // Konsinyasi: barang titipan supplier — stok & batch cost masuk (HPP benar),
+    // tapi TIDAK ada kas keluar (kas baru saat bayar supplier via kas manual).
+    // Kas dulu (bila ada) → gerakan stok menunjuk kasnya (cashflowId).
+    let cashflowId: string | null = null;
+    if (!part.consignment) {
+      const cf = await tx.cashflow.create({
+        data: {
+          type: "EXPENSE",
+          category: "Pembelian Part",
+          amount: total,
+          account: accountFromMethod(method),
+          branchId: part.branchId,
+          description: `${quantity} ${part.unit} ${part.name}${supplierId ? " (pembelian)" : ""}`,
+          createdBy: session.user.id,
+        },
+      });
+      cashflowId = cf.id;
+    }
     await tx.stockMovement.create({
       data: {
         partId,
@@ -587,23 +609,9 @@ export async function stockIn(
           : note || "Pembelian stok",
         userId: session.user.id,
         supplierId: supplierId || null,
+        cashflowId,
       },
     });
-    // Konsinyasi: barang titipan supplier — stok & batch cost masuk (HPP benar),
-    // tapi TIDAK ada kas keluar (kas baru saat bayar supplier via kas manual).
-    if (!part.consignment) {
-      await tx.cashflow.create({
-        data: {
-          type: "EXPENSE",
-          category: "Pembelian Part",
-          amount: total,
-          account: accountFromMethod(method),
-          branchId: part.branchId,
-          description: `${quantity} ${part.unit} ${part.name}${supplierId ? " (pembelian)" : ""}`,
-          createdBy: session.user.id,
-        },
-      });
-    }
     await logAudit(tx, session.user, {
       action: "STOCK_IN",
       entityType: "Part",
@@ -840,7 +848,7 @@ export async function sellPart(
         },
       });
     }
-    await tx.stockMovement.create({
+    const movJual = await tx.stockMovement.create({
       data: {
         partId,
         type: "OUT",
@@ -862,7 +870,7 @@ export async function sellPart(
           receivedById: session.user.id,
         },
       });
-      await tx.cashflow.create({
+      const cf = await tx.cashflow.create({
         data: {
           type: "INCOME",
           category: "Penjualan Part",
@@ -872,6 +880,11 @@ export async function sellPart(
           description: `${quantity} ${partF.unit} ${partF.name} · ${sale.code}`,
           createdBy: session.user.id,
         },
+      });
+      // Gerakan stok keluar menunjuk kas masuknya.
+      await tx.stockMovement.update({
+        where: { id: movJual.id },
+        data: { cashflowId: cf.id },
       });
     }
     await logAudit(tx, session.user, {
