@@ -24,6 +24,7 @@ import {
 } from "./actions";
 import { formatRupiah, formatTanggalPendek } from "@/lib/service-status";
 import { totalPenjualan, labaPenjualan } from "@/lib/sale";
+import { VoidPaymentForm } from "../servis/[id]/void-payment";
 import { SubmitButton } from "@/components/submit-button";
 import { PartPicker } from "@/components/part-picker";
 import { NumberInput } from "@/components/number-input";
@@ -67,6 +68,7 @@ type SaleRow = {
     cost: number;
     part: { name: string; unit: string };
   }[];
+  payments: { id: string }[];
 };
 type RiwayatPart = {
   id: string;
@@ -991,6 +993,12 @@ export function StokPanels({
                         .map((i) => `${i.quantity} ${i.part.unit} ${i.part.name}`)
                         .join(", ")}
                     </p>
+                    {s.payments[0] && (
+                      <VoidPaymentForm
+                        paymentId={s.payments[0].id}
+                        onSuccess={setPesan}
+                      />
+                    )}
                   </li>
                 );
               })}

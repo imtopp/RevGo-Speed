@@ -16,7 +16,12 @@ const MUTATE: RateRule = { limit: 60, windowMs: 60_000, scope: "mutate" };
  * Pilih aturan rate limit berdasarkan path + method.
  * GET halaman biasa di-loloskan (read-only, tidak mahal).
  */
-export function ruleFor(path: string, method: string): RateRule | null {
+export function ruleFor(rawPath: string, method: string): RateRule | null {
+  // Normalisasi: rangkap slash jadi satu & buang trailing slash
+  // (//login// → /login) supaya aturan yang sama berlaku — bila tidak,
+  // proteksi login/export bisa dilewati hanya dengan menambah "/" di URL.
+  const canon = rawPath.replace(/\/{2,}/g, "/").replace(/(.?)\/+$/, "$1");
+  const path = canon === "" ? "/" : canon;
   if (path.startsWith("/api/auth/")) {
     // Session/CSRF GET sering dipanggil tiap navigasi — tidak dibatasi.
     return method === "GET" ? null : AUTH;

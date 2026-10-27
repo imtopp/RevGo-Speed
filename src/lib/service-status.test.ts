@@ -10,6 +10,7 @@ import {
   formatTanggal,
   formatTanggalPendek,
   windowHariWIB,
+  periodeWIB,
 } from "./service-status";
 import type { ServiceStatus } from "@db/prisma/client";
 
@@ -148,5 +149,51 @@ describe("windowHariWIB (filter tanggal papan servis)", () => {
     expect(windowHariWIB("2026-10-26; DROP TABLE")).toBeNull();
     expect(windowHariWIB("2026-13-01")).toBeNull();
     expect(windowHariWIB("2026-02-31")).toBeNull();
+  });
+});
+
+describe("periodeWIB (rentang laporan/export)", () => {
+  // "now" dikunci: 24 Okt 2026 20:00Z = 25 Okt 2026 03:00 WIB → bulan WIB = Okt.
+  const now = new Date("2026-10-24T20:00:00.000Z");
+
+  it("tanpa param → bulan berjalan menurut kalender WIB (bukan UTC server)", () => {
+    expect(periodeWIB(null, null, now)).toEqual({
+      gte: "2026-10-01T00:00:00+07:00",
+      lt: "2026-11-01T00:00:00+07:00",
+      dari: "2026-10-01",
+      sampai: "2026-10-31",
+    });
+  });
+
+  it("sudah WIB pagi (masih bulan lama di UTC) tetap bulan WIB yang benar", () => {
+    // 1 Okt 2026 16:30Z = 2 Nov 2026 00:00-07... pakai 1 Nov 16:30Z = 2 Nov 00:30 WIB
+    const d = new Date("2026-11-01T16:30:00.000Z");
+    const p = periodeWIB(null, null, d);
+    expect(p.gte).toBe("2026-11-01T00:00:00+07:00");
+    expect(p.lt).toBe("2026-12-01T00:00:00+07:00");
+  });
+
+  it("param dari/to valid → window hari WIB, bukan tanggal default", () => {
+    const p = periodeWIB("2026-09-10", "2026-09-15", now);
+    expect(p).toEqual({
+      gte: "2026-09-10T00:00:00+07:00",
+      lt: "2026-09-16T00:00:00+07:00",
+      dari: "2026-09-10",
+      sampai: "2026-09-15",
+    });
+  });
+
+  it("param tercampur: yang valid dipakai, yang tidak → default bulan", () => {
+    const p = periodeWIB("2026-10-20", "2026-99-99", now);
+    expect(p.gte).toBe("2026-10-20T00:00:00+07:00");
+    expect(p.lt).toBe("2026-11-01T00:00:00+07:00");
+    expect(p.dari).toBe("2026-10-20");
+    expect(p.sampai).toBe("2026-10-31");
+  });
+
+  it("sampai = hari terakhir periode (lt − 1 hari, lintas akhir tahun)", () => {
+    const p = periodeWIB("2026-12-25", "2026-12-31", now);
+    expect(p.lt).toBe("2027-01-01T00:00:00+07:00");
+    expect(p.sampai).toBe("2026-12-31");
   });
 });

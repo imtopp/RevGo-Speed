@@ -50,6 +50,16 @@ describe("ruleFor", () => {
     expect(ruleFor("/dashboard/servis", "GET")).toBeNull();
     expect(ruleFor("/pesanan", "GET")).toBeNull();
   });
+
+  it("trailing slash tidak melewati aturan (dibungkus jadi bentuk kanonik)", () => {
+    expect(ruleFor("/login/", "POST")?.limit).toBe(10);
+    expect(ruleFor("/login/", "GET")?.limit).toBe(60);
+    expect(ruleFor("/api/backup/export/", "GET")?.limit).toBe(10);
+    expect(ruleFor("/api/backup/import/", "POST")?.limit).toBe(5);
+    expect(ruleFor("/dashboard/stok/", "POST")?.scope).toBe("mutate");
+    expect(ruleFor("/dashboard/stok/", "GET")).toBeNull();
+    expect(ruleFor("//login//", "POST")?.limit).toBe(10);
+  });
 });
 
 describe("windowStartFor", () => {

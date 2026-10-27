@@ -358,74 +358,112 @@ export async function deletePart(
     };
   }
 
-  const kasDibatalkan = await prisma.$transaction(async (tx) => {
-    let total = 0;
-    for (const m of movements) {
-      if (!m.cost || m.cost <= 0 || m.quantity <= 0) continue;
-      // Konsinyasi tidak pernah membuat baris kas — jangan dicocokkan dengan
-      // EXPENSE part lain (jumlah bisa kembar) supaya tidak membalik kas salah.
-      if (m.note?.toLowerCase().includes("konsinyasi")) continue;
-      const amount = m.quantity * m.cost;
-      const orig = await tx.cashflow.findFirst({
-        where: {
-          type: "EXPENSE",
-          category: "Pembelian Part",
-          amount,
-          branchId: part.branchId,
-          createdAt: {
-            gte: new Date(m.createdAt.getTime() - 86_400_000),
-            lte: new Date(m.createdAt.getTime() + 86_400_000),
-          },
+  let kasDibatalkan = 0;
+  try {
+    kasDibatalkan = await prisma.$transaction(async (tx) => {
+      // Kunci baris part — validasi diulang SETELAH kunci: stok masuk /
+      // penjualan / servis yang masuk di antara cek luar dan transaksi ini
+      // harus membatalkan penghapusan (bila lolos, gerakan pembelian ikut
+      // terhapus padahal kas EXPENSE-nya sudah tercatat → kas fiktif).
+      await tx.$queryRaw`SELECT id FROM "Part" WHERE id = ${id} FOR UPDATE`;
+      const partF = await tx.part.findUnique({
+        where: { id },
+        include: {
+          _count: { select: { serviceParts: true, saleItems: true } },
         },
+      });
+      if (!partF) throw new Error("Part tidak ditemukan.");
+      const movementsF = await tx.stockMovement.findMany({
+        where: { partId: id },
+        select: { id: true, type: true, quantity: true, cost: true, note: true, createdAt: true },
         orderBy: { createdAt: "asc" },
       });
-      if (!orig) continue; // stok awal tanpa baris kas (data lama) → tanpa reversal
-      const sudahDibatalkan = await tx.cashflow.findFirst({
-        where: {
-          type: "INCOME",
-          category: "Pembatalan Stok Awal",
-          amount,
-          branchId: part.branchId,
-          description: `Pembatalan stok awal: ${m.quantity} ${part.unit} ${part.name}`,
-        },
+      const alasanF = alasanTolakHapusPart({
+        serviceParts: partF._count.serviceParts,
+        saleItems: partF._count.saleItems,
+        movements: movementsF,
       });
-      if (sudahDibatalkan) continue;
-      await tx.cashflow.create({
-        data: {
-          type: "INCOME",
-          category: "Pembatalan Stok Awal",
-          amount,
-          account: orig.account,
-          branchId: part.branchId,
-          description: `Pembatalan stok awal: ${m.quantity} ${part.unit} ${part.name}`,
-          createdBy: session.user.id,
-          createdAt: m.createdAt,
-        },
-      });
-      total += amount;
-    }
+      if (alasanF === "dipakai-transaksi") {
+        throw new Error(
+          `Part "${partF.name}" tidak bisa dihapus: sudah dipakai servis/penjualan (HPP & tagihan tercatat).`,
+        );
+      }
+      if (alasanF === "bukan-stok-awal") {
+        throw new Error(
+          `Part "${partF.name}" tidak bisa dihapus: riwayatnya bukan cuma stok awal (ada pembelian via Stok Masuk / penyesuaian).`,
+        );
+      }
 
-    await tx.stockMovement.deleteMany({ where: { partId: id } });
-    await tx.part.delete({ where: { id } });
-    await logAudit(tx, session.user, {
-      action: "PART_DELETE",
-      entityType: "Part",
-      entityId: id,
-      branchId: part.branchId,
-      summary:
-        `${part.name} (${part.sku}) dihapus — hanya riwayat stok awal` +
-        (total > 0 ? ` · reversal kas ${total.toLocaleString("id-ID")}` : ""),
-      before: {
-        sku: part.sku,
-        name: part.name,
-        quantity: part.quantity,
-        buyPrice: part.buyPrice,
-        sellPrice: part.sellPrice,
-        reversedCash: total,
-      },
+      let total = 0;
+      for (const m of movementsF) {
+        if (!m.cost || m.cost <= 0 || m.quantity <= 0) continue;
+        // Konsinyasi tidak pernah membuat baris kas — jangan dicocokkan dengan
+        // EXPENSE part lain (jumlah bisa kembar) supaya tidak membalik kas salah.
+        if (m.note?.toLowerCase().includes("konsinyasi")) continue;
+        const amount = m.quantity * m.cost;
+        const orig = await tx.cashflow.findFirst({
+          where: {
+            type: "EXPENSE",
+            category: "Pembelian Part",
+            amount,
+            branchId: partF.branchId,
+            createdAt: {
+              gte: new Date(m.createdAt.getTime() - 86_400_000),
+              lte: new Date(m.createdAt.getTime() + 86_400_000),
+            },
+          },
+          orderBy: { createdAt: "asc" },
+        });
+        if (!orig) continue; // stok awal tanpa baris kas (data lama) → tanpa reversal
+        const sudahDibatalkan = await tx.cashflow.findFirst({
+          where: {
+            type: "INCOME",
+            category: "Pembatalan Stok Awal",
+            amount,
+            branchId: partF.branchId,
+            description: `Pembatalan stok awal: ${m.quantity} ${partF.unit} ${partF.name}`,
+          },
+        });
+        if (sudahDibatalkan) continue;
+        await tx.cashflow.create({
+          data: {
+            type: "INCOME",
+            category: "Pembatalan Stok Awal",
+            amount,
+            account: orig.account,
+            branchId: partF.branchId,
+            description: `Pembatalan stok awal: ${m.quantity} ${partF.unit} ${partF.name}`,
+            createdBy: session.user.id,
+            createdAt: m.createdAt,
+          },
+        });
+        total += amount;
+      }
+
+      await tx.stockMovement.deleteMany({ where: { partId: id } });
+      await tx.part.delete({ where: { id } });
+      await logAudit(tx, session.user, {
+        action: "PART_DELETE",
+        entityType: "Part",
+        entityId: id,
+        branchId: partF.branchId,
+        summary:
+          `${partF.name} (${partF.sku}) dihapus — hanya riwayat stok awal` +
+          (total > 0 ? ` · reversal kas ${total.toLocaleString("id-ID")}` : ""),
+        before: {
+          sku: partF.sku,
+          name: partF.name,
+          quantity: partF.quantity,
+          buyPrice: partF.buyPrice,
+          sellPrice: partF.sellPrice,
+          reversedCash: total,
+        },
+      });
+      return total;
     });
-    return total;
-  });
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Part gagal dihapus." };
+  }
 
   revalidatePath("/dashboard/stok");
   revalidatePath("/dashboard/kas");

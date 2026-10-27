@@ -137,3 +137,41 @@ export function windowHariWIB(
     lt: `${berikut.toISOString().slice(0, 10)}T00:00:00+07:00`,
   };
 }
+
+const pad2 = (n: number) => String(n).padStart(2, "0");
+
+/** Batas bulan berjalan menurut kalender WIB — bukan waktu lokal server. */
+function bulanBerjalanWIB(now: Date): { gte: string; lt: string } {
+  const wib = new Date(now.getTime() + 7 * 60 * 60 * 1000);
+  const y = wib.getUTCFullYear();
+  const m = wib.getUTCMonth();
+  const berikut = new Date(Date.UTC(y, m + 1, 1));
+  return {
+    gte: `${y}-${pad2(m + 1)}-01T00:00:00+07:00`,
+    lt: `${berikut.getUTCFullYear()}-${pad2(berikut.getUTCMonth() + 1)}-01T00:00:00+07:00`,
+  };
+}
+
+/**
+ * Periode laporan: param `from`/`to` = tanggal pilihan user (hari WIB),
+ * default = bulan berjalan WIB. Hasil berupa rentang setengah terbuka
+ * `[gte, lt)` siap pakai di filter Prisma — semua batas +07:00, bukan
+ * waktu lokal server (Vercel = UTC), supaya laporan tidak meleset 7 jam.
+ * `dari`/`sampai` = tanggal "YYYY-MM-DD" untuk value input & URL export.
+ */
+export function periodeWIB(
+  from?: string | null,
+  to?: string | null,
+  now: Date = new Date(),
+): { gte: string; lt: string; dari: string; sampai: string } {
+  const default_ = bulanBerjalanWIB(now);
+  const f = windowHariWIB(from);
+  const t = windowHariWIB(to);
+  const gte = f?.gte ?? default_.gte;
+  const lt = t?.lt ?? default_.lt;
+  const dari = gte.slice(0, 10);
+  // lt = 00:00 hari SETELAH hari terakhir → hari terakhir = lt − 1 hari.
+  const akhir = new Date(`${lt.slice(0, 10)}T00:00:00Z`);
+  akhir.setUTCDate(akhir.getUTCDate() - 1);
+  return { gte, lt, dari, sampai: akhir.toISOString().slice(0, 10) };
+}

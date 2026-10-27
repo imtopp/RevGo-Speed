@@ -70,6 +70,10 @@ export default async function StokPage({
         items: {
           include: { part: { select: { name: true, unit: true } } },
         },
+        payments: {
+          where: { voidedAt: null },
+          select: { id: true },
+        },
       },
     }),
   ]);

@@ -170,11 +170,25 @@ export async function voidPayment(
 
   const payment = await prisma.payment.findUnique({
     where: { id: paymentId },
-    include: { service: { select: { id: true, code: true, branchId: true } } },
+    include: {
+      service: { select: { id: true, code: true, branchId: true } },
+      sale: {
+        select: {
+          id: true,
+          code: true,
+          branchId: true,
+          items: {
+            select: { id: true, partId: true, quantity: true, cost: true },
+          },
+        },
+      },
+    },
   });
   if (!payment) return { error: "Pembayaran tidak ditemukan." };
   if (payment.voidedAt) return { error: "Pembayaran sudah pernah dibatalkan." };
-  if (!payment.service) return { error: "Pembayaran tidak terikat servis." };
+  if (!payment.service && !payment.sale) {
+    return { error: "Pembayaran tidak terikat servis maupun penjualan." };
+  }
   // Baris REFUND = amount negatif; void-nya akan membuat EXPENSE negatif
   // (arah kas terbalik) — pembatalan refund cukup lewat pembayaran baru.
   if (payment.kind === "REFUND") {
@@ -183,6 +197,7 @@ export async function voidPayment(
 
   const account = accountFromMethod(payment.method);
   const service = payment.service;
+  const sale = payment.sale;
 
   try {
     await prisma.$transaction(async (tx) => {
@@ -195,37 +210,89 @@ export async function voidPayment(
       if (claimed.count === 0) {
         throw new Error("Pembayaran sudah pernah dibatalkan.");
       }
+
+      if (service) {
+        await tx.cashflow.create({
+          data: {
+            type: "EXPENSE",
+            category: "Pembatalan Bayar",
+            amount: payment.amount,
+            account,
+            branchId: service.branchId,
+            description: `${service.code} · void: ${reason}`,
+            createdBy: session.user.id,
+          },
+        });
+        await logAudit(tx, session.user, {
+          action: "PAYMENT_VOID",
+          entityType: "Payment",
+          entityId: paymentId,
+          branchId: service.branchId,
+          summary: `${service.code} · void ${payment.amount.toLocaleString("id-ID")} (${payment.method}) — ${reason}`,
+          before: { amount: payment.amount, kind: payment.kind, method: payment.method, voidedAt: null },
+          after: { voidReason: reason, reversalAccount: account },
+        });
+        return;
+      }
+
+      // Penjualan part: uang kembali + unit fisik ikut kembali ke stok.
+      // Pola sama removeServicePart — IN pengembalian ditahan usage-nya
+      // sendiri, kunci batch asal dilepas, supaya Σ batch terbuka = stok.
+      if (!sale) throw new Error("Pembayaran tidak terikat penjualan.");
+      const branchId = payment.branchId ?? sale.branchId;
       await tx.cashflow.create({
         data: {
           type: "EXPENSE",
-          category: "Pembatalan Bayar",
+          category: "Pembatalan Penjualan Part",
           amount: payment.amount,
           account,
-          branchId: service.branchId,
-          description: `${service.code} · void: ${reason}`,
+          branchId,
+          description: `${sale.code} · void: ${reason}`,
           createdBy: session.user.id,
         },
       });
+      for (const item of sale.items) {
+        const costPerUnit = item.quantity > 0 ? Math.round(item.cost / item.quantity) : null;
+        const retur = await tx.stockMovement.create({
+          data: {
+            partId: item.partId,
+            type: "IN",
+            quantity: item.quantity,
+            cost: costPerUnit,
+            note: `Penjualan ${sale.code} dibatalkan`,
+          },
+        });
+        await tx.part.update({
+          where: { id: item.partId },
+          data: { quantity: { increment: item.quantity } },
+        });
+        await tx.partBatchUsage.deleteMany({ where: { saleItemId: item.id } });
+        await tx.partBatchUsage.create({
+          data: { movementId: retur.id, quantity: item.quantity },
+        });
+      }
       await logAudit(tx, session.user, {
         action: "PAYMENT_VOID",
         entityType: "Payment",
         entityId: paymentId,
-        branchId: service.branchId,
-        summary: `${service.code} · void ${payment.amount.toLocaleString("id-ID")} (${payment.method}) — ${reason}`,
-        before: { amount: payment.amount, kind: payment.kind, method: payment.method, voidedAt: null },
-        after: { voidReason: reason, reversalAccount: account },
+        branchId,
+        summary: `${sale.code} · void penjualan ${payment.amount.toLocaleString("id-ID")} (${payment.method}) — stok dikembalikan — ${reason}`,
+        before: { amount: payment.amount, method: payment.method, voidedAt: null },
+        after: { voidReason: reason, reversalAccount: account, restocked: sale.items.length },
       });
     });
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Void gagal." };
   }
 
-  revalidatePath(`/dashboard/servis/${service.id}`);
+  revalidatePath(service ? `/dashboard/servis/${service.id}` : "/dashboard/stok");
   revalidatePath("/dashboard/kas");
   revalidatePath("/dashboard/piutang");
   revalidatePath("/dashboard/audit");
   return {
-    success: `Pembayaran ${payment.amount.toLocaleString("id-ID")} dibatalkan — kas ${account} dikembalikan.`,
+    success: sale && !service
+      ? `Penjualan ${payment.amount.toLocaleString("id-ID")} dibatalkan — kas ${account} dikembalikan & stok part kembali.`
+      : `Pembayaran ${payment.amount.toLocaleString("id-ID")} dibatalkan — kas ${account} dikembalikan.`,
   };
 }
 

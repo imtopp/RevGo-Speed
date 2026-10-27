@@ -1,14 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import { requireStaffRole, getStaffBranchId } from "@/lib/guard";
+import { periodeWIB } from "@/lib/service-status";
 import { OPNAME_NOTE_PREFIX, opnameDeltaValue } from "@/lib/opname";
 import { totalPenjualan } from "@/lib/sale";
-
-/** Parse param tanggal YYYY-MM-DD ketat — nilai aneh jangan pernah jadi Invalid Date. */
-function parseDateParam(s: string | null, endOfDay: boolean, fallback: Date): Date {
-  if (!s || !/^\d{4}-\d{2}-\d{2}$/.test(s)) return fallback;
-  const d = new Date(s + (endOfDay ? "T23:59:59.999" : "T00:00:00"));
-  return Number.isNaN(d.getTime()) ? fallback : d;
-}
 
 function csvEscape(v: unknown): string {
   let s = String(v ?? "");
@@ -26,23 +20,19 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const p = url.searchParams;
 
-  const now = new Date();
-  const from = parseDateParam(
-    p.get("from"),
-    false,
-    new Date(now.getFullYear(), now.getMonth(), 1),
-  );
-  const to = parseDateParam(
-    p.get("to"),
-    true,
-    new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999),
-  );
+  // Rentang WIB setengah terbuka [gte, lt) — default bulan berjalan WIB,
+  // sinkron dengan halaman laporan (bukan waktu lokal server/UTC).
+  const periode = periodeWIB(p.get("from"), p.get("to"));
   const branchFilter = branchIdStaff ?? p.get("branch") ?? null;
   const branchWhere = branchFilter ? { branchId: branchFilter } : {};
 
   const [doneServices, cashflows, opnameMoves, partSales] = await Promise.all([
     prisma.service.findMany({
-      where: { ...branchWhere, status: "DONE", finishedAt: { gte: from, lte: to } },
+      where: {
+        ...branchWhere,
+        status: "DONE",
+        finishedAt: { gte: periode.gte, lt: periode.lt },
+      },
       include: {
         parts: { select: { price: true, quantity: true, cost: true } },
         customer: { select: { name: true } },
@@ -52,19 +42,19 @@ export async function GET(request: Request) {
       orderBy: { finishedAt: "asc" },
     }),
     prisma.cashflow.findMany({
-      where: { ...branchWhere, createdAt: { gte: from, lte: to } },
+      where: { ...branchWhere, createdAt: { gte: periode.gte, lt: periode.lt } },
       orderBy: { createdAt: "asc" },
     }),
     prisma.stockMovement.findMany({
       where: {
         note: { startsWith: OPNAME_NOTE_PREFIX },
-        createdAt: { gte: from, lte: to },
+        createdAt: { gte: periode.gte, lt: periode.lt },
         ...(branchFilter ? { part: { branchId: branchFilter } } : {}),
       },
       include: { part: { select: { buyPrice: true } } },
     }),
     prisma.partSale.findMany({
-      where: { ...branchWhere, soldAt: { gte: from, lte: to } },
+      where: { ...branchWhere, soldAt: { gte: periode.gte, lt: periode.lt } },
       include: { items: { select: { quantity: true, price: true, cost: true } } },
       orderBy: { soldAt: "asc" },
     }),
@@ -134,7 +124,7 @@ export async function GET(request: Request) {
   }
 
   const body = [
-    `LAPORAN SERVIS (${from.toLocaleDateString("id-ID")} - ${to.toLocaleDateString("id-ID")})`,
+    `LAPORAN SERVIS (${periode.dari} - ${periode.sampai})`,
     "",
     toCsv(servisRows),
     "",
@@ -147,7 +137,7 @@ export async function GET(request: Request) {
     toCsv(kasRows),
   ].join("\n");
 
-  const filename = `laporan-${from.toISOString().slice(0, 10)}_${to.toISOString().slice(0, 10)}.csv`;
+  const filename = `laporan-${periode.dari}_${periode.sampai}.csv`;
   return new Response(body, {
     headers: {
       "Content-Type": "text/csv; charset=utf-8",

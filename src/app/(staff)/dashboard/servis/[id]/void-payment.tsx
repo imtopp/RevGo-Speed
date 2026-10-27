@@ -1,15 +1,29 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { voidPayment, type BayarState } from "../../kas/actions";
 import { SubmitButton } from "@/components/submit-button";
 
-export function VoidPaymentForm({ paymentId }: { paymentId: string }) {
+export function VoidPaymentForm({
+  paymentId,
+  onSuccess,
+}: {
+  paymentId: string;
+  onSuccess?: (msg: string) => void;
+}) {
   const [open, setOpen] = useState(false);
   const [state, action] = useActionState<BayarState, FormData>(
     voidPayment,
     {},
   );
+  // Sukses → kabari pemanggil dari efek (setState komponen lain saat render
+  // anak dilarang React); ref menjamin sekali per state baru.
+  const sudahDilapor = useRef(state);
+  useEffect(() => {
+    if (sudahDilapor.current === state) return;
+    sudahDilapor.current = state;
+    if (state.success) onSuccess?.(state.success);
+  }, [state, onSuccess]);
 
   if (state.success) return null;
 

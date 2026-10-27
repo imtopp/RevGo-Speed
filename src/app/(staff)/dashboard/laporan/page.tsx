@@ -1,6 +1,10 @@
 import { prisma } from "@/lib/prisma";
 import { requireStaffRole, getStaffBranchId } from "@/lib/guard";
-import { formatRupiah, formatTanggalPendek } from "@/lib/service-status";
+import {
+  formatRupiah,
+  formatTanggalPendek,
+  periodeWIB,
+} from "@/lib/service-status";
 import Link from "next/link";
 import { BranchPicker } from "../stok/branch-picker";
 import { SubmitButton } from "@/components/submit-button";
@@ -10,22 +14,10 @@ import { totalPenjualan, labaPenjualan } from "@/lib/sale";
 
 export const metadata = { title: "Laporan" };
 
-function monthBounds() {
-  const now = new Date();
-  const from = new Date(now.getFullYear(), now.getMonth(), 1);
-  const to = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
-  return { from, to };
-}
-
-function iso(d: Date) {
-  return d.toISOString().slice(0, 10);
-}
-
-/** Parse param YYYY-MM-DD ketat — nilai aneh jangan jadi Invalid Date (500). */
-function parseDateParam(s: string | undefined, endOfDay: boolean, fallback: Date): Date {
-  if (!s || !/^\d{4}-\d{2}-\d{2}$/.test(s)) return fallback;
-  const d = new Date(s + (endOfDay ? "T23:59:59.999" : "T00:00:00"));
-  return Number.isNaN(d.getTime()) ? fallback : d;
+function tanggalIndo(iso: string): string {
+  return new Date(`${iso}T00:00:00Z`).toLocaleDateString("id-ID", {
+    timeZone: "Asia/Jakarta",
+  });
 }
 
 export default async function LaporanPage({
@@ -44,9 +36,9 @@ export default async function LaporanPage({
   const activeBranchId = branchIdStaff ?? params.branch ?? branches[0]?.id ?? null;
   const branchFilter = branchIdStaff ? branchIdStaff : activeBranchId;
 
-  const bounds = monthBounds();
-  const from = parseDateParam(params.from, false, bounds.from);
-  const to = parseDateParam(params.to, true, bounds.to);
+  // Rentang WIB setengah terbuka [gte, lt) — default bulan berjalan menurut
+  // kalender WIB, bukan waktu lokal server (UTC di Vercel → meleset 7 jam).
+  const periode = periodeWIB(params.from, params.to);
   const branchWhere = branchFilter ? { branchId: branchFilter } : {};
 
   const [doneServices, payments, cashflows, opnameMoves, partSales] =
@@ -55,7 +47,7 @@ export default async function LaporanPage({
         where: {
           ...branchWhere,
           status: "DONE",
-          finishedAt: { gte: from, lte: to },
+          finishedAt: { gte: periode.gte, lt: periode.lt },
         },
         include: {
           parts: { select: { price: true, quantity: true, cost: true } },
@@ -65,22 +57,22 @@ export default async function LaporanPage({
         orderBy: { finishedAt: "asc" },
       }),
       prisma.payment.findMany({
-        where: { voidedAt: null, paidAt: { gte: from, lte: to } },
+        where: { voidedAt: null, paidAt: { gte: periode.gte, lt: periode.lt } },
         include: { service: { select: { branchId: true } } },
       }),
       prisma.cashflow.findMany({
-        where: { ...branchWhere, createdAt: { gte: from, lte: to } },
+        where: { ...branchWhere, createdAt: { gte: periode.gte, lt: periode.lt } },
       }),
       prisma.stockMovement.findMany({
         where: {
           note: { startsWith: OPNAME_NOTE_PREFIX },
-          createdAt: { gte: from, lte: to },
+          createdAt: { gte: periode.gte, lt: periode.lt },
           ...(branchFilter ? { part: { branchId: branchFilter } } : {}),
         },
         include: { part: { select: { buyPrice: true } } },
       }),
       prisma.partSale.findMany({
-        where: { ...branchWhere, soldAt: { gte: from, lte: to } },
+        where: { ...branchWhere, soldAt: { gte: periode.gte, lt: periode.lt } },
         include: {
           items: { select: { quantity: true, price: true, cost: true } },
         },
@@ -140,7 +132,7 @@ export default async function LaporanPage({
     else rekap[c.account].keluar += c.amount;
   }
 
-  const exportUrl = `/api/laporan/export?from=${iso(from)}&to=${iso(to)}${
+  const exportUrl = `/api/laporan/export?from=${periode.dari}&to=${periode.sampai}${
     branchFilter ? `&branch=${branchFilter}` : ""
   }`;
 
@@ -159,7 +151,7 @@ export default async function LaporanPage({
         <div>
           <h1 className="text-xl font-bold tracking-tight">Laporan</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            {from.toLocaleDateString("id-ID")} – {to.toLocaleDateString("id-ID")}
+            {tanggalIndo(periode.dari)} – {tanggalIndo(periode.sampai)}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -168,7 +160,7 @@ export default async function LaporanPage({
               branches={branches}
               current={activeBranchId}
               basePath="/dashboard/laporan"
-              params={{ from: iso(from), to: iso(to) }}
+              params={{ from: periode.dari, to: periode.sampai }}
             />
           )}
           <DownloadLink
@@ -186,11 +178,11 @@ export default async function LaporanPage({
         {activeBranchId && <input type="hidden" name="branch" value={activeBranchId} />}
         <div>
           <label className="block text-xs font-medium text-muted-foreground">Dari</label>
-          <input type="date" name="from" defaultValue={iso(from)} className="mt-1 rounded-lg border border-slate-300 px-2 py-1.5 text-sm" />
+          <input type="date" name="from" defaultValue={periode.dari} className="mt-1 rounded-lg border border-slate-300 px-2 py-1.5 text-sm" />
         </div>
         <div>
           <label className="block text-xs font-medium text-muted-foreground">Sampai</label>
-          <input type="date" name="to" defaultValue={iso(to)} className="mt-1 rounded-lg border border-slate-300 px-2 py-1.5 text-sm" />
+          <input type="date" name="to" defaultValue={periode.sampai} className="mt-1 rounded-lg border border-slate-300 px-2 py-1.5 text-sm" />
         </div>
         <SubmitButton
           pendingText="Menerapkan..."

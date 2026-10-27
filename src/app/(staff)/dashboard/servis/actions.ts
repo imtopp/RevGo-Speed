@@ -741,6 +741,18 @@ export async function cancelService(
   const id = String(formData.get("id") ?? "").trim();
   const reason = String(formData.get("reason") ?? "").trim();
   if (!reason) return { error: "Alasan pembatalan wajib diisi." };
+  // Pembatalan tanpa membatalkan DP membuat kas tetap memuat uang dari servis
+  // yang batal (kas fiktif) — wajib void dulu lewat menu Kas, baru batalkan.
+  const bayar = await prisma.payment.aggregate({
+    where: { serviceId: id, voidedAt: null },
+    _sum: { amount: true },
+    _count: true,
+  });
+  if (bayar._count > 0) {
+    return {
+      error: `Ada pembayaran aktif total Rp${(bayar._sum.amount ?? 0).toLocaleString("id-ID")} — batalkan (void) dulu pembayarannya lewat menu Kas sebelum membatalkan servis.`,
+    };
+  }
   await transition(
     id,
     ["PENDING", "WAITING_APPROVAL", "CONFIRMED", "CHECKED_IN"],
@@ -900,18 +912,32 @@ export async function removeServicePart(
   await prisma.$transaction(async (tx) => {
     // Kunci baris part dulu (sebelum hapus ServicePart) — urutan lock konsisten
     // dengan addServicePart/correctStockCost (Part → ServicePart), anti-deadlock.
+    await tx.$queryRaw`SELECT id FROM "Part" WHERE id = ${sp.partId} FOR UPDATE`;
+    const partF = (await tx.part.findUnique({ where: { id: sp.partId } }))!;
+
+    // Alokasi FIFO lama ikut terhapus bersama ServicePart (FK cascade) — batch
+    // asal otomatis terbuka kembali sejumlah unit. Baris IN pengembalian dibuat
+    // hanya sebagai jejak gerakan (konservasi Σ IN − Σ OUT = stok) dan langsung
+    // ditahan usage-nya sendiri, supaya Σ batch terbuka tidak dobel — unit yang
+    // sama tak boleh muncul dua kali di antrean FIFO.
+    const costPerUnit =
+      sp.quantity > 0 ? Math.round(sp.cost / sp.quantity) : null;
+    const retur = await tx.stockMovement.create({
+      data: {
+        partId: sp.partId,
+        type: "IN",
+        quantity: sp.quantity,
+        cost: costPerUnit,
+        note: `Dikembalikan dari servis ${sp.service.code}`,
+      },
+    });
     await tx.part.update({
       where: { id: sp.partId },
       data: { quantity: { increment: sp.quantity } },
     });
     await tx.servicePart.delete({ where: { id } });
-    await tx.stockMovement.create({
-      data: {
-        partId: sp.partId,
-        type: "IN",
-        quantity: sp.quantity,
-        note: `Dikembalikan dari servis ${sp.service.code}`,
-      },
+    await tx.partBatchUsage.create({
+      data: { movementId: retur.id, quantity: sp.quantity },
     });
     const session = await auth();
     if (session?.user) {
@@ -920,7 +946,7 @@ export async function removeServicePart(
         entityType: "ServicePart",
         entityId: id,
         branchId: sp.service.branchId,
-        summary: `${sp.service.code} · −${sp.quantity} ${sp.part.unit} ${sp.part.name} dikembalikan ke stok`,
+        summary: `${sp.service.code} · −${sp.quantity} ${partF.unit} ${partF.name} dikembalikan ke stok`,
         before: { partId: sp.partId, quantity: sp.quantity, price: sp.price },
       });
     }

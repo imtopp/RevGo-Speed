@@ -74,12 +74,15 @@ export async function proxy(request: NextRequest) {
   // Paksa ganti password sebelum halaman apa pun — berlaku selama flag
   // mustChange ada di token (dihapus saat ganti password + login ulang).
   // Cek di sini, sebelum rate-limit: path tanpa rule tetap harus kena.
+  // Kecualian path disetel ketat (exact / prefix + "/") — jangan sampai
+  // "/api/auth-something" ikut lolos dari paksaan ganti password.
   const session = await auth();
   const path = request.nextUrl.pathname;
   if (
     session?.user?.mustChange &&
-    !path.startsWith("/ganti-password") &&
-    !path.startsWith("/api/auth")
+    path !== "/ganti-password" &&
+    path !== "/api/auth" &&
+    !path.startsWith("/api/auth/")
   ) {
     const url = request.nextUrl.clone();
     url.pathname = "/ganti-password";
