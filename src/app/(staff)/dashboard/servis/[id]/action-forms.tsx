@@ -35,6 +35,7 @@ type ServiceInfo = {
   mechanicName: string | null;
   scheduledAt: Date | null;
   complaint: string | null;
+  diagnosis: string | null;
   finishedAt: Date | null;
 };
 
@@ -329,7 +330,14 @@ function DiagnosisForm({ service }: { service: ServiceInfo }) {
       <input type="hidden" name="id" value={service.id} />
       <p className="text-sm font-semibold text-foreground">Diagnosis</p>
       <Msg state={state} />
-      <textarea name="diagnosis" rows={3} defaultValue={service.complaint ?? ""} className={inputCls} />
+      <textarea
+        name="diagnosis"
+        rows={3}
+        // Isi dari diagnosis TERSIMPAN — kalau pakai complaint, hasil simpan
+        // terlihat hilang tiap kali form dirender ulang.
+        defaultValue={service.diagnosis ?? service.complaint ?? ""}
+        className={inputCls}
+      />
       <SubmitButton className={btnSecondary}>Simpan Diagnosis</SubmitButton>
     </form>
   );

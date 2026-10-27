@@ -376,12 +376,16 @@ function SellForm({ parts }: { parts: Part[] }) {
   const [stateSebelumnya, setStateSebelumnya] = useState(state);
   const total = qty * (picked?.sellPrice ?? 0);
 
-  // Sukses â†’ notif luar + reset isi form (remount via key); gagal â†’ form tetap.
+  // Sukses → notif luar + reset isi form (remount via key); gagal → form tetap.
+  // `picked`/`qty` juga di-reset di sini — kalau tidak, panel masih menampilkan
+  // part & total lama padahal isian form sudah kosong (state nyangkut).
   if (state !== stateSebelumnya) {
     setStateSebelumnya(state);
     if (state.success) {
       setPesan(state.success);
       setResetKey((k) => k + 1);
+      setPicked(null);
+      setQty(1);
     }
   }
 

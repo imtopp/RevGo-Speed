@@ -66,14 +66,23 @@ export async function createSupplier(
   _prev: StokState,
   formData: FormData,
 ): Promise<StokState> {
-  await requireStokRole();
+  const session = await requireStokRole();
   const nama = String(formData.get("nama") ?? "").trim();
   const telepon = String(formData.get("telepon") ?? "").trim();
   const catatan = String(formData.get("catatan") ?? "").trim();
   if (!nama) return { error: "Nama supplier wajib diisi." };
 
-  await prisma.supplier.create({
-    data: { nama, telepon: telepon || null, catatan: catatan || null },
+  await prisma.$transaction(async (tx) => {
+    const s = await tx.supplier.create({
+      data: { nama, telepon: telepon || null, catatan: catatan || null },
+    });
+    await logAudit(tx, session.user, {
+      action: "SUPPLIER_CREATE",
+      entityType: "Supplier",
+      entityId: s.id,
+      summary: `Supplier "${nama}" ditambahkan`,
+      after: { nama, telepon: telepon || null, catatan: catatan || null },
+    });
   });
   revalidatePath("/dashboard/stok");
   return { success: `Supplier "${nama}" ditambahkan.` };
@@ -83,7 +92,7 @@ export async function updateSupplier(
   _prev: StokState,
   formData: FormData,
 ): Promise<StokState> {
-  await requireStokRole();
+  const session = await requireStokRole();
   const id = String(formData.get("id") ?? "").trim();
   const nama = String(formData.get("nama") ?? "").trim();
   const telepon = String(formData.get("telepon") ?? "").trim();
@@ -91,9 +100,22 @@ export async function updateSupplier(
   const aktif = formData.get("aktif") === "on";
   if (!id || !nama) return { error: "Data tidak lengkap." };
 
-  await prisma.supplier.update({
-    where: { id },
-    data: { nama, telepon: telepon || null, catatan: catatan || null, aktif },
+  const prev = await prisma.supplier.findUnique({ where: { id } });
+  if (!prev) return { error: "Supplier tidak ditemukan." };
+
+  await prisma.$transaction(async (tx) => {
+    await tx.supplier.update({
+      where: { id },
+      data: { nama, telepon: telepon || null, catatan: catatan || null, aktif },
+    });
+    await logAudit(tx, session.user, {
+      action: "SUPPLIER_UPDATE",
+      entityType: "Supplier",
+      entityId: id,
+      summary: `Supplier "${nama}" diperbarui${prev.aktif !== aktif ? (aktif ? " · diaktifkan" : " · dinonaktifkan") : ""}`,
+      before: { nama: prev.nama, aktif: prev.aktif },
+      after: { nama, aktif },
+    });
   });
   revalidatePath("/dashboard/stok");
   return { success: `Supplier "${nama}" diperbarui.` };
@@ -126,6 +148,13 @@ export async function createPart(
   if (!branchId || !name) return { error: "Cabang dan nama wajib diisi." };
   if (consignment && !supplierId) {
     return { error: "Part konsinyasi wajib memilih supplier (pemilik barang)." };
+  }
+  if (supplierId) {
+    const supplier = await prisma.supplier.findUnique({
+      where: { id: supplierId },
+      select: { id: true },
+    });
+    if (!supplier) return { error: "Supplier tidak ditemukan — pilih ulang." };
   }
   if (
     !Number.isFinite(quantity) ||
@@ -266,6 +295,22 @@ export async function updatePart(
   const branchIdStaff = await getStaffBranchId();
   if (branchIdStaff && prev.branchId !== branchIdStaff) {
     return { error: "Part bukan di cabang Anda." };
+  }
+  // Konsinyasi = properti pembelian awal: menandai "barang titipan, kas belum
+  // keluar". Membaliknya lewat edit membuat status konsinyasi tidak sinkron
+  // dengan kas yang sudah terlanjur bergerak (atau tidak) — tolak di sini.
+  if (consignment !== prev.consignment) {
+    return {
+      error:
+        "Status konsinyasi tidak bisa diubah setelah part dibuat. Salah centang? Hapus part (bila riwayat masih bersih) lalu buat ulang.",
+    };
+  }
+  if (supplierId) {
+    const supplier = await prisma.supplier.findUnique({
+      where: { id: supplierId },
+      select: { id: true },
+    });
+    if (!supplier) return { error: "Supplier tidak ditemukan — pilih ulang." };
   }
 
   // Harga jual di bawah harga beli (rata-rata) hanya boleh jika dikonfirmasi.
@@ -761,6 +806,10 @@ export async function sellPart(
       where: { id: partF.branchId },
       select: { name: true },
     });
+    // Kunci baris cabang SEBELUM hitung urut — serialisasi penomoran kode SL
+    // antar penjualan paralel cabang yang sama (count+1 tanpa lock bisa sama
+    // → bentrok unique code `PartSale.code` → transaksi gagal).
+    await tx.$queryRaw`SELECT id FROM "Branch" WHERE id = ${partF.branchId} FOR UPDATE`;
     const year = new Date().getFullYear();
     const urut = await tx.partSale.count({
       where: {

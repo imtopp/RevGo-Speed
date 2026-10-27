@@ -40,11 +40,29 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }),
   ],
   callbacks: {
-    jwt({ token, user }) {
+    // Saat login (ada `user`) → isi token. Selanjutnya → segarkan role &
+    // mustChange dari DB: kalau tidak, hasil edit akun (turun role, reset
+    // password) baru berlaku setelah login ulang — token JWT bisa hidup
+    // berminggu-minggu. DB tak terjangkau → pakai token lama (fail-soft);
+    // guard tetap mengecek isActive/role terpisah untuk aksi tulis.
+    async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
         token.role = user.role;
         token.mustChange = user.mustChangePassword;
+      } else if (token.id) {
+        try {
+          const db = await prisma.user.findUnique({
+            where: { id: token.id as string },
+            select: { role: true, mustChangePassword: true },
+          });
+          if (db) {
+            token.role = db.role;
+            token.mustChange = db.mustChangePassword;
+          }
+        } catch {
+          // DB down → pertahankan klaim lama; validasi DB tetap di guard.
+        }
       }
       return token;
     },

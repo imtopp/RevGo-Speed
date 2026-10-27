@@ -118,7 +118,11 @@ export function VersionCheck() {
     document.addEventListener("change", markEdited, true);
     document.addEventListener("pointerdown", markEdited, true);
     document.addEventListener("keydown", markEdited, true);
-    window.addEventListener("pageshow", () => void check());
+    // Referensi disimpan supaya bisa di-remove di cleanup — tanpa ini,
+    // tiap kali effect re-run (bar muncul) listener menumpuk dan handler
+    // lama membawa closure `cancelled = true` (cek jadi tak pernah jalan).
+    const onPageShow = () => void check();
+    window.addEventListener("pageshow", onPageShow);
 
     check();
     const interval = setInterval(check, CHECK_MS);
@@ -136,6 +140,7 @@ export function VersionCheck() {
       document.removeEventListener("pointerdown", markEdited, true);
       document.removeEventListener("keydown", markEdited, true);
       document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("pageshow", onPageShow);
     };
   }, [update]);
 

@@ -273,7 +273,12 @@ export function BookingForm({
         <select
           name="kedatangan"
           value={tipeKedatangan}
-          onChange={(e) => setTipeKedatangan(e.target.value as "walkin" | "reservasi")}
+          onChange={(e) => {
+            setTipeKedatangan(e.target.value as "walkin" | "reservasi");
+            // Kembali ke walk-in → jadwal lama dibuang, jangan terbawa
+            // bila nanti pindah lagi ke reservasi.
+            if (e.target.value === "walkin") setJadwal("");
+          }}
           className="w-full rounded-lg border border-slate-300 px-3 py-2 text-base outline-none focus:border-slate-900"
         >
           <option value="walkin">Datang langsung (walk-in) — tanpa jadwal</option>

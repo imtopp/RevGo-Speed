@@ -11,10 +11,13 @@ describe("resolveVersion", () => {
     ).toBe("dpl_123");
   });
 
-  it("fallback ke commit sha bila deployment id kosong", () => {
-    expect(
-      resolveVersion({ deploymentId: "  ", commitSha: "abc456" }, "local-1"),
-    ).toBe("abc456");
+  it("fallback ke commit sha (di-hash pendek, bukan SHA mentah)", () => {
+    const v = resolveVersion({ deploymentId: "  ", commitSha: "abc456" }, "local-1");
+    expect(v).not.toBe("abc456");
+    expect(v).not.toMatch(/^[0-9a-f]{6,40}$/);
+    // deterministik & berubah bila SHA berbeda
+    expect(v).toBe(resolveVersion({ commitSha: "abc456" }, "x"));
+    expect(v).not.toBe(resolveVersion({ commitSha: "abc457" }, "x"));
   });
 
   it("pakai fallback lokal bila tidak ada env sama sekali", () => {

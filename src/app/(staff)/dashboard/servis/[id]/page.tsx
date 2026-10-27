@@ -376,6 +376,7 @@ export default async function ServisDetailPage({
               mechanicName: service.mechanic?.name ?? null,
               scheduledAt: service.scheduledAt,
               complaint: service.complaint,
+              diagnosis: service.diagnosis,
               finishedAt: service.finishedAt,
             }}
             mechanics={mekanikTersedia}

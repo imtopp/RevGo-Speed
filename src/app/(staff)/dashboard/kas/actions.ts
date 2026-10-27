@@ -75,9 +75,19 @@ export async function addPayment(
     return { error: "Servis bukan di cabang Anda." };
   }
 
+  // Total tagihan = jasa + part; sebelum ada estimasi/apapun (total masih 0),
+  // plafon pembayaran (DP) memakai estimasi booking supaya DP di status awal
+  // tetap bisa diterima — bukan selalu "melebihi sisa (0)".
   const total = totalTagihan(service.laborCost, service.parts);
+  const dasar = total > 0 ? total : Math.max(service.estimate, 0);
+  if (dasar === 0) {
+    return {
+      error:
+        "Belum ada estimasi/biaya — isi estimasi dulu sebelum menerima pembayaran.",
+    };
+  }
   const paid = service.payments.reduce((s, p) => s + p.amount, 0);
-  const remaining = total - paid;
+  const remaining = dasar - paid;
 
   if (amount > remaining) {
     return { error: `Melebihi sisa tagihan (${remaining.toLocaleString("id-ID")}).` };
@@ -98,15 +108,19 @@ export async function addPayment(
     });
     if (!fresh) throw new Error("Servis tidak ditemukan.");
     const totalNow = totalTagihan(fresh.laborCost, fresh.parts);
+    const dasarNow = totalNow > 0 ? totalNow : Math.max(fresh.estimate, 0);
+    if (dasarNow === 0) {
+      throw new Error("Belum ada estimasi/biaya — coba lagi setelah estimasi diisi.");
+    }
     const paidAgg = await tx.payment.aggregate({
       where: { serviceId, voidedAt: null },
       _sum: { amount: true },
     });
     const paidNow = paidAgg._sum.amount ?? 0;
-    if (amount > totalNow - paidNow) {
+    if (amount > dasarNow - paidNow) {
       throw new Error("Melebihi sisa tagihan — coba lagi.");
     }
-    sisaAkhir = totalNow - paidNow - amount;
+    sisaAkhir = dasarNow - paidNow - amount;
     const payment = await tx.payment.create({
       data: {
         serviceId,
@@ -349,8 +363,11 @@ export async function refundKelebihan(
     });
     if (!fresh) throw new Error("Servis tidak ditemukan.");
     const total = totalTagihan(fresh.laborCost, fresh.parts);
+    // Plafon yang sama dengan addPayment: sebelum total terealisasi, batas
+    // sah = estimasi booking (DP di status awal bukan "kelebihan").
+    const dasar = total > 0 ? total : Math.max(fresh.estimate, 0);
     const paid = fresh.payments.reduce((s, p) => s + p.amount, 0);
-    const kelebihan = paid - total;
+    const kelebihan = paid - dasar;
     if (kelebihan <= 0) {
       throw new Error("Tidak ada kelebihan bayar untuk dikembalikan.");
     }
@@ -456,5 +473,7 @@ export async function addManualCashflow(
   });
 
   revalidatePath("/dashboard/kas");
+  revalidatePath("/dashboard/laporan");
+  revalidatePath("/dashboard/audit");
   return { success: `Kas ${type === "INCOME" ? "masuk" : "keluar"} ${amount.toLocaleString("id-ID")} (${account}) dicatat.` };
 }

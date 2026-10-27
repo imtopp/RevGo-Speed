@@ -90,8 +90,15 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  // IP asli: x-real-ip (di-set platform, tidak bisa dikirim ulang oleh
+  // client) lebih dulu; jika memakai X-forwarded-for, ambil elemen TERAKHIR —
+  // client bisa mengirim XFF palsu di depan, platform (Vercel) meng-append
+  // IP asli di belakang, jadi elemen pertama BUKAN ip asli.
+  const xff = request.headers.get("x-forwarded-for");
   const ip =
-    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+    request.headers.get("x-real-ip")?.trim() ||
+    (xff ? xff.split(",").pop()?.trim() : "") ||
+    "unknown";
   const rule = ruleFor(request.nextUrl.pathname, request.method);
   if (!rule) return NextResponse.next();
 

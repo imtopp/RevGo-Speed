@@ -86,6 +86,11 @@ function ActionPanel({
           </SubmitButton>
         </form>
       )}
+      {assignable && (assignState.error || assignState.success) && (
+        <p className={`text-sm ${assignState.error ? "text-danger" : "text-green-600"}`}>
+          {assignState.error ?? assignState.success}
+        </p>
+      )}
 
       {!isOwner && (
         <form onReset={(e) => e.preventDefault()} action={resetAction} className="flex items-end gap-2">
@@ -94,11 +99,15 @@ function ActionPanel({
             <label className="block text-xs font-medium text-muted-foreground">
               Password Baru
             </label>
+            {/* key menambah reset input setelah sukses — password yang sudah
+                diset tak boleh tertinggal di layar. */}
             <input
+              key={resetState.success ? `reset-ok-${resetState.success}` : "reset-idle"}
               name="password"
               type="password"
               minLength={6}
               placeholder="min. 6 karakter"
+              autoComplete="new-password"
               className="mt-1 w-full rounded-lg border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-slate-900"
             />
           </div>
@@ -109,6 +118,11 @@ function ActionPanel({
             Reset
           </SubmitButton>
         </form>
+      )}
+      {!isOwner && (resetState.error || resetState.success) && (
+        <p className={`text-sm ${resetState.error ? "text-danger" : "text-green-600"}`}>
+          {resetState.error ?? resetState.success}
+        </p>
       )}
 
       {!isOwner && (
@@ -139,15 +153,9 @@ function ActionPanel({
           </SubmitButton>
         </form>
       )}
-
-      {(resetState.error || toggleState.error || assignState.error) && (
-        <p className="text-sm text-danger">
-          {resetState.error || toggleState.error || assignState.error}
-        </p>
-      )}
-      {(resetState.success || toggleState.success || assignState.success) && (
-        <p className="text-sm text-green-600">
-          {resetState.success || toggleState.success || assignState.success}
+      {!isOwner && (toggleState.error || toggleState.success) && (
+        <p className={`text-sm ${toggleState.error ? "text-danger" : "text-green-600"}`}>
+          {toggleState.error ?? toggleState.success}
         </p>
       )}
     </div>

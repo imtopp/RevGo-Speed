@@ -11,22 +11,6 @@ const inputCls =
 export function CatalogManager() {
   const [open, setOpen] = useState(false);
   const [pesan, setPesan] = useState<string | null>(null);
-  const [state, action] = useActionState<KatalogState, FormData>(
-    createCatalog,
-    {},
-  );
-  const [stateSebelumnya, setStateSebelumnya] = useState(state);
-
-  // Sukses → tutup form + notif sementara di luar form (disesuaikan saat
-  // state action berubah — pola React "adjusting state when props change").
-  // Gagal → form tetap terbuka, error tampil di dalam form.
-  if (state !== stateSebelumnya) {
-    setStateSebelumnya(state);
-    if (state.success) {
-      setOpen(false);
-      setPesan(state.success);
-    }
-  }
 
   // Auto-hilangkan notif sukses.
   useEffect(() => {
@@ -51,64 +35,84 @@ export function CatalogManager() {
         </p>
       )}
 
-      {open && (
-        <form
-          onReset={(e) => e.preventDefault()}
-          action={action}
-          className="space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card"
-        >
-          {state.error && (
-            <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-danger">
-              {state.error}
-            </p>
-          )}
-          <div>
-            <label className="block text-sm font-medium text-foreground">Nama Jasa</label>
-            <input
-              name="nama"
-              required
-              placeholder="Servis Rutin 3.000 km"
-              className={inputCls}
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-foreground">
-              Deskripsi (opsional)
-            </label>
-            <input
-              name="deskripsi"
-              placeholder="Ganti oli + filter, cek rem"
-              className={inputCls}
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-            <div>
-              <label className="block text-sm font-medium text-foreground">
-                Harga Dasar (Rp)
-              </label>
-              <NumberInput name="hargaDasar" defaultValue={0} required />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-foreground">
-                Estimasi Durasi (menit)
-              </label>
-              <NumberInput name="estimasiMenit" defaultValue={60} required />
-            </div>
-            <div className="flex items-end pb-2">
-              <label className="flex items-center gap-2 text-sm font-medium text-foreground">
-                <input name="allowDp" type="checkbox" />
-                Boleh DP
-              </label>
-            </div>
-          </div>
-          <SubmitButton
-            pendingText="Menyimpan..."
-            className="w-full rounded-lg bg-primary py-2.5 text-sm font-medium text-white active:opacity-90 disabled:opacity-60"
-          >
-            Tambah Jasa
-          </SubmitButton>
-        </form>
-      )}
+      {/* Unmount saat ditutup → useActionState ikut hilang. Tanpa ini, error
+          dari percobaan sebelumnya masih menempel saat form dibuka lagi. */}
+      {open && <CatalogForm onSukses={(msg) => { setOpen(false); setPesan(msg); }} />}
     </div>
+  );
+}
+
+function CatalogForm({ onSukses }: { onSukses: (msg: string) => void }) {
+  const [state, action] = useActionState<KatalogState, FormData>(
+    createCatalog,
+    {},
+  );
+  const [stateSebelumnya, setStateSebelumnya] = useState(state);
+
+  // Sukses → lapor ke induk (tutup form + notif). Gagal → form tetap terbuka,
+  // error tampil di dalam form. Disesuaikan saat state action berubah — pola
+  // React "adjusting state when props change".
+  if (state !== stateSebelumnya) {
+    setStateSebelumnya(state);
+    if (state.success) onSukses(state.success);
+  }
+
+  return (
+    <form
+      onReset={(e) => e.preventDefault()}
+      action={action}
+      className="space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card"
+    >
+      {state.error && (
+        <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-danger">
+          {state.error}
+        </p>
+      )}
+      <div>
+        <label className="block text-sm font-medium text-foreground">Nama Jasa</label>
+        <input
+          name="nama"
+          required
+          placeholder="Servis Rutin 3.000 km"
+          className={inputCls}
+        />
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-foreground">
+          Deskripsi (opsional)
+        </label>
+        <input
+          name="deskripsi"
+          placeholder="Ganti oli + filter, cek rem"
+          className={inputCls}
+        />
+      </div>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <div>
+          <label className="block text-sm font-medium text-foreground">
+            Harga Dasar (Rp)
+          </label>
+          <NumberInput name="hargaDasar" defaultValue={0} required />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-foreground">
+            Estimasi Durasi (menit)
+          </label>
+          <NumberInput name="estimasiMenit" defaultValue={60} required />
+        </div>
+        <div className="flex items-end pb-2">
+          <label className="flex items-center gap-2 text-sm font-medium text-foreground">
+            <input name="allowDp" type="checkbox" />
+            Boleh DP
+          </label>
+        </div>
+      </div>
+      <SubmitButton
+        pendingText="Menyimpan..."
+        className="w-full rounded-lg bg-primary py-2.5 text-sm font-medium text-white active:opacity-90 disabled:opacity-60"
+      >
+        Tambah Jasa
+      </SubmitButton>
+    </form>
   );
 }
