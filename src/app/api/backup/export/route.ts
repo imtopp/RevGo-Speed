@@ -11,8 +11,16 @@ export async function GET() {
   // OWNER + SysAdmin: ekspor memuat passwordHash semua user —
   // jangan sampai Admin (atau di bawahnya) mengekstrak hash.
   const role = session?.user?.role;
-  if (role !== "OWNER" && role !== "SYS_ADMIN") {
+  if (!session?.user || (role !== "OWNER" && role !== "SYS_ADMIN")) {
     return NextResponse.json({ error: "Tidak punya akses." }, { status: 403 });
+  }
+  // JWT hidup 30 hari — akun nonaktif tetap wajib terblokir di sini.
+  const akun = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { isActive: true },
+  });
+  if (!akun?.isActive) {
+    return NextResponse.json({ error: "Akun tidak aktif." }, { status: 403 });
   }
 
   // Daftar tabel ikut src/lib/backup.ts — tambah model schema.prisma

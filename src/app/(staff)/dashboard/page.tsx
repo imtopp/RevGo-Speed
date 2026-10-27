@@ -14,7 +14,7 @@ export default async function DashboardHome() {
   const role = session.user.role;
   const isOperational = role === "OWNER" || role === "ADMIN";
   const showStokStat = role !== "SYS_ADMIN";
-  const branchIdStaff = await getStaffBranchId().catch(() => null);
+  const branchIdStaff = await getStaffBranchId();
   const branchWhere = branchIdStaff ? { branchId: branchIdStaff } : {};
 
   const dayStart = new Date();

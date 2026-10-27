@@ -43,7 +43,10 @@ export async function getStaffBranchId(): Promise<string | null> {
     where: { id: session.user.id },
     select: { branchId: true },
   });
-  return user?.branchId ?? null;
+  // Fail-closed: admin/mekanik tanpa cabang = data akun corrupt — tanpa
+  // filter cabang berarti semua cabang terbuka, jadi paksa keluar.
+  if (!user?.branchId) redirect("/login?error=session");
+  return user.branchId;
 }
 
 export function isStaff(role: Role): boolean {
@@ -52,4 +55,17 @@ export function isStaff(role: Role): boolean {
 
 export function isOwnerOrSysAdmin(role: Role): boolean {
   return OWNER_SYSADMIN.includes(role);
+}
+
+/**
+ * Lempar bila akun tidak ada/nonaktif — untuk server action & route yang
+ * memanggil `auth()` sendiri (JWT bisa hidup 30 hari; redirect guard tidak
+ * berlaku di sana). Pakai ini setelah cek role berbasis session.
+ */
+export async function assertActiveUser(userId: string): Promise<void> {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { isActive: true },
+  });
+  if (!user?.isActive) throw new Error("Akun tidak aktif.");
 }

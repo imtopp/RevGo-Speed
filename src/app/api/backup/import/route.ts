@@ -67,6 +67,15 @@ export async function POST(req: Request) {
   if (!user || (role !== "OWNER" && role !== "SYS_ADMIN")) {
     return NextResponse.json({ error: "Tidak punya akses." }, { status: 403 });
   }
+  // JWT hidup 30 hari — akun nonaktif tetap wajib terblokir; restore
+  // menghapus seluruh data, jangan sampai jatuh ke tangan akun mati.
+  const akun = await prisma.user.findUnique({
+    where: { id: user.id },
+    select: { isActive: true },
+  });
+  if (!akun?.isActive) {
+    return NextResponse.json({ error: "Akun tidak aktif." }, { status: 403 });
+  }
 
   let form: FormData;
   try {

@@ -589,35 +589,44 @@ export async function returKonsinyasi(
     return { error: `Stok ${part.name} kurang (tersisa ${part.quantity}).` };
   }
 
-  await prisma.$transaction(async (tx) => {
-    await tx.part.update({
-      where: { id: partId },
-      data: { quantity: { decrement: quantity } },
+  try {
+    await prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM "Part" WHERE id = ${partId} FOR UPDATE`;
+      // Guard atomik anti-race: decrement hanya bila stok masih mencukupi di DB.
+      const updated = await tx.part.updateMany({
+        where: { id: partId, quantity: { gte: quantity } },
+        data: { quantity: { decrement: quantity } },
+      });
+      if (updated.count === 0) throw new Error(`Stok ${part.name} kurang.`);
+      const partF = (await tx.part.findUnique({ where: { id: partId } }))!;
+
+      await tx.stockMovement.create({
+        data: {
+          partId,
+          type: "OUT",
+          quantity,
+          cost: partF.buyPrice,
+          note: `Retur konsinyasi${note ? `: ${note}` : ""}`,
+          userId: session.user.id,
+          supplierId: partF.supplierId,
+        },
+      });
+      // Tanpa cashflow sengaja: barang titipan, tidak ada uang yang bergerak.
+      await logAudit(tx, session.user, {
+        action: "STOCK_RETURN",
+        entityType: "Part",
+        entityId: partId,
+        branchId: partF.branchId,
+        summary: `Retur ${quantity} ${partF.unit} ${partF.name}${
+          part.supplier ? ` ke ${part.supplier.nama}` : ""
+        } — tanpa kas (konsinyasi)`,
+        before: { quantity: partF.quantity + quantity },
+        after: { quantity: partF.quantity },
+      });
     });
-    await tx.stockMovement.create({
-      data: {
-        partId,
-        type: "OUT",
-        quantity,
-        cost: part.buyPrice,
-        note: `Retur konsinyasi${note ? `: ${note}` : ""}`,
-        userId: session.user.id,
-        supplierId: part.supplierId,
-      },
-    });
-    // Tanpa cashflow sengaja: barang titipan, tidak ada uang yang bergerak.
-    await logAudit(tx, session.user, {
-      action: "STOCK_RETURN",
-      entityType: "Part",
-      entityId: partId,
-      branchId: part.branchId,
-      summary: `Retur ${quantity} ${part.unit} ${part.name}${
-        part.supplier ? ` ke ${part.supplier.nama}` : ""
-      } — tanpa kas (konsinyasi)`,
-      before: { quantity: part.quantity },
-      after: { quantity: part.quantity - quantity },
-    });
-  });
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Retur gagal." };
+  }
 
   revalidatePath("/dashboard/stok");
   revalidatePath("/dashboard/laporan");

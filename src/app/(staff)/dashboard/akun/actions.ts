@@ -2,7 +2,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
-import { isOwnerOrSysAdmin } from "@/lib/guard";
+import { isOwnerOrSysAdmin, assertActiveUser } from "@/lib/guard";
 import { validasiAssignCabang, validasiCabangBaru } from "@/lib/staff-branch";
 import { hashPassword } from "@/lib/password";
 import { logAudit } from "@/lib/audit";
@@ -15,6 +15,7 @@ async function requireOwnerOrSysAdminAction() {
   if (!session?.user || !isOwnerOrSysAdmin(session.user.role)) {
     throw new Error("Tidak punya akses.");
   }
+  await assertActiveUser(session.user.id);
   return session;
 }
 

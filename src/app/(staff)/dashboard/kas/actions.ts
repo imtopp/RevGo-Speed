@@ -85,18 +85,28 @@ export async function addPayment(
 
   const category = kind === "DP" ? "DP Servis" : "Pembayaran Servis";
 
+  let sisaAkhir = remaining;
   await prisma.$transaction(async (tx) => {
     // Kunci baris servis (FOR UPDATE) — serialisasi cek sisa tagihan antar request
     // agar dua pembayaran paralel tidak bisa sama-sama lolos cek sisa.
     await tx.$queryRaw`SELECT id FROM "Service" WHERE id = ${serviceId} FOR UPDATE`;
+    // Total dihitung ULANG dari data segar — total luar bisa basi bila part
+    // ditambah/dihapus di tab lain selagi form terbuka (TOCTOU).
+    const fresh = await tx.service.findUnique({
+      where: { id: serviceId },
+      include: { parts: { select: { price: true, quantity: true } } },
+    });
+    if (!fresh) throw new Error("Servis tidak ditemukan.");
+    const totalNow = totalTagihan(fresh.laborCost, fresh.parts);
     const paidAgg = await tx.payment.aggregate({
       where: { serviceId, voidedAt: null },
       _sum: { amount: true },
     });
     const paidNow = paidAgg._sum.amount ?? 0;
-    if (amount > total - paidNow) {
+    if (amount > totalNow - paidNow) {
       throw new Error("Melebihi sisa tagihan — coba lagi.");
     }
+    sisaAkhir = totalNow - paidNow - amount;
     const payment = await tx.payment.create({
       data: {
         serviceId,
@@ -132,7 +142,7 @@ export async function addPayment(
   revalidatePath("/dashboard/kas");
   revalidatePath("/dashboard/piutang");
 
-  const sisa = remaining - amount;
+  const sisa = sisaAkhir;
   return {
     success:
       sisa === 0
@@ -147,8 +157,7 @@ export async function voidPayment(
   _prev: BayarState,
   formData: FormData,
 ): Promise<BayarState> {
-  const session = await auth();
-  if (!session?.user) return { error: "Belum login." };
+  const session = await requireKasRole();
   if (session.user.role !== "OWNER") {
     return { error: "Hanya Owner yang bisa membatalkan pembayaran." };
   }
@@ -175,32 +184,41 @@ export async function voidPayment(
   const account = accountFromMethod(payment.method);
   const service = payment.service;
 
-  await prisma.$transaction(async (tx) => {
-    await tx.cashflow.create({
-      data: {
-        type: "EXPENSE",
-        category: "Pembatalan Bayar",
-        amount: payment.amount,
-        account,
+  try {
+    await prisma.$transaction(async (tx) => {
+      // Klaim atomik — hanya baris yang belum pernah void; dua request paralel
+      // tidak bisa sama-sama membuat reversal kas.
+      const claimed = await tx.payment.updateMany({
+        where: { id: paymentId, voidedAt: null },
+        data: { voidedAt: new Date(), voidReason: reason, voidedBy: session.user.id },
+      });
+      if (claimed.count === 0) {
+        throw new Error("Pembayaran sudah pernah dibatalkan.");
+      }
+      await tx.cashflow.create({
+        data: {
+          type: "EXPENSE",
+          category: "Pembatalan Bayar",
+          amount: payment.amount,
+          account,
+          branchId: service.branchId,
+          description: `${service.code} · void: ${reason}`,
+          createdBy: session.user.id,
+        },
+      });
+      await logAudit(tx, session.user, {
+        action: "PAYMENT_VOID",
+        entityType: "Payment",
+        entityId: paymentId,
         branchId: service.branchId,
-        description: `${service.code} · void: ${reason}`,
-        createdBy: session.user.id,
-      },
+        summary: `${service.code} · void ${payment.amount.toLocaleString("id-ID")} (${payment.method}) — ${reason}`,
+        before: { amount: payment.amount, kind: payment.kind, method: payment.method, voidedAt: null },
+        after: { voidReason: reason, reversalAccount: account },
+      });
     });
-    await tx.payment.update({
-      where: { id: paymentId },
-      data: { voidedAt: new Date(), voidReason: reason, voidedBy: session.user.id },
-    });
-    await logAudit(tx, session.user, {
-      action: "PAYMENT_VOID",
-      entityType: "Payment",
-      entityId: paymentId,
-      branchId: service.branchId,
-      summary: `${service.code} · void ${payment.amount.toLocaleString("id-ID")} (${payment.method}) — ${reason}`,
-      before: { amount: payment.amount, kind: payment.kind, method: payment.method, voidedAt: null },
-      after: { voidReason: reason, reversalAccount: account },
-    });
-  });
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Void gagal." };
+  }
 
   revalidatePath(`/dashboard/servis/${service.id}`);
   revalidatePath("/dashboard/kas");
@@ -222,8 +240,7 @@ export async function refundKelebihan(
   _prev: BayarState,
   formData: FormData,
 ): Promise<BayarState> {
-  const session = await auth();
-  if (!session?.user) return { error: "Belum login." };
+  const session = await requireKasRole();
   if (session.user.role !== "OWNER") {
     return { error: "Hanya Owner yang bisa mengembalikan kelebihan bayar." };
   }

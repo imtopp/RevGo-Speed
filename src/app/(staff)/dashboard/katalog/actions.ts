@@ -2,6 +2,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+import { assertActiveUser } from "@/lib/guard";
 import { revalidatePath } from "next/cache";
 
 export type KatalogState = { error?: string; success?: string };
@@ -23,6 +24,7 @@ async function requireOwnerOrAdmin() {
   if (!["OWNER", "SYS_ADMIN"].includes(session.user.role)) {
     throw new Error("Tidak punya akses.");
   }
+  await assertActiveUser(session.user.id);
   return session;
 }
 

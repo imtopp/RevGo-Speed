@@ -3,7 +3,7 @@
 import sharp from "sharp";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
-import { isOwnerOrSysAdmin } from "@/lib/guard";
+import { isOwnerOrSysAdmin, assertActiveUser } from "@/lib/guard";
 import { logAudit } from "@/lib/audit";
 import {
   LOGO_MAX_DATA_URL_CHARS,
@@ -39,6 +39,7 @@ async function requireOwnerOrSysAdminAction() {
   if (!session?.user || !isOwnerOrSysAdmin(session.user.role)) {
     throw new Error("Tidak punya akses.");
   }
+  await assertActiveUser(session.user.id);
   return session;
 }
 
