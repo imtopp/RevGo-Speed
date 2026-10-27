@@ -343,8 +343,18 @@ function AddPartForm({
   parts: Part[];
 }) {
   const { state, formAction } = useForm(addServicePart);
+  // Sukses → remount form (key) supaya part & jumlah lama tidak terkirim lagi
+  // saat tombol diklik kedua kali — status servis tak berubah, tap 2 sangat
+  // mungkin terjadi dan sekarang harus mengisi ulang. Catatan saat render
+  // (pola "adjusting state when props change").
+  const [formKey, setFormKey] = useState(0);
+  const [stateSebelumnya, setStateSebelumnya] = useState(state);
+  if (state !== stateSebelumnya) {
+    setStateSebelumnya(state);
+    if (state.success) setFormKey((k) => k + 1);
+  }
   return (
-    <form onReset={(e) => e.preventDefault()} action={formAction} className="space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
+    <form key={formKey} onReset={(e) => e.preventDefault()} action={formAction} className="space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
       <input type="hidden" name="serviceId" value={serviceId} />
       <p className="text-sm font-semibold text-foreground">Catat Part Terpakai</p>
       <Msg state={state} />

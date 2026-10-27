@@ -38,6 +38,24 @@ export function BookingForm({
   // null = belum diisi (biarkan `required` yang menahan), false = format salah.
   const plateDiisi = plate.trim() !== "";
   const plateValid = !plateDiisi || !!normalizePlate(plate);
+  // Sukses → reset semua isian + remount form (key) supaya tap kedua tidak
+  // mengirim booking dobel dari data basi. Catatan saat render (pola
+  // "adjusting state when props change").
+  const [formKey, setFormKey] = useState(0);
+  const [stateSebelumnya, setStateSebelumnya] = useState(state);
+  if (state !== stateSebelumnya) {
+    setStateSebelumnya(state);
+    if (state.success) {
+      setPlate("");
+      setMerekPilih("");
+      setBranchId(branches[0]?.id ?? "");
+      setTipeKedatangan("walkin");
+      setJadwal("");
+      setDurasi(0);
+      setCatalogId("");
+      setFormKey((k) => k + 1);
+    }
+  }
   const tipeOptions =
     merekPilih && merekPilih !== MEREK_LAINNYA
       ? (modelPerMerek[merekPilih] ?? [])
@@ -45,6 +63,7 @@ export function BookingForm({
 
   return (
     <form
+      key={formKey}
       onReset={(e) => e.preventDefault()}
       action={action}
       className="space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card"

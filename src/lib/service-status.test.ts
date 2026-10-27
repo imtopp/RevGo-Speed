@@ -108,6 +108,19 @@ describe("formatTanggal & formatTanggalPendek", () => {
     expect(formatTanggalPendek(d)).not.toMatch(/2026/);
     expect(formatTanggal(d)).toMatch(/\d{2}\.\d{2}/);
   });
+
+  it("selalu WIB — hasil tidak bergantung TZ runtime server", () => {
+    // 07:30Z = 14:30 WIB; 17:30Z = 00:30 WIB (hari berganti).
+    expect(formatTanggal("2026-10-24T07:30:00.000Z")).toMatch(
+      /24.*14[.:]30/,
+    );
+    expect(formatTanggal("2026-10-24T17:30:00.000Z")).toMatch(
+      /25.*00[.:]30/,
+    );
+    expect(formatTanggalPendek("2026-10-24T17:30:00.000Z")).toMatch(
+      /25.*00[.:]30/,
+    );
+  });
 });
 
 describe("windowHariWIB (filter tanggal papan servis)", () => {

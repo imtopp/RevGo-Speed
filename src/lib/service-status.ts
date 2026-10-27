@@ -81,6 +81,7 @@ export function formatTanggal(d: Date | string | null): string {
     year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
+    timeZone: "Asia/Jakarta",
   }).format(date);
 }
 
@@ -92,6 +93,7 @@ export function formatTanggalPendek(d: Date | string | null): string {
     month: "short",
     hour: "2-digit",
     minute: "2-digit",
+    timeZone: "Asia/Jakarta",
   }).format(date);
 }
 

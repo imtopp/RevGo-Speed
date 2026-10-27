@@ -1,6 +1,13 @@
 "use client";
 
-import { useActionState, useEffect, useState, useId, useTransition } from "react";
+import {
+  useActionState,
+  useEffect,
+  useState,
+  useId,
+  useRef,
+  useTransition,
+} from "react";
 import { useRouter } from "next/navigation";
 import {
   createPart,
@@ -87,7 +94,7 @@ const btnSecondary =
   "rounded-lg border border-slate-300 bg-surface px-3 py-2 text-sm font-medium text-foreground active:opacity-90";
 
 /**
- * Input kategori dengan saran dari kategori yang sudah ada (datalist) —
+ * Input kategori dengan saran dari kategori yang sudah ada (datalist) â€”
  * pengguna tetap bebas menulis baru, tapi typo beda kapital jarang terjadi.
  */
 function KategoriInput({
@@ -142,11 +149,16 @@ function PartForm({
   const rugi = sellPrice < buyPrice;
   const totalStokAwal = quantity * buyPrice;
 
-  // Sukses → beri tahu panel induk (tutup blok + notif luar); gagal → form tetap.
-  if (state !== stateSebelumnya) {
-    setStateSebelumnya(state);
+  // Sukses → catat perubahan saat render (state sendiri, pola "adjusting state
+  // when props change"); lapor ke induk dari efek — setState komponen lain
+  // saat render anak dilarang React.
+  if (state !== stateSebelumnya) setStateSebelumnya(state);
+  const sudahDilapor = useRef(state);
+  useEffect(() => {
+    if (sudahDilapor.current === state) return;
+    sudahDilapor.current = state;
     if (state.success) onSuccess?.(state.success);
-  }
+  }, [state, onSuccess]);
 
   return (
     <form action={action} onReset={(e) => e.preventDefault()} className="space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
@@ -170,7 +182,7 @@ function PartForm({
             placeholder="OLI-001"
             className={`${inputCls} uppercase`}
           />
-          <p className="mt-1 text-xs text-slate-400">Kosongkan → auto PART-0001</p>
+          <p className="mt-1 text-xs text-slate-400">Kosongkan â†’ auto PART-0001</p>
         </div>
         <div>
           <label className="block text-sm font-medium text-foreground">Nama</label>
@@ -199,7 +211,7 @@ function PartForm({
         <div>
           <label className="block text-sm font-medium text-foreground">Supplier</label>
           <select name="supplierId" defaultValue="" className={inputCls}>
-            <option value="">—</option>
+            <option value="">â€”</option>
             {suppliers.filter((s) => s.aktif).map((s) => (
               <option key={s.id} value={s.id}>{s.nama}</option>
             ))}
@@ -225,8 +237,8 @@ function PartForm({
           onChange={(e) => setKonsinyasi(e.target.checked)}
         />
         <span>
-          <span className="font-medium">Konsinyasi</span> — barang titipan supplier.
-          Stok masuk <span className="font-medium">tanpa kas</span>, tidak laku → retur.
+          <span className="font-medium">Konsinyasi</span> â€” barang titipan supplier.
+          Stok masuk <span className="font-medium">tanpa kas</span>, tidak laku â†’ retur.
           Wajib pilih supplier.
         </span>
       </label>
@@ -239,7 +251,7 @@ function PartForm({
             <option value="QRIS">QRIS (Bank)</option>
           </select>
           <p className="mt-1 text-xs text-slate-400">
-            Stok awal = belanja: otomatis catat kas keluar {formatRupiah(totalStokAwal)} (qty ×
+            Stok awal = belanja: otomatis catat kas keluar {formatRupiah(totalStokAwal)} (qty Ã—
             harga beli).
           </p>
         </div>
@@ -247,15 +259,15 @@ function PartForm({
       {konsinyasi && (
         <p className="rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-500 ring-1 ring-slate-200">
           Konsinyasi: stok awal dicatat sebagai batch cost (untuk HPP) tapi{" "}
-          <span className="font-medium">tanpa kas keluar</span> — bayar supplier nanti lewat
+          <span className="font-medium">tanpa kas keluar</span> â€” bayar supplier nanti lewat
           kas manual &quot;Bayar konsinyasi&quot;.
         </p>
       )}
       {rugi && (
         <div className="rounded-lg bg-amber-50 p-3 ring-1 ring-amber-200">
           <p className="text-xs font-medium text-amber-800">
-            ⚠ Harga jual {formatRupiah(sellPrice)} lebih murah dari harga beli{" "}
-            {formatRupiah(buyPrice)} — rugi {formatRupiah(buyPrice - sellPrice)} per unit.
+            âš  Harga jual {formatRupiah(sellPrice)} lebih murah dari harga beli{" "}
+            {formatRupiah(buyPrice)} â€” rugi {formatRupiah(buyPrice - sellPrice)} per unit.
           </p>
           <label className="mt-2 flex items-start gap-2 text-xs text-amber-800">
             <input type="checkbox" name="confirmLoss" className="mt-0.5 h-4 w-4" />
@@ -283,11 +295,16 @@ function StockInForm({
   const [stateSebelumnya, setStateSebelumnya] = useState(state);
   const [picked, setPicked] = useState<Part | null>(null);
 
-  // Sukses → beri tahu panel induk (tutup blok + notif luar); gagal → form tetap.
-  if (state !== stateSebelumnya) {
-    setStateSebelumnya(state);
+  // Sukses → catat perubahan saat render (state sendiri, pola "adjusting state
+  // when props change"); lapor ke induk dari efek — setState komponen lain
+  // saat render anak dilarang React.
+  if (state !== stateSebelumnya) setStateSebelumnya(state);
+  const sudahDilapor = useRef(state);
+  useEffect(() => {
+    if (sudahDilapor.current === state) return;
+    sudahDilapor.current = state;
     if (state.success) onSuccess?.(state.success);
-  }
+  }, [state, onSuccess]);
 
   return (
     <form action={action} onReset={(e) => e.preventDefault()} className="space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
@@ -315,7 +332,7 @@ function StockInForm({
         <div>
           <label className="block text-sm font-medium text-foreground">Supplier</label>
           <select name="supplierId" defaultValue="" className={inputCls}>
-            <option value="">—</option>
+            <option value="">â€”</option>
             {suppliers.filter((s) => s.aktif).map((s) => (
               <option key={s.id} value={s.id}>{s.nama}</option>
             ))}
@@ -338,8 +355,8 @@ function StockInForm({
       </div>
       <p className="text-xs text-slate-400">
         {picked?.consignment
-          ? "Konsinyasi: stok & batch cost masuk (HPP benar) — TANPA kas keluar. Bayar supplier via kas manual."
-          : "Otomatis catat kas keluar sesuai total (qty × harga beli)."}
+          ? "Konsinyasi: stok & batch cost masuk (HPP benar) â€” TANPA kas keluar. Bayar supplier via kas manual."
+          : "Otomatis catat kas keluar sesuai total (qty Ã— harga beli)."}
       </p>
       <SubmitButton pendingText="Menyimpan..." className={btnPrimary}>
         Catat Stok Masuk
@@ -357,7 +374,7 @@ function SellForm({ parts }: { parts: Part[] }) {
   const [stateSebelumnya, setStateSebelumnya] = useState(state);
   const total = qty * (picked?.sellPrice ?? 0);
 
-  // Sukses → notif luar + reset isi form (remount via key); gagal → form tetap.
+  // Sukses â†’ notif luar + reset isi form (remount via key); gagal â†’ form tetap.
   if (state !== stateSebelumnya) {
     setStateSebelumnya(state);
     if (state.success) {
@@ -386,7 +403,7 @@ function SellForm({ parts }: { parts: Part[] }) {
         <label className="block text-sm font-medium text-foreground">Part</label>
         <PartPicker
           parts={parts}
-          placeholder="Ketik nama / SKU part (stok siap)…"
+          placeholder="Ketik nama / SKU part (stok siap)â€¦"
           onPick={(p) => setPicked(parts.find((x) => x.id === p.id) ?? null)}
         />
       </div>
@@ -407,7 +424,7 @@ function SellForm({ parts }: { parts: Part[] }) {
             }`}
           >
             {picked ? formatRupiah(picked.sellPrice) : "Ikut data part"}
-            {picked && <span className="text-slate-400"> · dari data part</span>}
+            {picked && <span className="text-slate-400"> Â· dari data part</span>}
           </p>
         </div>
       </div>
@@ -453,11 +470,16 @@ function AdjustForm({
   const [state, action] = useActionState<StokState, FormData>(adjustStock, {});
   const [stateSebelumnya, setStateSebelumnya] = useState(state);
 
-  // Sukses → beri tahu panel induk (tutup blok + notif luar); gagal → form tetap.
-  if (state !== stateSebelumnya) {
-    setStateSebelumnya(state);
+  // Sukses → catat perubahan saat render (state sendiri, pola "adjusting state
+  // when props change"); lapor ke induk dari efek — setState komponen lain
+  // saat render anak dilarang React.
+  if (state !== stateSebelumnya) setStateSebelumnya(state);
+  const sudahDilapor = useRef(state);
+  useEffect(() => {
+    if (sudahDilapor.current === state) return;
+    sudahDilapor.current = state;
     if (state.success) onSuccess?.(state.success);
-  }
+  }, [state, onSuccess]);
 
   return (
     <form action={action} onReset={(e) => e.preventDefault()} className="space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
@@ -469,7 +491,7 @@ function AdjustForm({
       </div>
       <div>
         <label className="block text-sm font-medium text-foreground">
-          Selisih (+ tambah / − kurang)
+          Selisih (+ tambah / âˆ’ kurang)
         </label>
         <NumberInput name="delta" required allowNegative placeholder="-2" />
       </div>
@@ -491,7 +513,7 @@ function SupplierPanel({ suppliers }: { suppliers: Supplier[] }) {
   const [resetKey, setResetKey] = useState(0);
   const [stateSebelumnya, setStateSebelumnya] = useState(createState);
 
-  // Sukses → notif luar + reset isi form (remount via key); gagal → form tetap.
+  // Sukses â†’ notif luar + reset isi form (remount via key); gagal â†’ form tetap.
   if (createState !== stateSebelumnya) {
     setStateSebelumnya(createState);
     if (createState.success) {
@@ -546,7 +568,7 @@ function SupplierPanel({ suppliers }: { suppliers: Supplier[] }) {
             <div className="flex items-start justify-between">
               <div>
                 <p className="font-medium">{s.nama}</p>
-                <p className="text-sm text-muted-foreground">{s.telepon ?? "—"}</p>
+                <p className="text-sm text-muted-foreground">{s.telepon ?? "â€”"}</p>
                 <p className="text-xs text-slate-400">{s.aktif ? "Aktif" : "Nonaktif"}</p>
               </div>
               <button
@@ -611,11 +633,15 @@ function PartRow({
   const [delSebelumnya, setDelSebelumnya] = useState(delState);
   const low = part.quantity <= part.minStock;
 
-  // Hapus sukses → kabari induk (notif luar: info reversal kas); gagal → inline.
-  if (delState !== delSebelumnya) {
-    setDelSebelumnya(delState);
+  // Hapus sukses → kabari induk dari efek (notif luar: reversal kas); state
+  // sendiri dicatat saat render — setState komponen lain saat render dilarang.
+  if (delState !== delSebelumnya) setDelSebelumnya(delState);
+  const sudahDilapor = useRef(delState);
+  useEffect(() => {
+    if (sudahDilapor.current === delState) return;
+    sudahDilapor.current = delState;
     if (delState.success) onSuccess?.(delState.success);
-  }
+  }, [delState, onSuccess]);
 
   return (
     <div className="rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
@@ -626,14 +652,14 @@ function PartRow({
             {part.consignment && (
               <span className="ml-2 text-xs font-normal text-slate-500">konsinyasi</span>
             )}
-            {low && <span className="ml-2 text-xs text-amber-600">⚠ menipis</span>}
+            {low && <span className="ml-2 text-xs text-amber-600">âš  menipis</span>}
           </p>
           <p className="text-sm text-muted-foreground">
-            {part.sku} · stok {part.quantity} {part.unit} (min {part.minStock})
+            {part.sku} Â· stok {part.quantity} {part.unit} (min {part.minStock})
           </p>
           <p className="text-xs text-slate-400">
             Jual {formatRupiah(part.sellPrice)}
-            {part.supplier ? ` · ${part.supplier.nama}` : ""}
+            {part.supplier ? ` Â· ${part.supplier.nama}` : ""}
           </p>
         </div>
         <div className="flex shrink-0 flex-col items-end gap-2">
@@ -658,7 +684,7 @@ function PartRow({
           >
             <input type="hidden" name="id" value={part.id} />
             <SubmitButton
-              pendingText="Menghapus…"
+              pendingText="Menghapusâ€¦"
               className="text-xs font-medium text-danger underline underline-offset-2 disabled:opacity-60"
             >
               Hapus
@@ -690,7 +716,7 @@ function PartEdit({ part, kategoris }: { part: Part; kategoris: string[] }) {
           className="mt-0.5 h-4 w-4"
         />
         <span>
-          <span className="font-medium">Konsinyasi</span> — barang titipan supplier (tanpa
+          <span className="font-medium">Konsinyasi</span> â€” barang titipan supplier (tanpa
           kas; wajib pilih supplier).
         </span>
       </label>
@@ -721,7 +747,7 @@ function PartEdit({ part, kategoris }: { part: Part; kategoris: string[] }) {
             {formatRupiah(part.buyPrice)}
           </p>
           <p className="mt-1 text-xs text-slate-400">
-            Otomatis rata-rata pembelian — koreksi per batch lewat tab Riwayat.
+            Otomatis rata-rata pembelian â€” koreksi per batch lewat tab Riwayat.
           </p>
         </div>
         <div>
@@ -732,8 +758,8 @@ function PartEdit({ part, kategoris }: { part: Part; kategoris: string[] }) {
       {rugi && (
         <div className="rounded-lg bg-amber-50 p-3 ring-1 ring-amber-200">
           <p className="text-xs font-medium text-amber-800">
-            ⚠ Harga jual {formatRupiah(sellPrice)} lebih murah dari harga beli{" "}
-            {formatRupiah(part.buyPrice)} (rata-rata) — rugi{" "}
+            âš  Harga jual {formatRupiah(sellPrice)} lebih murah dari harga beli{" "}
+            {formatRupiah(part.buyPrice)} (rata-rata) â€” rugi{" "}
             {formatRupiah(part.buyPrice - sellPrice)} per unit.
           </p>
           <label className="mt-2 flex items-start gap-2 text-xs text-amber-800">
@@ -757,11 +783,16 @@ function ReturForm({
   const [state, action] = useActionState<StokState, FormData>(returKonsinyasi, {});
   const [stateSebelumnya, setStateSebelumnya] = useState(state);
 
-  // Sukses → beri tahu panel induk (tutup blok + notif luar); gagal → form tetap.
-  if (state !== stateSebelumnya) {
-    setStateSebelumnya(state);
+  // Sukses → catat perubahan saat render (state sendiri, pola "adjusting state
+  // when props change"); lapor ke induk dari efek — setState komponen lain
+  // saat render anak dilarang React.
+  if (state !== stateSebelumnya) setStateSebelumnya(state);
+  const sudahDilapor = useRef(state);
+  useEffect(() => {
+    if (sudahDilapor.current === state) return;
+    sudahDilapor.current = state;
     if (state.success) onSuccess?.(state.success);
-  }
+  }, [state, onSuccess]);
 
   const partsKonsti = parts.filter((p) => p.consignment);
   return (
@@ -770,13 +801,13 @@ function ReturForm({
       <Msg state={state} />
       {partsKonsti.length === 0 ? (
         <p className="text-sm text-muted-foreground">
-          Tidak ada part konsinyasi. Tandai part dulu lewat Ubah → centang Konsinyasi.
+          Tidak ada part konsinyasi. Tandai part dulu lewat Ubah â†’ centang Konsinyasi.
         </p>
       ) : (
         <>
           <div>
             <label className="block text-sm font-medium text-foreground">Part</label>
-            <PartPicker parts={partsKonsti} placeholder="Pilih part konsinyasi…" />
+            <PartPicker parts={partsKonsti} placeholder="Pilih part konsinyasiâ€¦" />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -802,7 +833,7 @@ function ReturForm({
   );
 }
 
-// ── Panel utama ───────────────────────────────────────────────────────
+// â”€â”€ Panel utama â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function CostEdit({ movementId, cost }: { movementId: string; cost: number }) {
   const [state, action] = useActionState<StokState, FormData>(correctStockCost, {});
@@ -837,7 +868,7 @@ function MovementRow({ m }: { m: Movement }) {
         <div className="min-w-0">
           <p className="text-sm font-medium">
             <span className={m.type === "IN" ? "text-success" : "text-danger"}>
-              {m.type === "IN" ? "+" : "−"}
+              {m.type === "IN" ? "+" : "âˆ’"}
               {m.quantity}
             </span>{" "}
             {m.part.name}
@@ -848,9 +879,9 @@ function MovementRow({ m }: { m: Movement }) {
             )}
           </p>
           <p className="text-xs text-muted-foreground">
-            {m.note ?? "—"}
-            {m.supplier ? ` · ${m.supplier.nama}` : ""}
-            {m.user ? ` · ${m.user.name}` : ""}
+            {m.note ?? "â€”"}
+            {m.supplier ? ` Â· ${m.supplier.nama}` : ""}
+            {m.user ? ` Â· ${m.user.name}` : ""}
           </p>
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1">
@@ -906,7 +937,7 @@ export function StokPanels({
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
-  // Notif sukses dari form aksi stok — tampil di luar blok, hilang 5 detik.
+  // Notif sukses dari form aksi stok â€” tampil di luar blok, hilang 5 detik.
   useEffect(() => {
     if (!pesan) return;
     const t = setTimeout(() => setPesan(null), 5000);
@@ -939,11 +970,11 @@ export function StokPanels({
                     <div className="flex items-center justify-between gap-3">
                       <div className="min-w-0">
                         <p className="font-medium text-foreground">
-                          {s.code} · {s.method}
+                          {s.code} Â· {s.method}
                         </p>
                         <p className="text-xs text-slate-400">
                           {formatTanggalPendek(s.soldAt)}
-                          {s.note ? ` · ${s.note}` : ""}
+                          {s.note ? ` Â· ${s.note}` : ""}
                         </p>
                       </div>
                       <div className="shrink-0 text-right">
@@ -1019,7 +1050,7 @@ export function StokPanels({
                   {formatRupiah(riwayatPart.lastCost)}
                 </span>{" "}
                 {riwayatPart.lastCostAt &&
-                  `· ${formatTanggalPendek(riwayatPart.lastCostAt)}`}
+                  `Â· ${formatTanggalPendek(riwayatPart.lastCostAt)}`}
               </p>
             )}
           </div>
@@ -1037,7 +1068,7 @@ export function StokPanels({
     );
   }
 
-  // Tab part (default) — filter klien: cari nama/SKU/kategori + kategori.
+  // Tab part (default) â€” filter klien: cari nama/SKU/kategori + kategori.
   const q = cari.trim().toLowerCase();
   const partsTampil = parts.filter((p) => {
     const cocokQ =
@@ -1146,7 +1177,7 @@ export function StokPanels({
               type="search"
               value={cari}
               onChange={(e) => setCari(e.target.value)}
-              placeholder="Cari nama / SKU / kategori…"
+              placeholder="Cari nama / SKU / kategoriâ€¦"
               className={inputCls}
             />
             <div className="mt-2 flex items-center gap-2">

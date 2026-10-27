@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { addPayment, type BayarState } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
 import { NumberInput } from "@/components/number-input";
@@ -28,10 +28,20 @@ export function PaymentForm({
   compact?: boolean;
 }) {
   const [state, action] = useActionState<BayarState, FormData>(addPayment, {});
+  // Sukses → remount form (key) supaya jumlah lama tidak terkirim lagi saat
+  // tombol diklik kedua kali — cegah pembayaran dobel dari isian basi.
+  // Catatan state saat render (pola "adjusting state when props change").
+  const [formKey, setFormKey] = useState(0);
+  const [stateSebelumnya, setStateSebelumnya] = useState(state);
+  if (state !== stateSebelumnya) {
+    setStateSebelumnya(state);
+    if (state.success) setFormKey((k) => k + 1);
+  }
   if (remaining <= 0) return null;
 
   return (
     <form
+      key={formKey}
       onReset={(e) => e.preventDefault()}
       action={action}
       className={
