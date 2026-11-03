@@ -24,6 +24,11 @@ import {
   fetchCommitInfo,
   updateBranchRef,
 } from "@/lib/update-github";
+import {
+  deployNoteText,
+  ensureDeploymentForSha,
+  type VercelDeployResult,
+} from "@/lib/vercel-deploy";
 import { revalidatePath } from "next/cache";
 
 export type UpdateState = {
@@ -54,6 +59,27 @@ function readUpdateEnv() {
     token,
   });
   return { env, token };
+}
+
+function readVercelEnv() {
+  return {
+    token: process.env.VERCEL_TOKEN?.trim() ?? "",
+    projectId: process.env.VERCEL_PROJECT_ID?.trim() ?? "",
+    teamId: process.env.VERCEL_TEAM_ID?.trim() ?? "",
+  };
+}
+
+/**
+ * Setelah ref channel berpindah, pastikan SHA target benar-benar dibangun.
+ * Vercel melewatkan webhook untuk sha yang sudah pernah dibangun (rollback
+ * / tarik-ulang) — tanpa ini situs tetap di kode lama.
+ */
+async function triggerRebuild(targetSha: string): Promise<VercelDeployResult> {
+  try {
+    return await ensureDeploymentForSha({ ...readVercelEnv(), targetSha });
+  } catch {
+    return { status: "failed", error: "Gagal menghubungi Vercel." };
+  }
 }
 
 async function readSetting(key: string): Promise<string | null> {
@@ -215,9 +241,10 @@ export async function doUpdate(_prev: UpdateState, formData: FormData): Promise<
     } catch (e) {
       return { error: githubError(e) };
     }
+    const deploy = await triggerRebuild(latest.sha);
     revalidatePath("/dashboard/update");
     return {
-      success: `Ref channel dipindah ke ${shortSha(latest.sha)}. Build sedang berjalan…`,
+      success: `Ref channel dipindah ke ${shortSha(latest.sha)}. Build sedang berjalan…${deployNoteText(deploy)}`,
       pending: {
         from: currentSha,
         to: latest.sha,
@@ -239,9 +266,10 @@ export async function doUpdate(_prev: UpdateState, formData: FormData): Promise<
   } catch (e) {
     return { error: githubError(e) };
   }
+  const deploy = await triggerRebuild(target);
   revalidatePath("/dashboard/update");
   return {
-    success: `Ref channel dikembalikan ke ${shortSha(target)}. Build sedang berjalan…`,
+    success: `Ref channel dikembalikan ke ${shortSha(target)}. Build sedang berjalan…${deployNoteText(deploy)}`,
     pending: {
       from: currentSha,
       to: target,
