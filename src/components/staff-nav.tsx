@@ -42,6 +42,7 @@ const SIDEBAR_GROUPS: {
       { href: "/dashboard/pengaturan", label: "Pengaturan", roles: OWNER_SYS },
       { href: "/dashboard/akun", label: "Akun", roles: OWNER_SYS },
       { href: "/dashboard/backup", label: "Backup", roles: OWNER_SYS },
+      { href: "/dashboard/update", label: "Update", roles: OWNER_SYS },
       { href: "/dashboard/audit", label: "Audit", roles: ["OWNER"] as readonly Role[] },
     ],
   },

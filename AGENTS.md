@@ -121,6 +121,37 @@ generated/                  # Prisma client output (gitignored)
 | Neon branch | `production` (default), `dev` (lokal) | Dev: dipakai `DATABASE_URL` lokal |
 | Package name | `revgo-speed` | |
 
+## Instance Ganda (RevGo + TBRT)
+
+Aplikasi sama di-deploy untuk 2 pelanggan dari **1 repo** (bukan fork):
+
+| | Instance RevGo | Instance TBRT |
+|--|----------------|---------------|
+| Vercel project | `revgo-speed` | `tbrt` (`tbrt.vercel.app`) |
+| Neon project | `RevGo Speed` | `TBRT` (`summer-smoke-34764554`) |
+| Branch git production | `main` | `release/tbrt` (pointer ke 1 SHA `main`) |
+| Workspace lokal | folder ini (`RevGo-Speed`) | sejajar `..\TBRT` (clone repo sama, `.env` sendiri) |
+| Ignore build | skip push selain `main`/`preview` | skip push selain `release/tbrt` |
+
+- **Rilis:** push ke `main` -> deploy RevGo. Tarik ke TBRT lewat halaman **Update**
+  (`/dashboard/update`, OWNER+SYS_ADMIN): pointer `release/tbrt` dipindah ke SHA
+  `main` terbaru via GitHub API -> Vercel build otomatis. **Rollback** di halaman
+  sama: pointer dikembalikan ke SHA sebelumnya (riwayat: SystemSetting
+  `update_history` / `update_pending`, TTL build 8 menit).
+- **Wajib sebelum tarik/rollback:** unduh backup JSON; server mencentang-balik
+  checkbox `backupDone` + kata konfirmasi ketik `PERBARUI` / `KEMBALIKAN`.
+- **Env channel** (kedua project Vercel): `UPDATE_CHANNEL_BRANCH` (`main` /
+  `release/tbrt`), `GITHUB_REPO=imtopp/RevGo-Speed`, `GITHUB_TOKEN` (PAT isi
+  Contents read+write), plus `DATABASE_URL`, `DATABASE_URL_UNPOOLED`,
+  `AUTH_SECRET`, `AUTH_URL`.
+- **Production branch Vercel** (Environments -> Production -> Branch Tracking)
+  **hanya bisa di-set via dashboard**, tidak ada API-nya. Setelah di-set,
+  trigger build pertama dengan push kosong ke `release/tbrt`.
+- Migrasi DB jalan di build (`prisma migrate deploy`): jalankan migrasi di
+  `main` dulu (deploy RevGo) **baru** tarik ke TBRT.
+- Logika murni channel + unit test: `src/lib/update-channel.ts` (test: `update-channel.test.ts`);
+  helper GitHub: `src/lib/update-github.ts`.
+
 ## Neon MCP
 
 - Config di **project-level** `opencode.json` (bukan global `~/.config/opencode/`).
