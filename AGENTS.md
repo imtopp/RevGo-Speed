@@ -142,7 +142,12 @@ Aplikasi sama di-deploy untuk 2 pelanggan dari **1 repo** (bukan fork):
   checkbox `backupDone` + kata konfirmasi ketik `PERBARUI` / `KEMBALIKAN`.
 - **Env channel** (kedua project Vercel): `UPDATE_CHANNEL_BRANCH` (`main` /
   `release/tbrt`), `GITHUB_REPO=imtopp/RevGo-Speed`, `GITHUB_TOKEN` (PAT isi
-  Contents read+write), plus `DATABASE_URL`, `DATABASE_URL_UNPOOLED`,
+  Contents read+write), `VERCEL_TOKEN` + `VERCEL_PROJECT_ID` +
+  `VERCEL_TEAM_ID` (dipakai `src/lib/vercel-deploy.ts` untuk memicu build
+  ulang setelah ref pindah — Vercel melewatkan webhook pada sha yang sudah
+  pernah dibangun, kasus rollback/tarik-ulang; `VERCEL_TOKEN` wajib PAT dari
+  dashboard `vercel.com/account/tokens`, token OAuth CLI kedaluwarsa ±12 jam),
+  plus `DATABASE_URL`, `DATABASE_URL_UNPOOLED`,
   `AUTH_SECRET`, `AUTH_URL`.
 - **Production branch Vercel** (Environments -> Production -> Branch Tracking)
   **hanya bisa di-set via dashboard**, tidak ada API-nya. Setelah di-set,
@@ -150,7 +155,8 @@ Aplikasi sama di-deploy untuk 2 pelanggan dari **1 repo** (bukan fork):
 - Migrasi DB jalan di build (`prisma migrate deploy`): jalankan migrasi di
   `main` dulu (deploy RevGo) **baru** tarik ke TBRT.
 - Logika murni channel + unit test: `src/lib/update-channel.ts` (test: `update-channel.test.ts`);
-  helper GitHub: `src/lib/update-github.ts`.
+  helper GitHub: `src/lib/update-github.ts`; pemicu build ulang Vercel:
+  `src/lib/vercel-deploy.ts` (test: `vercel-deploy.test.ts`).
 
 ## Neon MCP
 
