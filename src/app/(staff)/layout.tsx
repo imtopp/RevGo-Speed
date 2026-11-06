@@ -53,8 +53,8 @@ export default async function StaffLayout({ children }: { children: React.ReactN
 
       {/* Kolom konten */}
       <div className="flex min-h-dvh min-w-0 flex-1 flex-col">
-        {/* Header — hanya mobile */}
-        <header className="sticky top-0 z-40 flex items-center justify-between bg-secondary px-4 py-3 text-white md:hidden">
+        {/* Header — hanya mobile; padding max() antisipasi notch saat landscape */}
+        <header className="sticky top-0 z-40 flex items-center justify-between bg-secondary py-3 pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] text-white md:hidden">
           <BrandMark />
           <div className="flex items-center gap-3">
             <span className="max-w-24 truncate text-sm text-slate-300">
@@ -90,7 +90,7 @@ export default async function StaffLayout({ children }: { children: React.ReactN
           </div>
         </header>
 
-        <main className="flex-1 px-4 py-5 md:px-8">
+        <main className="flex-1 px-4 py-5 max-md:pl-[max(1rem,env(safe-area-inset-left))] max-md:pr-[max(1rem,env(safe-area-inset-right))] md:px-8">
           <div className="mx-auto w-full max-w-6xl">{children}</div>
         </main>
 
