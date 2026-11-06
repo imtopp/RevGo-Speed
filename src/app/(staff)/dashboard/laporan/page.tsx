@@ -165,7 +165,6 @@ export default async function LaporanPage({
           )}
           <DownloadLink
             href={exportUrl}
-            filename="laporan-revgo.csv"
             className="rounded-lg border border-slate-300 bg-surface px-3 py-2 text-sm font-medium text-foreground"
           >
             Export CSV

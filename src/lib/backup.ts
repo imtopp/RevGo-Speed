@@ -129,7 +129,7 @@ export function parseBackup(text: string): ParsedBackup {
     return {
       ok: false,
       error:
-        "File tidak memuat satu pun tabel yang dikenal — ini bukan file backup RevGo Speed, atau formatnya sudah berubah total.",
+        "File tidak memuat satu pun tabel yang dikenal — ini bukan file backup aplikasi ini, atau formatnya sudah berubah total.",
     };
   }
 

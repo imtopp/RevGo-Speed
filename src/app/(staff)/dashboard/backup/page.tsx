@@ -55,7 +55,6 @@ export default async function BackupPage() {
         </p>
         <DownloadLink
           href="/api/backup/export"
-          filename="backup-revgo.json"
           className="inline-block rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-foreground active:opacity-90"
         >
           Unduh Backup JSON
