@@ -47,8 +47,9 @@ export function LogoUploader({ value }: { value: string }) {
           )}
         </div>
         <p className="text-xs text-muted-foreground">
-          Tampil di header, halaman login, dan nota. File diproses otomatis:
-          di-resize maks 512px lalu dikonversi ke WebP.
+          Tampil di landing, header, halaman login, favicon, dan icon aplikasi
+          (PWA). File diproses otomatis: di-resize maks 512px lalu dikonversi
+          ke WebP.
         </p>
       </div>
 

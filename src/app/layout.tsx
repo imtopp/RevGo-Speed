@@ -22,10 +22,11 @@ export async function generateMetadata(): Promise<Metadata> {
     applicationName: appName,
     icons: {
       icon: [
-        { url: "/icons/favicon.png", sizes: "48x48", type: "image/png" },
-        { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+        { url: "/icon?size=32", sizes: "32x32", type: "image/png" },
+        { url: "/icon?size=48", sizes: "48x48", type: "image/png" },
+        { url: "/icon?size=192", sizes: "192x192", type: "image/png" },
       ],
-      apple: "/icons/apple-touch-icon.png",
+      apple: "/icon?size=180",
     },
     appleWebApp: {
       capable: true,

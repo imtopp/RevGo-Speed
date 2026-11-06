@@ -1,5 +1,6 @@
 import { auth } from "@/lib/auth";
 import { homePathForRole } from "@/lib/role";
+import { getBranding } from "@/lib/branding";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
@@ -13,6 +14,7 @@ const features = [
 export default async function Home() {
   const session = await auth();
   if (session?.user) redirect(homePathForRole(session.user.role));
+  const { appName, logoUrl } = await getBranding();
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-8 p-6 md:max-w-lg">
@@ -20,15 +22,24 @@ export default async function Home() {
         <p className="text-sm font-semibold uppercase tracking-widest text-muted-foreground">
           Servis Kendaraan
         </p>
-        <h1 className="sr-only">RevGo Speed</h1>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src="/brand/logo-title.png"
-          alt=""
-          width={750}
-          height={750}
-          className="mt-3 h-36 w-auto md:h-44"
-        />
+        <h1 className="sr-only">{appName}</h1>
+        {logoUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={logoUrl}
+            alt=""
+            className="mt-3 h-36 w-auto object-contain md:h-44"
+          />
+        ) : (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src="/brand/logo-title.png"
+            alt=""
+            width={750}
+            height={750}
+            className="mt-3 h-36 w-auto md:h-44"
+          />
+        )}
         <p className="mt-3 leading-relaxed text-muted-foreground">
           Booking, pantau, dan bayar servis kendaraan kamu — tanpa perlu
           antre atau menelepon. Semua bisa dilakukan dari HP.

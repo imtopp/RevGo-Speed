@@ -19,7 +19,7 @@ export default async function GantiPasswordPage() {
             <img
               src={logoUrl}
               alt=""
-              className="h-14 w-14 rounded-2xl object-contain"
+              className="h-20 w-20 rounded-2xl object-contain"
             />
           ) : null}
           <h1 className="mt-3 text-2xl font-bold tracking-tight">
