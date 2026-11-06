@@ -33,7 +33,7 @@ export default async function ServisPage({
 }: {
   searchParams: Promise<{ status?: string; booking?: string; tanggal?: string }>;
 }) {
-  await requireStaffRole(["OWNER", "ADMIN"]);
+  const session = await requireStaffRole(["OWNER", "ADMIN"]);
   const branchIdStaff = await getStaffBranchId();
   const params = await searchParams;
   // Validasi enum status dari URL — nilai asing jangan pernah masuk query Prisma.
@@ -97,12 +97,16 @@ export default async function ServisPage({
           <p className="mt-1 text-sm text-muted-foreground">
             {services.length} servis · papan kerja
           </p>
-          <Link
-            href="/dashboard/katalog"
-            className="mt-1 inline-block text-sm font-medium text-muted-foreground underline underline-offset-2"
-          >
-            Kelola katalog →
-          </Link>
+          {/* Katalog hanya untuk OWNER/SYS_ADMIN — jangan tautkan ADMIN ke
+              halaman yang akan ditolak guard. */}
+          {session.user.role === "OWNER" && (
+            <Link
+              href="/dashboard/katalog"
+              className="mt-1 inline-block text-sm font-medium text-muted-foreground underline underline-offset-2"
+            >
+              Kelola katalog &rarr;
+            </Link>
+          )}
         </div>
         <PendingLink
           href={qs(filter, !showBooking)}

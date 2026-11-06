@@ -99,7 +99,7 @@ export default async function PengaturanPage() {
       </section>
 
       <section className="space-y-3">
-        <h2 className="text-sm font-semibold text-foreground">Lainnya</h2>
+        <h2 className="text-sm font-semibold text-foreground">Manajemen</h2>
         <div className="grid grid-cols-3 gap-3">
           <Link
             href="/dashboard/akun"

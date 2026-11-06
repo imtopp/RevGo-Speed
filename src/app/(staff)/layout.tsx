@@ -3,7 +3,6 @@ import { BrandMark } from "@/components/brand-mark";
 import { SubmitButton } from "@/components/submit-button";
 import { auth, signOut } from "@/lib/auth";
 import { homePathForRole } from "@/lib/role";
-import { isOwnerOrSysAdmin } from "@/lib/guard";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 
@@ -13,8 +12,6 @@ export default async function StaffLayout({ children }: { children: React.ReactN
   if (session.user.role === "CUSTOMER") {
     redirect(homePathForRole(session.user.role));
   }
-
-  const showSettings = isOwnerOrSysAdmin(session.user.role);
 
   return (
     <div className="flex min-h-dvh">
@@ -60,14 +57,6 @@ export default async function StaffLayout({ children }: { children: React.ReactN
             <span className="max-w-24 truncate text-sm text-slate-300">
               {session.user.name}
             </span>
-            {showSettings && (
-              <Link
-                href="/dashboard/pengaturan"
-                className="text-sm font-medium text-slate-200 underline underline-offset-2"
-              >
-                Atur
-              </Link>
-            )}
             <Link
               href="/ganti-password"
               className="text-sm font-medium text-slate-200 underline underline-offset-2"
