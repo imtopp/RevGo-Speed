@@ -38,18 +38,22 @@ export function LogoUploader({ value }: { value: string }) {
     <div className="space-y-2">
       <p className="text-sm font-medium text-foreground">Logo Aplikasi</p>
       <div className="flex items-center gap-3">
-        <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-slate-50 ring-1 ring-slate-200">
+        <div className="flex h-16 min-w-16 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-slate-50 px-2 ring-1 ring-slate-200">
           {value ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={value} alt="Logo aplikasi" className="h-full w-full object-contain" />
+            <img
+              src={value}
+              alt="Logo aplikasi"
+              className="max-h-14 w-auto max-w-full object-contain"
+            />
           ) : (
             <span className="text-[10px] text-muted-foreground">Kosong</span>
           )}
         </div>
         <p className="text-xs text-muted-foreground">
           Tampil di landing, header, halaman login, favicon, dan icon aplikasi
-          (PWA). File diproses otomatis: di-resize maks 512px lalu dikonversi
-          ke WebP.
+          (PWA). File diproses otomatis: margin dirapikan, di-resize maks 512px,
+          lalu dikonversi ke WebP.
         </p>
       </div>
 

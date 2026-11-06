@@ -28,7 +28,7 @@ export default async function Home() {
           <img
             src={logoUrl}
             alt=""
-            className="mt-3 h-36 w-auto object-contain md:h-44"
+            className="mt-3 max-h-44 w-auto max-w-full object-contain md:max-h-60"
           />
         ) : (
           // eslint-disable-next-line @next/next/no-img-element
@@ -37,7 +37,7 @@ export default async function Home() {
             alt=""
             width={750}
             height={750}
-            className="mt-3 h-36 w-auto md:h-44"
+            className="mt-3 max-h-44 w-auto max-w-full md:max-h-60"
           />
         )}
         <p className="mt-3 leading-relaxed text-muted-foreground">

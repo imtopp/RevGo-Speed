@@ -6,7 +6,7 @@ export async function BrandMark() {
     <span className="flex items-center gap-2">
       {logoUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={logoUrl} alt="" className="h-6 w-6 rounded object-contain" />
+        <img src={logoUrl} alt="" className="max-h-6 max-w-16 rounded" />
       ) : null}
       <span className="font-bold tracking-tight">{appName}</span>
     </span>

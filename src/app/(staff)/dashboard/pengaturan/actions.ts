@@ -1,6 +1,5 @@
 "use server";
 
-import sharp from "sharp";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { isOwnerOrSysAdmin, assertActiveUser } from "@/lib/guard";
@@ -11,6 +10,7 @@ import {
   summarizeLogoValue,
   validateLogoFileMeta,
 } from "@/lib/logo";
+import { processLogoImage } from "@/lib/logo-image";
 import { revalidatePath } from "next/cache";
 
 export type SettingState = { error?: string; success?: string };
@@ -92,8 +92,9 @@ export async function updateSetting(
 }
 
 /**
- * Upload logo aplikasi: file → auto-orient, resize maks 512px, konversi WebP,
- * lalu simpan sebagai data URL di SystemSetting.logo_url (ikut backup otomatis).
+ * Upload logo aplikasi: file → auto-orient, rapikan margin tepi, resize maks
+ * 512px, konversi WebP, lalu simpan sebagai data URL di SystemSetting.logo_url
+ * (ikut backup otomatis).
  */
 export async function uploadLogo(
   _prev: SettingState,
@@ -108,12 +109,8 @@ export async function uploadLogo(
 
   const input = Buffer.from(await file.arrayBuffer());
 
-  const proses = async (quality: number): Promise<Buffer> =>
-    sharp(input)
-      .rotate() // auto-orient sesuai EXIF
-      .resize({ width: 512, height: 512, fit: "inside", withoutEnlargement: true })
-      .webp({ quality })
-      .toBuffer();
+  const proses = (quality: number): Promise<Buffer> =>
+    processLogoImage(input, quality);
 
   let output: Buffer;
   try {
@@ -140,7 +137,7 @@ export async function uploadLogo(
       action: "SETTING_UPDATE",
       entityType: "SystemSetting",
       entityId: "logo_url",
-      summary: `Logo aplikasi diunggah (diproses otomatis: maks 512px WebP)`,
+      summary: `Logo aplikasi diunggah (diproses otomatis: margin dirapikan, maks 512px WebP)`,
       before: prev ? { value: summarizeLogoValue(prev.value) } : undefined,
       after: { value: summarizeLogoValue(dataUrl) },
     });
@@ -148,7 +145,7 @@ export async function uploadLogo(
 
   revalidatePath("/", "layout");
   revalidatePath("/dashboard/pengaturan");
-  return { success: "Logo berhasil diproses & disimpan (maks 512px, WebP)." };
+  return { success: "Logo berhasil diproses & disimpan (margin dirapikan, maks 512px, WebP)." };
 }
 
 function bacaHariAktif(formData: FormData): string | null {

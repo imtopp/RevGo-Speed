@@ -13,7 +13,7 @@ export default async function RegisterPage() {
             <img
               src={logoUrl}
               alt=""
-              className="h-20 w-20 rounded-2xl object-contain"
+              className="max-h-24 max-w-[280px] rounded-2xl"
             />
           ) : null}
           <h1 className="mt-3 text-2xl font-bold tracking-tight">Buat Akun</h1>
