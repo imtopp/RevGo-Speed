@@ -37,9 +37,10 @@ async function main() {
   }
   console.log("SystemSetting defaults siap.");
 
-  // 3. Akun owner (lintas cabang, branchId null)
-  const ownerEmail = "owner@revgo-speed.id";
-  const ownerExists = await prisma.user.findUnique({ where: { email: ownerEmail } });
+  // 3. Akun owner (lintas cabang, branchId null) — dicek per ROLE supaya
+  //    re-seed di instance kedua tidak membuat akun ganda email lama.
+  const ownerEmail = process.env.SEED_OWNER_EMAIL?.trim() || "owner@revgo-speed.id";
+  const ownerExists = await prisma.user.findFirst({ where: { role: "OWNER" } });
   if (!ownerExists) {
     await prisma.user.create({
       data: {
@@ -57,8 +58,8 @@ async function main() {
   }
 
   // 4. Akun SYS_ADMIN (lintas cabang, branchId null)
-  const sysAdminEmail = "sysadmin@revgo-speed.id";
-  const sysAdminExists = await prisma.user.findUnique({ where: { email: sysAdminEmail } });
+  const sysAdminEmail = process.env.SEED_SYSADMIN_EMAIL?.trim() || "sysadmin@revgo-speed.id";
+  const sysAdminExists = await prisma.user.findFirst({ where: { role: "SYS_ADMIN" } });
   if (!sysAdminExists) {
     await prisma.user.create({
       data: {

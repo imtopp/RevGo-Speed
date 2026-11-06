@@ -80,11 +80,11 @@ for (const k of ["app_name", "dp_policy", "service_code_prefix"]) {
   console.log(`  ${keys.includes(k) ? "OK " : "MISSING"} SystemSetting ${k}`);
 }
 
-const owner = await prisma.user.findUnique({ where: { email: "owner@revgo-speed.id" } });
-console.log(`  ${owner && owner.role === "OWNER" ? "OK " : "MISSING"} Owner ${owner ? `(${owner.name}, active=${owner.isActive})` : ""}`);
+const owner = await prisma.user.findFirst({ where: { role: "OWNER" } });
+console.log(`  ${owner && owner.role === "OWNER" ? "OK " : "MISSING"} Owner ${owner ? `(${owner.name}, ${owner.email}, active=${owner.isActive})` : ""}`);
 
-const sysadmin = await prisma.user.findUnique({ where: { email: "sysadmin@revgo-speed.id" } });
-console.log(`  ${sysadmin && sysadmin.role === "SYS_ADMIN" ? "OK " : "MISSING"} SYS_ADMIN ${sysadmin ? `(${sysadmin.name}, active=${sysadmin.isActive})` : ""}`);
+const sysadmin = await prisma.user.findFirst({ where: { role: "SYS_ADMIN" } });
+console.log(`  ${sysadmin && sysadmin.role === "SYS_ADMIN" ? "OK " : "MISSING"} SYS_ADMIN ${sysadmin ? `(${sysadmin.name}, ${sysadmin.email}, active=${sysadmin.isActive})` : ""}`);
 
 // ── 5. Ringkasan data operasional ──
 console.log("\n=== RINGKASAN DATA ===");
