@@ -41,8 +41,10 @@ function shaOf(d: DeploymentListItem): string {
 }
 
 /**
- * Cari deployment lama untuk `targetSha` lalu picu build ulang.
- * - sha belum pernah dibangun → `new-sha` (webhook push menanganinya);
+ * Cari deployment **produksi** lama untuk `targetSha` lalu picu build ulang.
+ * - sha belum punya deployment produksi → `new-sha` (webhook push channel
+ *   menanganinya — jangan anggap preview dari push `main` sebagai milik
+ *   channel, itu memicu build duplikat yang dibatalkan Vercel);
  * - sha sedang dibangun → `in-progress` (biarkan selesai);
  * - sha sudah READY/ERROR/CANCELED → redeploy via API;
  * - env kurang → `skipped`; masalah API → `failed` (ref tetap berpindah).
@@ -78,10 +80,10 @@ export async function ensureDeploymentForSha(
   }
 
   const matches = items.filter((d) => shaOf(d) === targetSha);
-  // Daftar terbaru-dulu; utamakan deployment produksi bila sha itu juga
-  // pernah dibangun di environment lain.
-  const found =
-    matches.find((d) => d.target === "production") ?? matches[0];
+  // Hanya deployment produksi yang dianggap milik channel. Preview dari
+  // push `main` untuk sha yang sama harus diabaikan — kalau produksi belum
+  // ada, webhook push channel yang akan membangunnya.
+  const found = matches.find((d) => d.target === "production");
   if (!found || typeof found.uid !== "string") return { status: "new-sha" };
 
   const state = typeof found.readyState === "string" ? found.readyState : "";

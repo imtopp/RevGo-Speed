@@ -126,6 +126,17 @@ describe("ensureDeploymentForSha", () => {
     expect(JSON.parse(String(calls[1].init?.body)).deploymentId).toBe("dpl_prod");
   });
 
+  it("new-sha bila sha hanya punya deployment preview (tanpa POST forceNew)", async () => {
+    const preview = deployment({ uid: "dpl_prev", target: "preview" });
+    const { fetchImpl, calls } = mockFetch(() =>
+      jsonResponse({ deployments: [preview] }),
+    );
+    const r = await ensureDeploymentForSha({ ...BASE, fetchImpl });
+    expect(r).toEqual({ status: "new-sha" });
+    expect(calls).toHaveLength(1);
+    expect(calls[0].url).toContain("/v6/deployments");
+  });
+
   it("failed bila daftar deployment gagal diambil", async () => {
     const { fetchImpl } = mockFetch(() => jsonResponse({}, 500));
     const r = await ensureDeploymentForSha({ ...BASE, fetchImpl });
