@@ -10,7 +10,7 @@ import {
   CONFIRM_PULL_WORD,
   CONFIRM_ROLLBACK_WORD,
   fullShaOrNull,
-  isPendingFresh,
+  isBuildActive,
   parseHistory,
   parsePending,
   pushHistory,
@@ -144,7 +144,7 @@ async function guardUpdate(
   }
 
   const pending = parsePending(await readSetting(KEY_PENDING));
-  if (isPendingFresh(pending, new Date().getTime())) {
+  if (isBuildActive(pending, currentSha, new Date().getTime())) {
     return {
       ok: false,
       error: `Masih menunggu build ${shortSha(pending!.to)} — tunggu selesai (maks ±8 menit) sebelum aksi berikutnya.`,

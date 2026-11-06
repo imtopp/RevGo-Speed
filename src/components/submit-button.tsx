@@ -9,6 +9,13 @@ type SubmitButtonProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, "type"> &
   pendingText?: string;
   /** Selalu nonaktif (mis. isian belum valid), di luar status pending. */
   disabled?: boolean;
+  /**
+   * Tampilkan spinner + pendingText saat form diproses (default true).
+   * false: tombol tetap disabled selama form pending, tapi tanpa spinner —
+   * dipakai pada form dengan beberapa tombol submit agar hanya tombol yang
+   * diklik yang terlihat "berjalan" (useFormStatus statusnya per-form).
+   */
+  showPending?: boolean;
 };
 
 /**
@@ -21,19 +28,21 @@ export function SubmitButton({
   pendingText = "Memproses…",
   className = "",
   disabled,
+  showPending = true,
   ...rest
 }: SubmitButtonProps) {
   const { pending } = useFormStatus();
+  const busy = pending && showPending;
 
   return (
     <button
       {...rest}
       type="submit"
       disabled={pending || disabled}
-      aria-busy={pending}
+      aria-busy={busy}
       className={className}
     >
-      {pending ? (
+      {busy ? (
         <span className="inline-flex items-center justify-center gap-2">
           <span
             aria-hidden="true"

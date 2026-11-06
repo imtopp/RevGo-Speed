@@ -27,7 +27,7 @@ type Props = {
   history: HistoryEntry[];
   rollbackTo: string | null;
   pending: PendingUpdate | null;
-  pendingFresh: boolean;
+  buildActive: boolean;
 };
 
 type BuildingInfo = { from: string; to: string; beforeVersion: string };
@@ -85,6 +85,7 @@ function InfoRow({ label, value }: { label: string; value: string }) {
 
 export function UpdateClient(props: Props) {
   const [terminal, setTerminal] = useState<"done" | "timeout" | null>(null);
+  const [submitter, setSubmitter] = useState<string | null>(null);
   const [actionState, action] = useActionState<UpdateState, FormData>(
     doUpdate,
     {},
@@ -93,7 +94,7 @@ export function UpdateClient(props: Props) {
   const building = useMemo<BuildingInfo | null>(() => {
     const p = actionState.pending;
     if (p) return { from: p.from, to: p.to, beforeVersion: p.beforeVersion };
-    if (props.pendingFresh && props.pending) {
+    if (props.buildActive && props.pending) {
       return {
         from: props.pending.from,
         to: props.pending.to,
@@ -101,7 +102,7 @@ export function UpdateClient(props: Props) {
       };
     }
     return null;
-  }, [actionState.pending, props.pending, props.pendingFresh]);
+  }, [actionState.pending, props.pending, props.buildActive]);
 
   const phase: Phase = terminal ?? (building ? "building" : "idle");
 
@@ -298,7 +299,13 @@ export function UpdateClient(props: Props) {
           )}
           <form
             action={action}
-            onSubmit={() => setTerminal(null)}
+            onSubmit={(e) => {
+              setTerminal(null);
+              const el = (e.nativeEvent as SubmitEvent & {
+                submitter?: HTMLButtonElement | null;
+              }).submitter;
+              setSubmitter(el?.value ?? null);
+            }}
             className="space-y-3"
           >
             <label className="flex items-start gap-2 text-sm text-foreground">
@@ -327,6 +334,7 @@ export function UpdateClient(props: Props) {
                 name="mode"
                 value="pull"
                 pendingText="Menarik versi…"
+                showPending={submitter !== "rollback"}
                 disabled={props.status === "UP_TO_DATE"}
                 className={BTN_PRIMARY}
               >
@@ -337,6 +345,7 @@ export function UpdateClient(props: Props) {
                   name="mode"
                   value="rollback"
                   pendingText="Mengembalikan…"
+                  showPending={submitter === "rollback"}
                   className={BTN_SECONDARY}
                 >
                   Kembalikan {shortSha(props.rollbackTo)}

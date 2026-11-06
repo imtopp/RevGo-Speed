@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import {
   describeStatus,
   fullShaOrNull,
-  isPendingFresh,
+  isBuildActive,
   parseHistory,
   parsePending,
   resolveChannel,
@@ -44,7 +44,7 @@ export default async function UpdatePage() {
   ]);
   const history = parseHistory(histRow?.value ?? null);
   const pending = parsePending(pendRow?.value ?? null);
-  const pendingFresh = isPendingFresh(pending, new Date().getTime());
+  const buildActive = isBuildActive(pending, currentSha, new Date().getTime());
 
   let latest: { sha: string; message: string; date: string } | null = null;
   let fetchError: string | null = null;
@@ -63,9 +63,9 @@ export default async function UpdatePage() {
     configured,
     currentSha,
     latestSha: latest?.sha ?? null,
-    pendingFresh,
+    buildActive,
   });
-  const rollbackTo = pendingFresh ? null : rollbackTarget(history);
+  const rollbackTo = buildActive ? null : rollbackTarget(history);
 
   return (
     <UpdateClient
@@ -81,7 +81,7 @@ export default async function UpdatePage() {
       history={history}
       rollbackTo={rollbackTo}
       pending={pending}
-      pendingFresh={pendingFresh}
+      buildActive={buildActive}
     />
   );
 }

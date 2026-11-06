@@ -149,6 +149,24 @@ export function isPendingFresh(
   return age >= 0 && age <= PENDING_TTL_MS;
 }
 
+/**
+ * Build masih dianggap berjalan hanya selama pending fresh DAN SHA yang
+ * sedang berjalan belum sama dengan tujuan. Begitu versi target sudah
+ * aktif (currentSha === pending.to), pending tidak boleh dipakai lagi —
+ * kalau tidak, status tetap BUILDING dan halaman update reload terus
+ * sampai TTL habis (loop "Update aktif — memuat ulang" berulang-ulang).
+ * currentSha null (belum terbaca) dianggap build masih berjalan.
+ */
+export function isBuildActive(
+  pending: PendingUpdate | null,
+  currentSha: string | null,
+  nowMs: number,
+): boolean {
+  if (!pending || !isPendingFresh(pending, nowMs)) return false;
+  if (!currentSha) return true;
+  return currentSha !== pending.to;
+}
+
 export type ChannelStatus =
   | "NOT_CONFIGURED"
   | "LOCAL"
@@ -161,10 +179,10 @@ export function describeStatus(input: {
   configured: boolean;
   currentSha: string | null;
   latestSha: string | null;
-  pendingFresh: boolean;
+  buildActive: boolean;
 }): ChannelStatus {
   if (!input.configured) return "NOT_CONFIGURED";
-  if (input.pendingFresh) return "BUILDING";
+  if (input.buildActive) return "BUILDING";
   if (!input.currentSha) return "LOCAL";
   if (!input.latestSha) return "UNKNOWN";
   return input.currentSha === input.latestSha ? "UP_TO_DATE" : "UPDATE_AVAILABLE";

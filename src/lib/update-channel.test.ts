@@ -8,6 +8,7 @@ import {
   pushHistory,
   parsePending,
   isPendingFresh,
+  isBuildActive,
   describeStatus,
   rollbackTarget,
   HISTORY_LIMIT,
@@ -170,17 +171,52 @@ describe("parsePending / isPendingFresh", () => {
   });
 });
 
+describe("isBuildActive", () => {
+  const pending = parsePending(
+    JSON.stringify({
+      from: SHA_A,
+      to: SHA_B,
+      startedAt: "2026-11-03T00:00:00.000Z",
+      beforeVersion: "dpl_1",
+    }),
+  )!;
+  const t0 = Date.parse("2026-11-03T00:00:00.000Z");
+
+  it("fresh + sha target belum berjalan → build aktif", () => {
+    expect(isBuildActive(pending, SHA_A, t0)).toBe(true);
+  });
+
+  it("fresh + sha target sudah berjalan → build tidak aktif (sudah mendarat)", () => {
+    expect(isBuildActive(pending, SHA_B, t0)).toBe(false);
+  });
+
+  it("fresh + currentSha null (belum terbaca) → dianggap masih berjalan", () => {
+    expect(isBuildActive(pending, null, t0)).toBe(true);
+  });
+
+  it("kedaluwarsa → tidak aktif walau sha belum sama", () => {
+    expect(isBuildActive(pending, SHA_A, t0 + PENDING_TTL_MS + 1)).toBe(false);
+  });
+
+  it("pending null / startedAt rusak → tidak aktif", () => {
+    expect(isBuildActive(null, SHA_A, t0)).toBe(false);
+    expect(isBuildActive({ ...pending, startedAt: "acak" }, SHA_A, t0)).toBe(
+      false,
+    );
+  });
+});
+
 describe("describeStatus", () => {
-  const base = { configured: true, currentSha: SHA_A, latestSha: SHA_B, pendingFresh: false };
+  const base = { configured: true, currentSha: SHA_A, latestSha: SHA_B, buildActive: false };
 
   it("belum dikonfigurasi menang duluan", () => {
-    expect(describeStatus({ ...base, configured: false, pendingFresh: true })).toBe(
+    expect(describeStatus({ ...base, configured: false, buildActive: true })).toBe(
       "NOT_CONFIGURED",
     );
   });
 
   it("build berjalan menang atas perbandingan sha", () => {
-    expect(describeStatus({ ...base, pendingFresh: true })).toBe("BUILDING");
+    expect(describeStatus({ ...base, buildActive: true })).toBe("BUILDING");
   });
 
   it("tanpa sha terdeploy (lokal) → LOCAL", () => {
