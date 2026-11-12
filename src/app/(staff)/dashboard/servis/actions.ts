@@ -204,7 +204,9 @@ export async function createBooking(
           model,
           ownerId: customer?.id ?? null,
           ownerName: customer?.name ?? customerName,
-          ownerPhone: customer?.phone ?? customerWa,
+          ownerPhone: customer?.phone
+            ? (normalizeWa(customer.phone) ?? customer.phone)
+            : customerWa,
         },
         include: { owner: true },
       });

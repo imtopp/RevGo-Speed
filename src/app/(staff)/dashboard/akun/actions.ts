@@ -5,6 +5,7 @@ import { auth } from "@/lib/auth";
 import { isOwnerOrSysAdmin, assertActiveUser } from "@/lib/guard";
 import { validasiAssignCabang, validasiCabangBaru } from "@/lib/staff-branch";
 import { hashPassword } from "@/lib/password";
+import { normalizeWa } from "@/lib/wa";
 import { logAudit } from "@/lib/audit";
 import { revalidatePath } from "next/cache";
 
@@ -28,12 +29,16 @@ export async function createStaff(
   const session = await requireOwnerOrSysAdminAction();
   const name = String(formData.get("name") ?? "").trim();
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
-  const phone = String(formData.get("phone") ?? "").trim();
+  const phoneRaw = String(formData.get("phone") ?? "").trim();
+  const phone = phoneRaw ? normalizeWa(phoneRaw) : null;
   const password = String(formData.get("password") ?? "");
   const role = String(formData.get("role") ?? "ADMIN");
   const branchId = String(formData.get("branchId") ?? "").trim();
 
   if (!name || !email) return { error: "Nama dan email wajib diisi." };
+  if (phoneRaw && !phone) {
+    return { error: "No. HP tidak valid. Contoh format: 0812xxxxxxxx." };
+  }
   if (password.length < 6) return { error: "Password minimal 6 karakter." };
   if (!(STAFF_ROLES as readonly string[]).includes(role)) {
     return { error: "Role staff tidak valid." };
@@ -52,7 +57,7 @@ export async function createStaff(
       data: {
         name,
         email,
-        phone: phone || null,
+        phone,
         passwordHash: hashPassword(password),
         // Password dipilih orang lain → wajib ganti saat login pertama.
         mustChangePassword: true,

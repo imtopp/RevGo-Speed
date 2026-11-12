@@ -38,7 +38,7 @@ async function main() {
         data: {
           name: u.name,
           email: u.email,
-          phone: "080000000000",
+          phone: "6281200000000",
           passwordHash: hashPassword(PASSWORD),
           role: u.role,
           branchId: u.branchId === "__BRANCH__" ? branch.id : null,

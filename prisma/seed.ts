@@ -46,7 +46,7 @@ async function main() {
       data: {
         name: "Owner Bengkel",
         email: ownerEmail,
-        phone: "081234567890",
+        phone: "6281234567890",
         passwordHash: hashPassword("owner123"),
         role: "OWNER",
       },
@@ -65,7 +65,7 @@ async function main() {
       data: {
         name: "System Admin",
         email: sysAdminEmail,
-        phone: "081234567891",
+        phone: "6281234567891",
         passwordHash: hashPassword("sysadmin123"),
         role: "SYS_ADMIN",
       },

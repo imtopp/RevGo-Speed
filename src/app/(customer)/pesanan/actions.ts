@@ -5,6 +5,7 @@ import { auth } from "@/lib/auth";
 import { normalizeMerek, normalizeTipe, modelTidakSesuaiMerek, normalizePlate, MEREK_LAINNYA } from "@/lib/vehicle";
 import { cekSlotTersedia, kunciSlot } from "@/lib/booking";
 import { DURASI_DEFAULT_MENIT, parseJadwal, pesanDitolak } from "@/lib/availability";
+import { normalizeWa } from "@/lib/wa";
 import { revalidatePath } from "next/cache";
 import type { Prisma } from "@db/prisma/client";
 
@@ -62,6 +63,8 @@ export async function customerBooking(
         "No. WhatsApp belum terdaftar di akunmu — lengkapi dulu di halaman Profil.",
     };
   }
+  // Snapshot booking: selalu format kanonik 62… (akun lama masih 08…).
+  const phoneSnapshot = normalizeWa(me.phone) ?? me.phone;
 
   if (!branchId || !vehicleId) {
     return { error: "Cabang dan kendaraan wajib dipilih." };
@@ -113,7 +116,7 @@ export async function customerBooking(
         vehicleId,
         customerId: session.user.id,
         customerName: session.user.name,
-        customerPhone: me.phone,
+        customerPhone: phoneSnapshot,
         status: "PENDING",
         complaint: complaint || catalog?.nama || null,
         estimate: catalog?.hargaDasar ?? 0,
@@ -183,7 +186,7 @@ export async function customerAddVehicle(
       data: {
         ownerId: session.user.id,
         ownerName: me?.name ?? existing.ownerName,
-        ownerPhone: me?.phone ?? existing.ownerPhone,
+        ownerPhone: me?.phone ? (normalizeWa(me.phone) ?? me.phone) : existing.ownerPhone,
       },
     });
     revalidatePath("/pesanan");
