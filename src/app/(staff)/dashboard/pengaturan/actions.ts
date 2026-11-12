@@ -11,6 +11,7 @@ import {
   validateLogoFileMeta,
 } from "@/lib/logo";
 import { processLogoImage } from "@/lib/logo-image";
+import { normalizeWa } from "@/lib/wa";
 import { revalidatePath } from "next/cache";
 
 export type SettingState = { error?: string; success?: string };
@@ -20,6 +21,7 @@ export type BranchState = { error?: string; success?: string };
 const ALLOWED_SETTING_KEYS = new Set([
   "app_name",
   "logo_url",
+  "wa_bengkel",
   "service_code_prefix",
   "dp_policy",
   "booking_lead_minutes",
@@ -59,6 +61,16 @@ export async function updateSetting(
   if (key === "logo_url" && value && !isSafeLogoValue(value)) {
     return { error: "Logo harus URL https://, path gambar (/), atau data URL image yang valid." };
   }
+  // No. WA Bengkel: kosong = bersihkan; terisi = wajib nomor seluler valid,
+  // disimpan ternormalisasi (628…) — sejalan getBranding().waNumber.
+  let savedValue = value;
+  if (key === "wa_bengkel" && value) {
+    const wa = normalizeWa(value);
+    if (!wa) {
+      return { error: "No. WA Bengkel tidak valid. Contoh: 0812xxxxxxxx." };
+    }
+    savedValue = wa;
+  }
   const numerik = SETTING_NUMERIK[key];
   if (numerik) {
     const n = Number(value);
@@ -74,8 +86,8 @@ export async function updateSetting(
   await prisma.$transaction(async (tx) => {
     await tx.systemSetting.upsert({
       where: { key },
-      update: { value, updatedBy: session.user.id },
-      create: { key, value, updatedBy: session.user.id },
+      update: { value: savedValue, updatedBy: session.user.id },
+      create: { key, value: savedValue, updatedBy: session.user.id },
     });
     await logAudit(tx, session.user, {
       action: "SETTING_UPDATE",
@@ -83,7 +95,7 @@ export async function updateSetting(
       entityId: key,
       summary: `Pengaturan "${key}" diubah`,
       before: prev ? { value: prev.value } : undefined,
-      after: { value },
+      after: { value: savedValue },
     });
   });
 

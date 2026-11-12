@@ -18,6 +18,7 @@ import { ActionForms } from "./action-forms";
 import { VoidPaymentForm } from "./void-payment";
 import { RefundForm } from "./refund-form";
 import { RemovePartButton } from "./remove-part-button";
+import { WaEdit } from "./wa-edit";
 import { PaymentForm } from "../../kas/payment-form";
 import { formatTanggalPendek } from "@/lib/service-status";
 
@@ -181,6 +182,11 @@ export default async function ServisDetailPage({
             <dt className="text-muted-foreground">Jenis Jasa</dt>
             <dd className="font-medium">{service.catalog?.nama ?? "—"}</dd>
           </div>
+          <WaEdit
+            serviceId={service.id}
+            current={service.customerPhone}
+            canEdit={!isMechanic}
+          />
           <div className="col-span-2">
             <dt className="text-muted-foreground">Keluhan</dt>
             <dd>{service.complaint ?? "—"}</dd>

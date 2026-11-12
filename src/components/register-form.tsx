@@ -42,15 +42,21 @@ export function RegisterForm() {
           htmlFor="phone"
           className="block text-sm font-medium text-foreground"
         >
-          No. HP (opsional)
+          No. WhatsApp (wajib)
         </label>
         <input
           id="phone"
           name="phone"
           type="tel"
+          required
           autoComplete="tel"
+          placeholder="0812xxxxxxxx — aktif WhatsApp"
           className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-base outline-none focus:border-slate-900"
         />
+        <p className="mt-1 text-xs text-muted-foreground">
+          Nomor dipakai bengkel untuk konfirmasi booking via WhatsApp —
+          pastikan nomor aktif di WhatsApp.
+        </p>
       </div>
       <div>
         <label

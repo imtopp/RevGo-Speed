@@ -17,6 +17,7 @@ import {
 } from "@/lib/availability";
 import { revalidatePath } from "next/cache";
 import { formatRupiah, formatTanggalWIB } from "@/lib/service-status";
+import { normalizeWa, formatWaLocal } from "@/lib/wa";
 import type { Prisma, ServiceStatus } from "@db/prisma/client";
 
 export type ServisState = { error?: string; success?: string };
@@ -90,11 +91,21 @@ export async function createBooking(
   const customerPhone = String(formData.get("customerPhone") ?? "").trim();
 
   if (!branchId || !plateRaw) {
-    return { error: "Cabang dan plat nomor wajib diisi." };
+    return { error: "Cabang dan nomor plat wajib diisi." };
   }
   const plateNumber = normalizePlate(plateRaw);
   if (!plateNumber) {
-    return { error: "Format plat nomor tidak valid. Contoh: B 1234 XY." };
+    return { error: "Format nomor plat tidak valid. Contoh: B 1234 XY." };
+  }
+
+  // No. WA wajib untuk semua booking (walk-in maupun reservasi) — dipakai
+  // bengkel untuk konfirmasi. Snapshot disimpan di Service.customerPhone.
+  const customerWa = normalizeWa(customerPhone);
+  if (!customerWa) {
+    return {
+      error:
+        "No. WhatsApp customer wajib diisi dengan nomor seluler yang valid, contoh: 0812xxxxxxxx.",
+    };
   }
 
   const branch = await prisma.branch.findFirst({
@@ -179,7 +190,7 @@ export async function createBooking(
           data: {
             name: customerName,
             email: customerEmail,
-            phone: customerPhone || null,
+            phone: customerWa,
             passwordHash: hashPassword(passwordSementara),
             mustChangePassword: true,
             role: "CUSTOMER",
@@ -193,7 +204,7 @@ export async function createBooking(
           model,
           ownerId: customer?.id ?? null,
           ownerName: customer?.name ?? customerName,
-          ownerPhone: customer?.phone ?? (customerPhone || null),
+          ownerPhone: customer?.phone ?? customerWa,
         },
         include: { owner: true },
       });
@@ -232,7 +243,7 @@ export async function createBooking(
         vehicleId: vehicle.id,
         customerId: vehicle.ownerId,
         customerName: vehicle.owner?.name ?? vehicle.ownerName,
-        customerPhone: vehicle.owner?.phone ?? vehicle.ownerPhone,
+        customerPhone: customerWa,
         status: "PENDING",
         complaint: complaint || catalog?.nama || null,
         estimate: catalog?.hargaDasar ?? 0,
@@ -962,4 +973,66 @@ export async function removeServicePart(
 
   revalidatePath(`/dashboard/servis/${sp.serviceId}`);
   return { success: "Item dikembalikan ke stok." };
+}
+
+/**
+ * Edit No. WhatsApp customer pada 1 booking (OWNER/ADMIN).
+ *
+ * Sinkron dalam (satu transaksi): snapshot `Service.customerPhone` +
+ * akun customer bila ada (`User.phone`) + fallback pemilik kendaraan
+ * (`Vehicle.ownerPhone`). Satu nomor = sumber kebenaran dari input ini.
+ */
+export async function updateServiceWa(
+  _prev: ServisState,
+  formData: FormData,
+): Promise<ServisState> {
+  const session = await requireStaffRole(["OWNER", "ADMIN"]);
+  const id = String(formData.get("id") ?? "").trim();
+  const wa = normalizeWa(String(formData.get("phone") ?? "").trim());
+  if (!wa) {
+    return { error: "No. WhatsApp tidak valid. Contoh: 0812xxxxxxxx." };
+  }
+
+  const service = await prisma.service.findUnique({
+    where: { id },
+    select: {
+      id: true,
+      code: true,
+      branchId: true,
+      customerId: true,
+      vehicleId: true,
+      customerPhone: true,
+    },
+  });
+  if (!service) return { error: "Servis tidak ditemukan." };
+  const aksesError = await cekCabangServis(service.branchId);
+  if (aksesError) return { error: aksesError };
+
+  await prisma.$transaction(async (tx) => {
+    await tx.service.update({ where: { id }, data: { customerPhone: wa } });
+    if (service.customerId) {
+      await tx.user.update({
+        where: { id: service.customerId },
+        data: { phone: wa },
+      });
+    }
+    await tx.vehicle.update({
+      where: { id: service.vehicleId },
+      data: { ownerPhone: wa },
+    });
+    await logAudit(tx, session.user, {
+      action: "SERVICE_WA_UPDATE",
+      entityType: "Service",
+      entityId: id,
+      branchId: service.branchId,
+      summary: `${service.code} · No. WhatsApp → ${formatWaLocal(wa)}`,
+      before: { customerPhone: service.customerPhone },
+      after: { customerPhone: wa },
+    });
+  });
+
+  revalidatePath(`/dashboard/servis/${id}`);
+  return {
+    success: `No. WhatsApp diperbarui: ${formatWaLocal(wa)} — pastikan nomor aktif di WhatsApp.`,
+  };
 }

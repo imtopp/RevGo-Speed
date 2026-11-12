@@ -22,10 +22,10 @@ export default async function CustomerLayout({
             {session.user.name}
           </span>
           <Link
-            href="/ganti-password"
+            href="/profil"
             className="text-sm font-medium text-slate-200 underline underline-offset-2"
           >
-            Sandi
+            Profil
           </Link>
           <form
             action={async () => {

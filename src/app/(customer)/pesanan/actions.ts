@@ -8,7 +8,7 @@ import { DURASI_DEFAULT_MENIT, parseJadwal, pesanDitolak } from "@/lib/availabil
 import { revalidatePath } from "next/cache";
 import type { Prisma } from "@db/prisma/client";
 
-export type CustomerState = { error?: string; success?: string };
+export type CustomerState = { error?: string; success?: string; code?: string };
 
 async function requireCustomer() {
   const session = await auth();
@@ -49,6 +49,19 @@ export async function customerBooking(
   const catalogId = String(formData.get("catalogId") ?? "").trim();
   const complaint = String(formData.get("complaint") ?? "").trim();
   const scheduledAtRaw = String(formData.get("scheduledAt") ?? "").trim();
+
+  // No. WA wajib sudah ada di akun — booking tanpa nomor ditolak dan
+  // diarahkan ke halaman Profil (tidak ada input nomor di form ini).
+  const me = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { phone: true },
+  });
+  if (!me?.phone) {
+    return {
+      error:
+        "No. WhatsApp belum terdaftar di akunmu — lengkapi dulu di halaman Profil.",
+    };
+  }
 
   if (!branchId || !vehicleId) {
     return { error: "Cabang dan kendaraan wajib dipilih." };
@@ -100,6 +113,7 @@ export async function customerBooking(
         vehicleId,
         customerId: session.user.id,
         customerName: session.user.name,
+        customerPhone: me.phone,
         status: "PENDING",
         complaint: complaint || catalog?.nama || null,
         estimate: catalog?.hargaDasar ?? 0,
@@ -114,7 +128,10 @@ export async function customerBooking(
   }
 
   revalidatePath("/pesanan");
-  return { success: `Booking ${hasil.code} terkirim. Menunggu konfirmasi bengkel.` };
+  return {
+    success: `Booking ${hasil.code} terkirim. Menunggu konfirmasi bengkel.`,
+    code: hasil.code,
+  };
 }
 
 export async function customerAddVehicle(
@@ -139,7 +156,7 @@ export async function customerAddVehicle(
   }
   const plateNumber = normalizePlate(plateRaw);
   if (!plateNumber) {
-    return { error: "Format plat nomor tidak valid. Contoh: B 1234 XY." };
+      return { error: "Format nomor plat tidak valid. Contoh: B 1234 XY." };
   }
   if (modelTidakSesuaiMerek(brand, model)) {
     return { error: `"${model}" bukan tipe merek ${brand}. Periksa pilihan merek/tipe.` };
@@ -147,12 +164,31 @@ export async function customerAddVehicle(
 
   const existing = await prisma.vehicle.findUnique({ where: { plateNumber } });
   if (existing) {
-    // Pesan generik untuk plat milik orang lain — cegah enumeration plat lintas user.
+    if (existing.ownerId === session.user.id) {
+      return { error: "Nomor plat sudah terdaftar di kendaraan Anda." };
+    }
+    if (existing.ownerId !== null) {
+      // Plat milik orang lain — pesan generik, cegah enumeration plat lintas user.
+      return { error: "Nomor plat tidak bisa digunakan." };
+    }
+    // Klaim kendaraan walk-in: pelanggan lama mendaftar lalu mengadopsi
+    // kendaraan yang pernah dicatat tanpa akun. Sinkronkan nama & nomor
+    // ke data akun (satu nomor — nomor akun diprioritaskan).
+    const me = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { name: true, phone: true },
+    });
+    await prisma.vehicle.update({
+      where: { id: existing.id },
+      data: {
+        ownerId: session.user.id,
+        ownerName: me?.name ?? existing.ownerName,
+        ownerPhone: me?.phone ?? existing.ownerPhone,
+      },
+    });
+    revalidatePath("/pesanan");
     return {
-      error:
-        existing.ownerId === session.user.id
-          ? "Plat nomor sudah terdaftar di kendaraan Anda."
-          : "Plat nomor tidak bisa digunakan.",
+      success: `Kendaraan ${plateNumber} (sebelumnya walk-in) ditambahkan ke akun Anda.`,
     };
   }
 
@@ -188,7 +224,7 @@ export async function customerUpdateVehicle(
   }
   const plateNumber = normalizePlate(plateRaw);
   if (!plateNumber) {
-    return { error: "Format plat nomor tidak valid. Contoh: B 1234 XY." };
+      return { error: "Format nomor plat tidak valid. Contoh: B 1234 XY." };
   }
   if (modelTidakSesuaiMerek(brand, model)) {
     return { error: `"${model}" bukan tipe merek ${brand}. Periksa pilihan merek/tipe.` };
@@ -208,8 +244,8 @@ export async function customerUpdateVehicle(
       return {
         error:
           dup.ownerId === session.user.id
-            ? "Plat nomor sudah terdaftar di kendaraan Anda."
-            : "Plat nomor tidak bisa digunakan.",
+            ? "Nomor plat sudah terdaftar di kendaraan Anda."
+            : "Nomor plat tidak bisa digunakan.",
       };
     }
   }
@@ -256,7 +292,15 @@ export async function customerRespondEstimate(
   const decision = String(formData.get("decision") ?? "");
 
   const service = await prisma.service.findFirst({
-    where: { id, customerId: session.user.id },
+    // Syarat ganda: milik akun ini, ATAU booking walk-in pada kendaraan
+    // yang sudah diadopsi (customerId null tapi vehicle.ownerId = saya).
+    where: {
+      id,
+      OR: [
+        { customerId: session.user.id },
+        { vehicle: { ownerId: session.user.id } },
+      ],
+    },
   });
   if (!service) return { error: "Pesanan tidak ditemukan." };
   if (service.status !== "WAITING_APPROVAL") {

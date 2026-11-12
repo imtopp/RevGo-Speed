@@ -18,6 +18,7 @@ import {
 } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
 import { SlotPicker } from "@/components/slot-picker";
+import { waLink } from "@/lib/wa";
 
 type Vehicle = { id: string; plateNumber: string; brand: string; model: string };
 type Branch = { id: string; name: string };
@@ -146,14 +147,14 @@ function VehicleRow({
           {!uState.success && <Msg state={uState} />}
           <div>
             <label className="block text-xs font-medium text-muted-foreground">
-              Plat
+              Nomor Plat
             </label>
             <input
               name="plateNumber"
               required
               defaultValue={vehicle.plateNumber}
               pattern="[A-Za-z]{1,4}\s?\d{1,4}(\s?[A-Za-z]{1,3})?"
-              title="Format plat nomor: B 1234 XY"
+              title="Format nomor plat: B 1234 XY"
               className={`${inputCls} uppercase`}
             />
           </div>
@@ -258,22 +259,29 @@ export function BookingSection({
   branches,
   catalog,
   modelPerMerek,
+  appName,
+  waNumber,
 }: {
   vehicles: Vehicle[];
   branches: Branch[];
   catalog: Catalog[];
   modelPerMerek: Record<string, string[]>;
+  appName: string;
+  waNumber: string | null;
 }) {
   const [showAddVehicle, setShowAddVehicle] = useState(false);
   const [showBooking, setShowBooking] = useState(false);
   const [flash, setFlash] = useState<string | null>(null);
+  // Panel sukses booking — menempel sampai ditutup (bukan flash 6 detik),
+  // berisi kode booking + tombol konfirmasi WhatsApp.
+  const [lastBooking, setLastBooking] = useState<string | null>(null);
   const [branchId, setBranchId] = useState(branches[0]?.id ?? "");
   const [jadwal, setJadwal] = useState("");
 
   const runBooking = async (prev: CustomerState, fd: FormData) => {
     const r = await customerBooking(prev, fd);
     if (r.success) {
-      setFlash(r.success);
+      setLastBooking(r.code ?? "");
       setShowBooking(false);
       setJadwal("");
     }
@@ -308,6 +316,62 @@ export function BookingSection({
           {flash}
         </p>
       )}
+
+      {lastBooking && (
+        <div className="space-y-2 rounded-xl border border-emerald-200 bg-emerald-50 p-4 shadow-card">
+          <p className="text-sm font-medium text-emerald-800">
+            Booking <span className="font-mono">{lastBooking}</span> terkirim.
+            Menunggu konfirmasi bengkel.
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            {waNumber && (
+              <a
+                href={waLink(
+                  waNumber,
+                  `Halo ${appName}, saya mau konfirmasi booking ${lastBooking}.`,
+                )}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="rounded-lg bg-success px-3 py-2 text-sm font-medium text-white active:opacity-90"
+              >
+                Konfirmasi via WhatsApp &rarr;
+              </a>
+            )}
+            <button
+              type="button"
+              onClick={() => setLastBooking(null)}
+              className="rounded-lg border border-slate-300 bg-surface px-3 py-2 text-sm font-medium text-foreground active:opacity-90"
+            >
+              Tutup
+            </button>
+          </div>
+        </div>
+      )}
+
+      {waNumber && (
+        <div className="flex items-start justify-between gap-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-foreground">
+              Butuh konfirmasi atau ada pertanyaan?
+            </p>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Chat bengkel langsung lewat WhatsApp.
+            </p>
+          </div>
+          <a
+            href={waLink(
+              waNumber,
+              `Halo ${appName}, saya mau tanya soal booking.`,
+            )}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="shrink-0 rounded-lg bg-success px-3 py-2 text-sm font-medium text-white active:opacity-90"
+          >
+            Chat WA
+          </a>
+        </div>
+      )}
+
       <button
         type="button"
         onClick={() => {
@@ -444,14 +508,14 @@ export function BookingSection({
             <div className="grid grid-cols-3 gap-2">
               <div>
                 <label className="block text-xs font-medium text-muted-foreground">
-                  Plat
+                  Nomor Plat
                 </label>
                 <input
                   name="plateNumber"
                   required
                   placeholder="B 1234 XY"
                   pattern="[A-Za-z]{1,4}\s?\d{1,4}(\s?[A-Za-z]{1,3})?"
-                  title="Format plat nomor: B 1234 XY"
+                  title="Format nomor plat: B 1234 XY"
                   className={`${inputCls} uppercase`}
                 />
               </div>
@@ -502,7 +566,9 @@ export function BookingSection({
         )}
         {vehicles.length === 0 ? (
           <p className="text-sm text-muted-foreground">
-            Belum ada kendaraan — ketuk + Tambah di atas.
+            Belum ada kendaraan — ketuk + Tambah di atas. Pernah servis
+            walk-in? Masukkan Nomor Plat yang sama — otomatis terhubung ke
+            akun Anda.
           </p>
         ) : (
           <div className="space-y-2">

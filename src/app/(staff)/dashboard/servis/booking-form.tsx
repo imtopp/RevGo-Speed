@@ -101,7 +101,7 @@ export function BookingForm({
         </div>
         <div>
           <label className="block text-sm font-medium text-foreground">
-            Plat Nomor
+            Nomor Plat
           </label>
           <input
             name="plateNumber"
@@ -110,7 +110,7 @@ export function BookingForm({
             onChange={(e) => setPlate(e.target.value.toUpperCase())}
             placeholder="B 1234 XYZ"
             pattern="[A-Za-z]{1,4}\s?\d{1,4}(\s?[A-Za-z]{1,3})?"
-            title="Format plat nomor: B 1234 XY"
+            title="Format nomor plat: B 1234 XY"
             aria-invalid={plateDiisi && !plateValid}
             className={`mt-1 w-full rounded-lg border px-3 py-2 text-base uppercase outline-none ${
               plateDiisi && !plateValid
@@ -120,10 +120,27 @@ export function BookingForm({
           />
           {plateDiisi && !plateValid && (
             <p className="mt-1 text-xs text-danger">
-              Format plat nomor tidak valid. Contoh: B 1234 XY.
+              Format nomor plat tidak valid. Contoh: B 1234 XY.
             </p>
           )}
         </div>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-foreground">
+          No. WhatsApp Customer{" "}
+          <span className="font-normal text-muted-foreground">(wajib)</span>
+        </label>
+        <input
+          name="customerPhone"
+          type="tel"
+          required
+          placeholder="0812xxxxxxxx — aktif WhatsApp"
+          className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-base outline-none focus:border-slate-900"
+        />
+        <p className="mt-1 text-xs text-muted-foreground">
+          Untuk konfirmasi booking — pastikan nomor aktif di WhatsApp.
+        </p>
       </div>
 
       {/* Opsi kendaraan baru — tampil jika user mau; server toleran (find-or-create) */}
@@ -185,7 +202,7 @@ export function BookingForm({
               />
             </div>
           )}
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
               <label className="block text-sm font-medium text-foreground">
                 Nama Customer
@@ -213,16 +230,6 @@ export function BookingForm({
                 online. Dengan email, akun dibuat + password sementara
                 ditampilkan setelah booking jadi.
               </p>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-foreground">
-                HP (opsional)
-              </label>
-              <input
-                name="customerPhone"
-                type="tel"
-                className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-base outline-none focus:border-slate-900"
-              />
             </div>
           </div>
         </div>

@@ -11,6 +11,11 @@ export const metadata = { title: "Pengaturan" };
 const SETTING_FIELDS = [
   { key: "app_name", label: "Nama Aplikasi", placeholder: "Nama bengkel (tampil ke customer), mis. TBRT" },
   {
+    key: "wa_bengkel",
+    label: "No. WA Bengkel",
+    placeholder: "0812xxxxxxxx — aktif WhatsApp (tombol chat customer)",
+  },
+  {
     key: "dp_policy",
     label: "Kebijakan Refund DP",
     placeholder: "TANPA_REFUND atau REFUND_PENUH",

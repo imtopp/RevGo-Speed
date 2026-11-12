@@ -10,6 +10,7 @@ import {
 } from "@/lib/service-status";
 import { BookingSection, RespondForm } from "./booking-section";
 import { buildModelPerMerek } from "@/lib/vehicle";
+import { getBranding } from "@/lib/branding";
 import type { ServiceStatus } from "@db/prisma/client";
 
 export const metadata = { title: "Pesanan Saya" };
@@ -29,9 +30,18 @@ export default async function PesananPage() {
   const session = await auth();
   if (!session?.user || session.user.role !== "CUSTOMER") redirect("/login");
 
+  const { appName, waNumber } = await getBranding();
+
   const [services, vehicles, branches, catalog, modelRows] = await Promise.all([
     prisma.service.findMany({
-      where: { customerId: session.user.id },
+      // Syarat ganda: milik akun ini, ATAU booking walk-in pada kendaraan
+      // yang sudah diadopsi (customerId null tapi vehicle.ownerId = saya).
+      where: {
+        OR: [
+          { customerId: session.user.id },
+          { vehicle: { ownerId: session.user.id } },
+        ],
+      },
       orderBy: { createdAt: "desc" },
       include: {
         vehicle: true,
@@ -130,6 +140,8 @@ export default async function PesananPage() {
         branches={branches}
         catalog={catalog}
         modelPerMerek={buildModelPerMerek(modelRows)}
+        appName={appName}
+        waNumber={waNumber}
       />
 
       {services.length === 0 && (
