@@ -33,19 +33,25 @@ export function normalizeWa(input: string): string | null {
 
 /**
  * Bangun tautan WhatsApp (`wa.me`).
- * @param nomor hasil `normalizeWa` (digit, prefix 62).
+ * @param nomor hasil `normalizeWa` (digit, prefix 62) — data lama (`08…`)
+ *   dinormalisasi dulu supaya `wa.me` tetap valid.
  * @param pesan pesan awal yang ikut terisi di kolom chat (opsional).
  */
 export function waLink(nomor: string, pesan?: string): string {
-  const base = `https://wa.me/${nomor}`;
+  const target = normalizeWa(nomor) ?? nomor;
+  const base = `https://wa.me/${target}`;
   return pesan ? `${base}?text=${encodeURIComponent(pesan)}` : base;
 }
 
 /**
- * Tampilan lokal dari nomor kanonik: `6281234567890` → `0812-3456-7890`.
- * Dipakai di pesan sukses/konfirmasi agar pembaca (orang Indonesia) familiar.
+ * Tampilan lokal dari nomor WhatsApp: `6281234567890` → `0812-3456-7890`.
+ * Toleran terhadap data lama yang masih mentah (`08…`, `+62…`) — dinormalisasi
+ * dulu, supaya `slice(2)` tidak membuang prefix yang salah (`0895…` jangan
+ * jadi `0950-…`). Input tak dikenal ditampilkan apa adanya.
  */
 export function formatWaLocal(nomor: string): string {
-  const lokal = "0" + nomor.slice(2);
+  const kanonik = normalizeWa(nomor);
+  if (!kanonik) return nomor;
+  const lokal = "0" + kanonik.slice(2);
   return lokal.replace(/^(\d{4})(\d{4})(\d+)$/, "$1-$2-$3");
 }
