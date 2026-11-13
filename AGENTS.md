@@ -88,6 +88,7 @@ generated/                  # Prisma client output (gitignored)
 - **Design system:** token di `src/app/globals.css` (`@theme`) â€” CTA/active `bg-primary` (#D32F2F), top navbar `bg-secondary` (#1E293B), halaman `bg-background` (#F8FAFC), kartu `bg-surface` + `shadow-card` (radius 12/16px), teks `text-foreground` / `text-muted-foreground`, status `text-success` / `text-warning`, font Inter via `--font-sans`. **Jangan pakai hex warna hardcoded** di komponen â€” gunakan token ini.
 - **Warna status servis:** konsisten di `STATUS_COLOR` (`src/lib/service-status.ts`).
 - **Nilai moneter:** selalu integer (Rupiah), jangan float.
+- **Navigasi PWA (native-like):** pindah tab bottom-nav / sheet "Lainnya" wajib lewat `handleTabNavigate` (`src/lib/tab-history.ts`) — riwayat runtuh ke Beranda dulu agar back dari tab mana pun → Beranda; tombol "Kembali" pakai `BackLink` (`history.back()` hanya bila halaman sebelumnya = targetnya); ganti query (PendingLink, paginasi, "Semua tanggal") wajib `replace`; cetak nota tetap satu tab (jangan `target="_blank"`).
 
 ## Model Domain (ringkas)
 

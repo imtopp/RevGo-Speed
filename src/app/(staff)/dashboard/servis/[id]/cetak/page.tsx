@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { requireStaffRole, getStaffBranchId } from "@/lib/guard";
 import { getAppName } from "@/lib/branding";
 import { notFound } from "next/navigation";
-import Link from "next/link";
+import { BackLink } from "@/components/back-link";
 import { formatRupiah, formatTanggal } from "@/lib/service-status";
 import { formatWaLocal } from "@/lib/wa";
 import { PrintButton } from "./print-button";
@@ -43,12 +43,12 @@ export default async function CetakNotaPage({
       {/* Tombol aksi (hilang saat cetak) */}
       <div className="no-print mb-4 flex gap-2">
         <PrintButton />
-        <Link
+        <BackLink
           href={`/dashboard/servis/${service.id}`}
           className="rounded-lg border border-slate-300 bg-surface px-4 py-2.5 text-sm font-medium text-foreground"
         >
           Kembali
-        </Link>
+        </BackLink>
       </div>
 
       {/* Nota */}

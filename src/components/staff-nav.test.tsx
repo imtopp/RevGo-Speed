@@ -6,10 +6,15 @@ import type { MouseEvent as ReactMouseEvent, ReactNode } from "react";
 import type { Role } from "@db/prisma/client";
 import { StaffNav } from "./staff-nav";
 
-const nav = vi.hoisted(() => ({ path: "/dashboard" }));
+const nav = vi.hoisted(() => ({
+  path: "/dashboard",
+  push: vi.fn(),
+  back: vi.fn(),
+}));
 
 vi.mock("next/navigation", () => ({
   usePathname: () => nav.path,
+  useRouter: () => ({ push: nav.push, back: nav.back }),
 }));
 
 vi.mock("next/link", () => ({
@@ -39,6 +44,8 @@ describe("StaffNav mobile (bottom-nav + sheet Lainnya)", () => {
 
   beforeEach(() => {
     nav.path = "/dashboard";
+    nav.push.mockClear();
+    nav.back.mockClear();
     host = document.createElement("div");
     document.body.appendChild(host);
     root = createRoot(host);
@@ -95,6 +102,18 @@ describe("StaffNav mobile (bottom-nav + sheet Lainnya)", () => {
     expect(katalogLink).not.toBeNull();
     await click(katalogLink!);
     expect(host.querySelector("#menu-lainnya")).toBeNull();
+    // Pindah tab lewat jalur riwayat (router.push), bukan navigasi default.
+    expect(nav.push).toHaveBeenCalledWith("/dashboard/katalog");
+  });
+
+  it("klik tab bottom-nav memanggil router.push (navigasi tab terkelola)", async () => {
+    await render("ADMIN");
+    const servisTab = host.querySelector<HTMLAnchorElement>(
+      'a[href="/dashboard/servis"]',
+    );
+    expect(servisTab).not.toBeNull();
+    await click(servisTab!);
+    expect(nav.push).toHaveBeenCalledWith("/dashboard/servis");
   });
 
   it("ADMIN: tanpa Lainnya — semua menu admin sudah muat di bottom-nav", async () => {

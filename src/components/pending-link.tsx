@@ -27,7 +27,9 @@ function Isi({
  * Link biasa dengan indikator "Memuat…" selama halaman dimuat ulang.
  * Dipakai untuk aksi ganti query dalam halaman yang sama (tab/filter/toggle) —
  * navigasi searchParams tidak memicu loading.tsx, jadi tanpa indikator ini
- * terlihat tidak ada respon.
+ * terlihat tidak ada respon. Selalu `replace`: mengganti filter bukan langkah
+ * navigasi baru — back harus meninggalkan halaman, bukan mengurangi filter
+ * satu per satu (riwayat ala native, lihat src/lib/tab-history.ts).
  */
 export function PendingLink({
   href,
@@ -41,7 +43,7 @@ export function PendingLink({
   pendingLabel?: string;
 }) {
   return (
-    <Link href={href} className={className}>
+    <Link href={href} replace className={className}>
       <Isi pendingLabel={pendingLabel}>{children}</Isi>
     </Link>
   );

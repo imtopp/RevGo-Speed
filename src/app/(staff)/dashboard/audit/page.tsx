@@ -287,6 +287,7 @@ export default async function AuditPage({
             {adaSebelum ? (
               <Link
                 href={hrefHalaman(halaman - 1)}
+                replace
                 className="rounded-lg border border-slate-300 bg-surface px-3 py-1.5 text-xs font-medium text-foreground active:opacity-90"
               >
                 ← Sebelumnya
@@ -300,6 +301,7 @@ export default async function AuditPage({
             {adaSesudah ? (
               <Link
                 href={hrefHalaman(halaman + 1)}
+                replace
                 className="rounded-lg border border-slate-300 bg-surface px-3 py-1.5 text-xs font-medium text-foreground active:opacity-90"
               >
                 Berikutnya →

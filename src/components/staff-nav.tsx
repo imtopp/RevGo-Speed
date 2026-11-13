@@ -1,9 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useState, type MouseEvent } from "react";
 import type { Role } from "@db/prisma/client";
+import {
+  disposeTabHistory,
+  handleTabNavigate,
+  initTabHistory,
+  notePathname,
+} from "@/lib/tab-history";
 
 const ADMIN_ROLES: readonly Role[] = ["OWNER", "ADMIN"];
 const ALL_STAFF: readonly Role[] = ["OWNER", "SYS_ADMIN", "ADMIN", "MECHANIC"];
@@ -69,6 +75,7 @@ function moreItemsFor(role: Role) {
 
 export function StaffNav({ role }: { role: Role }) {
   const pathname = usePathname();
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [lastPath, setLastPath] = useState(pathname);
   // Tutup sheet saat pindah halaman — adjust saat render (pola React, bukan
@@ -77,6 +84,21 @@ export function StaffNav({ role }: { role: Role }) {
     setLastPath(pathname);
     setOpen(false);
   }
+  // Pelacak riwayat tab (lib/tab-history): aktif selama nav mobile terpasang
+  // (selalu ter-mount di layout staff — hanya disembunyikan CSS di desktop).
+  useEffect(() => {
+    initTabHistory();
+    return () => disposeTabHistory();
+  }, []);
+  useEffect(() => {
+    notePathname(pathname);
+  }, [pathname]);
+  // Pindah tab = runtuhkan riwayat ke Beranda dulu, lalu buka tab baru →
+  // back dari tab mana pun selalu ke Beranda (perilaku native).
+  const onTab = (e: MouseEvent<HTMLAnchorElement>, href: string) => {
+    e.preventDefault();
+    handleTabNavigate(href, (h) => router.push(h));
+  };
   const items = BOTTOM_ITEMS.filter((item) => item.roles.includes(role));
   const more = moreItemsFor(role);
   const showMore = more.length > 0;
@@ -116,6 +138,7 @@ export function StaffNav({ role }: { role: Role }) {
               href={item.href}
               aria-current={active ? "page" : undefined}
               className={tabCls(active)}
+              onClick={(e) => onTab(e, item.href)}
             >
               {item.label}
             </Link>
@@ -154,7 +177,10 @@ export function StaffNav({ role }: { role: Role }) {
                 key={item.href}
                 href={item.href}
                 role="menuitem"
-                onClick={() => setOpen(false)}
+                onClick={(e) => {
+                  setOpen(false);
+                  onTab(e, item.href);
+                }}
                 className={`block rounded-lg px-3 py-2.5 text-sm transition-colors ${
                   active
                     ? "bg-primary font-semibold text-white"

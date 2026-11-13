@@ -4,6 +4,7 @@ import { mekanikSibuk } from "@/lib/booking";
 import { DURASI_DEFAULT_MENIT } from "@/lib/availability";
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import { BackLink } from "@/components/back-link";
 import {
   STATUS_LABEL,
   STATUS_COLOR,
@@ -128,12 +129,12 @@ export default async function ServisDetailPage({
   return (
     <div className="space-y-4">
       <div>
-        <Link
+        <BackLink
           href="/dashboard/servis"
           className="text-sm text-muted-foreground underline underline-offset-2"
         >
           ← Kembali ke daftar
-        </Link>
+        </BackLink>
         {!isMechanic && (
           <Link
             href={`/dashboard/servis/${service.id}/cetak`}

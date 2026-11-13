@@ -171,6 +171,7 @@ export default async function ServisPage({
         {tanggal && (
           <Link
             href={qs(filter, showBooking)}
+            replace
             className="text-xs font-medium text-muted-foreground underline underline-offset-2"
           >
             Semua tanggal

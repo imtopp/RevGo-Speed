@@ -367,7 +367,7 @@ Setiap fase selesai = fitur terpasang + role-guard teruji + `build`/`lint` hijau
 
 ---
 
-## App. B — Praktik implementasi (kualitas di atas minimum FR) — v1.4
+## App. B — Praktik implementasi (kualitas di atas minimum FR) — v1.5
 
 Bagian ini mendokumentasikan perilaku nyata di kode yang **melampaui ketentuan minimum** §4 — bukan fitur baru, melainkan *cara* fitur lama dieksekusi agar lebih efisien, ramah-pengguna, dan aman. Dipertahankan sebagai standar saat menambah fitur berikutnya.
 
@@ -415,6 +415,12 @@ Bagian ini mendokumentasikan perilaku nyata di kode yang **melampaui ketentuan m
 
 ### Audit (FR-11)
 - Chip filter aksi (pill, divalidasi enum — parameter asing diabaikan), diff before→after collapsible, kartu peringatan berincian (kode servis, plat, nominal, alasan) + sisa "…N lagi".
+
+### Navigasi & riwayat PWA (native-like)
+- **Pindah tab** (bottom-nav & sheet "Lainnya") lewat `handleTabNavigate` (`src/lib/tab-history.ts`): riwayat **diruntuhkan ke Beranda dulu** lalu tab baru dibuka — back dari tab mana pun selalu → Beranda, tidak pernah "nyangkut" di halaman tengah (filter, cetak, form) seperti `<Link>` biasa. Navigasi konten (detail, form) tetap push biasa → back wajar dalam tab. Stack dilacak per sesi (pathname saja; query/toggle tidak menambah); degradasi selalu aman (timeout 500 ms → push biasa; langkah melewati awal riwayat di-klamp browser ke entry pertama).
+- **Tombol "Kembali"** (detail servis, cetak nota) = komponen `BackLink` → `history.back()` **hanya bila halaman sebelumnya memang targetnya**; selain itu (deep-link, sesi baru, datang dari halaman lain) tetap Link biasa yang membuka targetnya — back tidak pernah melempar ke login.
+- **Ganti query** (`PendingLink`, paginasi audit, "Semua tanggal") selalu `replace` — back meninggalkan halaman, bukan mengurangi filter satu per satu.
+- **Cetak Nota tetap satu tab** (bukan `target="_blank"`): back → detail; membuka tab baru di iOS PWA justru mengeluarkan app ke Safari.
 
 ### Pola UX lintas modul (standar, di luar FR)
 - **Auto-close form sukses + flash notif otomatis hilang** (katalog, akun, kas manual, cabang, stok, customer) — error → form tetap terbuka. **Pengecualian: panel sukses booking permanen** sampai ditutup user — berisi kode booking, rincian, & tombol konfirmasi WA (FR-3), agar waktu menekan tombol tidak keburu habis.
