@@ -3,7 +3,7 @@
 import { useActionState, useState } from "react";
 import { updateServiceWa, type ServisState } from "../actions";
 import { SubmitButton } from "@/components/submit-button";
-import { formatWaLocal } from "@/lib/wa";
+import { formatWaLocal, waLink } from "@/lib/wa";
 
 const inputCls =
   "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900";
@@ -32,7 +32,18 @@ export function WaEdit({
       <dt className="text-muted-foreground">No. WhatsApp</dt>
       <dd className="font-medium">
         <span className="flex flex-wrap items-center gap-2">
-          <span>{current ? formatWaLocal(current) : "—"}</span>
+          {current ? (
+            <a
+              href={waLink(current)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-medium hover:text-primary hover:underline underline-offset-2"
+            >
+              {formatWaLocal(current)}
+            </a>
+          ) : (
+            <span>—</span>
+          )}
           {canEdit && !editing && (
             <button
               type="button"
