@@ -212,6 +212,12 @@ VAPID_PRIVATE_KEY="..."           # Web Push PRIVATE - hanya env Vercel,
 - **Anti-dobel wajib dipertahankan:** guard status/crossing minStock -> klaim
   `PushSent.dedupKey` unique sebelum kirim (P2002 = skip) -> payload `tag`
   (OS replace) -> endpoint unique. Jangan kirim tanpa klaim.
+- **Header `Topic` wajib lewat `topicAman(tag)`** (`src/lib/push.ts`) - dedupKey
+  mentah ber-`:` membuat `web-push` melethrow sebelum HTTP (gagal senyap, ditelan
+  catch per-langganan - pernah membuat 0 notif produksi terkirim).
+- Diagnostik kirim manual (env `TEST_DB`, `TEST_PUB`, `TEST_PRIV`, opsional
+  `TEST_TOPIC` - cetak OK/FAIL saja, tanpa key/endpoint):
+  `npx tsx scripts/test-push-tbrt.ts`
 - Penerima: booking baru & stok = Owner lintas cabang + Admin cabang; event
   customer = unik [customerId, vehicle.ownerId] ber-role CUSTOMER aktif.
 - Generate ulang pair (jarang): `node -e "console.log(JSON.stringify(require('web-push').generateVAPIDKeys()))"`
