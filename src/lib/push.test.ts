@@ -16,6 +16,7 @@ import {
   payloadStokMenipis,
   pushEnabled,
   stokMelintasiBatas,
+  topicAman,
   uniqueIds,
 } from "@/lib/push";
 
@@ -40,6 +41,34 @@ describe("dedupKey anti-dobel", () => {
     expect(dedupStokMenipis("p1", a)).toBe(dedupStokMenipis("p1", b));
     expect(dedupStokMenipis("p1", a)).not.toBe(dedupStokMenipis("p1", c));
     expect(dedupStokMenipis("p1", a)).not.toBe(dedupStokMenipis("p2", a));
+  });
+});
+
+describe("topicAman (header Topic web-push)", () => {
+  const VALID = /^[A-Za-z0-9_-]+$/;
+
+  it("membuang karakter di luar Base64-url (titik-kolom dedupKey = throw)", () => {
+    const t = topicAman("batal:cmwey7fmt000108jmm3f8e7f9");
+    expect(t).not.toContain(":");
+    expect(t).toMatch(VALID);
+    // topic produksi mentah melempar di web-push — sanitasi wajib lolos:
+    expect(() => topicAman("batal:cmwey7fmt000108jmm3f8e7f9")).not.toThrow();
+  });
+
+  it("maksimal 32 karakter (estimasi/jadwal/stok mentah melebihi)", () => {
+    expect(topicAman(dedupEstimasi("cmwey7fmt000108jmm3f8e7f9")).length).toBeLessThanOrEqual(32);
+    expect(topicAman(dedupJadwal("cmwey7fmt000108jmm3f8e7f9", 1776000000000)).length).toBeLessThanOrEqual(32);
+    expect(topicAman(dedupStokMenipis("cmwey7fmt000108jmm3f8e7f9", new Date(1776000000000))).length).toBeLessThanOrEqual(32);
+  });
+
+  it("tag polos tidak berubah; tag tanpa karakter valid = string kosong (topic dilewati)", () => {
+    expect(topicAman("uji")).toBe("uji");
+    expect(topicAman("abc-XYZ_123")).toBe("abc-XYZ_123");
+    expect(topicAman(":::")).toBe("");
+  });
+
+  it("event berbeda tetap beda topic (tidak saling collapse)", () => {
+    expect(topicAman(dedupBookingBaru("s1"))).not.toBe(topicAman(dedupBatal("s1")));
   });
 });
 

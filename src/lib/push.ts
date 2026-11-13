@@ -168,6 +168,16 @@ export function payloadStokMenipis(d: {
   };
 }
 
+/**
+ * Topic RFC 8030 untuk header `Topic` web-push — HANYA karakter
+ * Base64-url (`A-Za-z0-9-_`) dan ≤32 char; `sendNotification` melempar
+ * sebelum kirim bila melanggar (dedupKey mentah berisi `:`). Dedup tampilan
+ * tetap memakai `tag` payload; topic hanya pen-collapse antrean offline.
+ */
+export function topicAman(tag: string): string {
+  return tag.replace(/[^A-Za-z0-9_-]/g, "").slice(0, 32);
+}
+
 // ─── Selektor penerima (murni — diuji unit test) ──────────────────────
 
 export function uniqueIds(ids: (string | null | undefined)[]): string[] {
@@ -245,7 +255,7 @@ async function kirimKe(userIds: string[], payload: PushPayload): Promise<void> {
         await sendNotification(
           { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
           JSON.stringify(payload),
-          { TTL: 60 * 60 * 24, topic: payload.tag },
+          { TTL: 60 * 60 * 24, topic: topicAman(payload.tag) },
         );
       } catch (e) {
         const status = (e as { statusCode?: number }).statusCode;
