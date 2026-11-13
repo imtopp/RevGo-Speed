@@ -1,5 +1,11 @@
-import { describe, it, expect } from "vitest";
-import { normalizePlate } from "./vehicle";
+import { describe, it, expect, afterEach } from "vitest";
+import {
+  normalizePlate,
+  MEREK_GROUPS,
+  MEREK_LISTRIK_LABEL,
+  merekGroupsTampil,
+  merekListrikDilarang,
+} from "./vehicle";
 
 describe("normalizePlate", () => {
   it("menerima plat normal dan mempertahankannya", () => {
@@ -29,5 +35,48 @@ describe("normalizePlate", () => {
     expect(normalizePlate("B 12345")).toBeNull();
     expect(normalizePlate("B 1234 WXYZ")).toBeNull();
     expect(normalizePlate("B 1234 XY Z")).toBeNull();
+  });
+});
+
+describe("merekGroupsTampil (flag HIDE_EV_MEREK)", () => {
+  afterEach(() => {
+    delete process.env.HIDE_EV_MEREK;
+  });
+
+  it("default: group Listrik tetap tampil", () => {
+    const groups = merekGroupsTampil();
+    expect(groups).toBe(MEREK_GROUPS);
+    expect(groups.some((g) => g.label === MEREK_LISTRIK_LABEL)).toBe(true);
+  });
+
+  it("HIDE_EV_MEREK=true: group Listrik dibuang, group lain tetap", () => {
+    process.env.HIDE_EV_MEREK = "true";
+    const groups = merekGroupsTampil();
+    expect(groups.some((g) => g.label === MEREK_LISTRIK_LABEL)).toBe(false);
+    expect(groups.some((g) => g.label === "Jepang")).toBe(true);
+    expect(groups).toHaveLength(MEREK_GROUPS.length - 1);
+    expect(groups.flatMap((g) => g.items)).not.toContain("Gesits");
+  });
+});
+
+describe("merekListrikDilarang (flag HIDE_EV_MEREK)", () => {
+  afterEach(() => {
+    delete process.env.HIDE_EV_MEREK;
+  });
+
+  it("flag tidak diset: tidak ada merek yang ditolak", () => {
+    expect(merekListrikDilarang("Gesits")).toBe(false);
+    expect(merekListrikDilarang("Volta")).toBe(false);
+  });
+
+  it("flag aktif: merek listrik ditolak, bensin & merek bebas lolos", () => {
+    process.env.HIDE_EV_MEREK = "true";
+    expect(merekListrikDilarang("Gesits")).toBe(true);
+    expect(merekListrikDilarang(" gesits ")).toBe(true);
+    expect(merekListrikDilarang("Volta")).toBe(true);
+    expect(merekListrikDilarang("Honda")).toBe(false);
+    expect(merekListrikDilarang("Yamaha")).toBe(false);
+    expect(merekListrikDilarang("Pagar Maju")).toBe(false);
+    expect(merekListrikDilarang("")).toBe(false);
   });
 });

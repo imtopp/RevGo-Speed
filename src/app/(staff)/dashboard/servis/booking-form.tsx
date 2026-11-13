@@ -2,10 +2,10 @@
 
 import { useActionState, useState } from "react";
 import {
-  MEREK_GROUPS,
   MEREK_LAINNYA,
   flattenModel,
   normalizePlate,
+  type MerekGroup,
 } from "@/lib/vehicle";
 import { createBooking, type ServisState } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
@@ -19,10 +19,12 @@ export function BookingForm({
   branches,
   catalog,
   modelPerMerek,
+  merekGroups,
 }: {
   branches: Branch[];
   catalog: Catalog[];
   modelPerMerek: Record<string, string[]>;
+  merekGroups: MerekGroup[];
 }) {
   const [state, action] = useActionState<ServisState, FormData>(
     createBooking,
@@ -161,7 +163,7 @@ export function BookingForm({
                 className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-base outline-none focus:border-slate-900"
               >
                 <option value="">— Pilih merek —</option>
-                {MEREK_GROUPS.map((g) => (
+                {merekGroups.map((g) => (
                   <optgroup key={g.label} label={g.label}>
                     {g.items.map((m) => (
                       <option key={m} value={m}>

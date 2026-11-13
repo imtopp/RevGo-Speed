@@ -2,11 +2,11 @@
 
 import { useActionState, useEffect, useState } from "react";
 import {
-  MEREK_GROUPS,
   MEREK_LAINNYA,
   flattenModel,
   merekDikenal,
   normalizeMerek,
+  type MerekGroup,
 } from "@/lib/vehicle";
 import {
   customerBooking,
@@ -46,9 +46,11 @@ const inputCls =
 function MerekSelect({
   value,
   onChange,
+  groups,
 }: {
   value: string;
   onChange: (v: string) => void;
+  groups: MerekGroup[];
 }) {
   return (
     <select
@@ -61,7 +63,7 @@ function MerekSelect({
       <option value="" disabled>
         Pilih merek
       </option>
-      {MEREK_GROUPS.map((g) => (
+      {groups.map((g) => (
         <optgroup key={g.label} label={g.label}>
           {g.items.map((m) => (
             <option key={m} value={m}>
@@ -106,10 +108,12 @@ export function RespondForm({ id }: { id: string }) {
 function VehicleRow({
   vehicle,
   modelPerMerek,
+  merekGroups,
   onFlash,
 }: {
   vehicle: Vehicle;
   modelPerMerek: Record<string, string[]>;
+  merekGroups: MerekGroup[];
   onFlash: (msg: string) => void;
 }) {
   const [edit, setEdit] = useState(false);
@@ -162,7 +166,11 @@ function VehicleRow({
             <label className="block text-xs font-medium text-muted-foreground">
               Merek
             </label>
-            <MerekSelect value={merekPilih} onChange={setMerekPilih} />
+            <MerekSelect
+              value={merekPilih}
+              onChange={setMerekPilih}
+              groups={merekGroups}
+            />
           </div>
           {merekPilih === MEREK_LAINNYA && (
             <div>
@@ -259,6 +267,7 @@ export function BookingSection({
   branches,
   catalog,
   modelPerMerek,
+  merekGroups,
   appName,
   waNumber,
 }: {
@@ -266,6 +275,7 @@ export function BookingSection({
   branches: Branch[];
   catalog: Catalog[];
   modelPerMerek: Record<string, string[]>;
+  merekGroups: MerekGroup[];
   appName: string;
   waNumber: string | null;
 }) {
@@ -523,7 +533,11 @@ export function BookingSection({
                 <label className="block text-xs font-medium text-muted-foreground">
                   Merek
                 </label>
-                <MerekSelect value={merekPilih} onChange={setMerekPilih} />
+                <MerekSelect
+                  value={merekPilih}
+                  onChange={setMerekPilih}
+                  groups={merekGroups}
+                />
               </div>
               {merekPilih === MEREK_LAINNYA && (
                 <div className="col-span-3">
@@ -577,6 +591,7 @@ export function BookingSection({
                 key={v.id}
                 vehicle={v}
                 modelPerMerek={modelPerMerek}
+                merekGroups={merekGroups}
                 onFlash={setFlash}
               />
             ))}

@@ -2,7 +2,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
-import { normalizeMerek, normalizeTipe, modelTidakSesuaiMerek, normalizePlate, MEREK_LAINNYA } from "@/lib/vehicle";
+import { normalizeMerek, normalizeTipe, modelTidakSesuaiMerek, normalizePlate, MEREK_LAINNYA, merekListrikDilarang } from "@/lib/vehicle";
 import { cekSlotTersedia, kunciSlot } from "@/lib/booking";
 import { DURASI_DEFAULT_MENIT, parseJadwal, pesanDitolak } from "@/lib/availability";
 import { normalizeWa } from "@/lib/wa";
@@ -164,6 +164,9 @@ export async function customerAddVehicle(
   if (modelTidakSesuaiMerek(brand, model)) {
     return { error: `"${model}" bukan tipe merek ${brand}. Periksa pilihan merek/tipe.` };
   }
+  if (merekListrikDilarang(brand)) {
+    return { error: "Merek motor listrik tidak didukung di bengkel ini." };
+  }
 
   const existing = await prisma.vehicle.findUnique({ where: { plateNumber } });
   if (existing) {
@@ -231,6 +234,9 @@ export async function customerUpdateVehicle(
   }
   if (modelTidakSesuaiMerek(brand, model)) {
     return { error: `"${model}" bukan tipe merek ${brand}. Periksa pilihan merek/tipe.` };
+  }
+  if (merekListrikDilarang(brand)) {
+    return { error: "Merek motor listrik tidak didukung di bengkel ini." };
   }
 
   const vehicle = await prisma.vehicle.findFirst({

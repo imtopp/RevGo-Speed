@@ -9,7 +9,7 @@ import {
   formatTanggalWIB,
 } from "@/lib/service-status";
 import { BookingSection, RespondForm } from "./booking-section";
-import { buildModelPerMerek } from "@/lib/vehicle";
+import { buildModelPerMerek, merekGroupsTampil } from "@/lib/vehicle";
 import { getBranding } from "@/lib/branding";
 import type { ServiceStatus } from "@db/prisma/client";
 
@@ -140,6 +140,7 @@ export default async function PesananPage() {
         branches={branches}
         catalog={catalog}
         modelPerMerek={buildModelPerMerek(modelRows)}
+        merekGroups={merekGroupsTampil()}
         appName={appName}
         waNumber={waNumber}
       />

@@ -1,4 +1,6 @@
-export const MEREK_GROUPS: { label: string; items: string[] }[] = [
+export type MerekGroup = { label: string; items: string[] };
+
+export const MEREK_GROUPS: MerekGroup[] = [
   { label: "Jepang", items: ["Honda", "Yamaha", "Suzuki", "Kawasaki"] },
   { label: "India & Taiwan", items: ["TVS", "Bajaj", "Kymco"] },
   {
@@ -162,4 +164,31 @@ export function normalizePlate(raw: string): string | null {
   const m = PLATE_RE.exec(t);
   if (!m) return null;
   return m[3] ? `${m[1]} ${m[2]} ${m[3]}` : `${m[1]} ${m[2]}`;
+}
+
+/** Label group motor listrik di dropdown merek (bisa disembunyikan per instance). */
+export const MEREK_LISTRIK_LABEL = "Listrik";
+
+const EV_MEREK = new Set(
+  MEREK_GROUPS.find((g) => g.label === MEREK_LISTRIK_LABEL)?.items ?? [],
+);
+
+/**
+ * Group merek untuk dropdown — dipanggil dari halaman server, hasilnya
+ * di-pass sebagai prop ke form client. Bila `HIDE_EV_MEREK=true` (env per
+ * instance, mis. bengkel yang tidak menangani motor listrik), group Listrik
+ * dibuang. Default: semua group tampil.
+ */
+export function merekGroupsTampil(): MerekGroup[] {
+  if (process.env.HIDE_EV_MEREK !== "true") return MEREK_GROUPS;
+  return MEREK_GROUPS.filter((g) => g.label !== MEREK_LISTRIK_LABEL);
+}
+
+/**
+ * Penegakan server-side saat `HIDE_EV_MEREK=true`: tolak input merek listrik
+ * yang tetap masuk lewat POST manual / opsi "Lainnya" yang mengetik merek EV.
+ */
+export function merekListrikDilarang(brand: string): boolean {
+  if (process.env.HIDE_EV_MEREK !== "true") return false;
+  return EV_MEREK.has(normalizeMerek(brand));
 }

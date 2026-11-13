@@ -11,7 +11,7 @@ import {
 } from "@/lib/service-status";
 import { BookingForm } from "./booking-form";
 import { PendingLink } from "@/components/pending-link";
-import { buildModelPerMerek } from "@/lib/vehicle";
+import { buildModelPerMerek, merekGroupsTampil } from "@/lib/vehicle";
 import type { ServiceStatus } from "@db/prisma/client";
 
 export const metadata = { title: "Servis" };
@@ -121,6 +121,7 @@ export default async function ServisPage({
           branches={branches}
           catalog={catalog}
           modelPerMerek={buildModelPerMerek(modelRows)}
+          merekGroups={merekGroupsTampil()}
         />
       )}
 

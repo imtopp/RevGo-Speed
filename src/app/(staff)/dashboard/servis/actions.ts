@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { getStaffBranchId } from "@/lib/guard";
 import { logAudit } from "@/lib/audit";
-import { normalizeMerek, normalizeTipe, modelTidakSesuaiMerek, normalizePlate, MEREK_LAINNYA } from "@/lib/vehicle";
+import { normalizeMerek, normalizeTipe, modelTidakSesuaiMerek, normalizePlate, MEREK_LAINNYA, merekListrikDilarang } from "@/lib/vehicle";
 import { allocateFifo } from "@/lib/inventory";
 import { cekSlotTersedia, getBookingConfig, getJendelaAktif, kunciSlot, mekanikSibuk } from "@/lib/booking";
 import {
@@ -170,6 +170,12 @@ export async function createBooking(
           ok: false as const,
           error:
             "Kendaraan belum terdaftar. Isi nama customer, merek, dan tipe. (Email opsional — untuk akun login online.)",
+        };
+      }
+      if (merekListrikDilarang(brand)) {
+        return {
+          ok: false as const,
+          error: "Merek motor listrik tidak didukung di bengkel ini.",
         };
       }
       if (modelTidakSesuaiMerek(brand, model)) {
