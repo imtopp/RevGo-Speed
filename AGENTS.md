@@ -220,6 +220,12 @@ VAPID_PRIVATE_KEY="..."           # Web Push PRIVATE - hanya env Vercel,
   `npx tsx scripts/test-push-tbrt.ts`
 - Penerima: booking baru & stok = Owner lintas cabang + Admin cabang; event
   customer = unik [customerId, vehicle.ownerId] ber-role CUSTOMER aktif.
+- **Keterbatasan Android (bukan bug aplikasi):** pengiriman latar Chrome/PWA
+  tergantung Chrome + OEM HP (iQOO/Xiaomi/OPPO/Vivo agresif → pesan tertahan
+  dan tampil saat app dibuka - TIDAK hilang; foreground & desktop selalu
+  instan). Chromium #547300529: high-urgency web push belum membangunkan PWA
+  setelah layar mati. Mitigasi: kirim selalu `urgency: "high"`. Jangan pernah
+  mewajibkan customer setting batre - push = bonus, sumber info = aplikasi.
 - Generate ulang pair (jarang): `node -e "console.log(JSON.stringify(require('web-push').generateVAPIDKeys()))"`
   lalu update env Vercel kedua project (production+preview) - lama otomatis mati.
 
