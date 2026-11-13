@@ -255,7 +255,7 @@ async function kirimKe(userIds: string[], payload: PushPayload): Promise<void> {
         await sendNotification(
           { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
           JSON.stringify(payload),
-          { TTL: 60 * 60 * 24, topic: topicAman(payload.tag) },
+          { TTL: 60 * 60 * 24, topic: topicAman(payload.tag), urgency: "high" },
         );
       } catch (e) {
         const status = (e as { statusCode?: number }).statusCode;

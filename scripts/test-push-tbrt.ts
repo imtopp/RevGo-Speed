@@ -1,14 +1,16 @@
 /**
  * Diagnostik: kirim Web Push uji ke SEMUA langganan `PushSubscription`.
  * Pakai: TEST_DB (URL DB tenant), TEST_PUB, TEST_PRIV (opsional; fallback
- * .env lokal), TEST_TOPIC (opsional; default "uji") - ingat validasi topic
- * web-push (hanya [A-Za-z0-9_-], <=32 char) bila isi sendiri.
+ * .env lokal), TEST_TOPIC (opsional; default "uji"), TEST_URGENCY (opsional:
+ * very-low|low|normal|high - uji prioritas latar Android) - ingat validasi
+ * topic web-push (hanya [A-Za-z0-9_-], <=32 char) bila isi sendiri.
+ * Judul memuat urgency agar hasil telusur di tray bisa dibedakan.
  * Hanya mencetak status OK/FAIL + kode error - TANPA key/endpoint.
  * Contoh (TBRT): $env:TEST_DB="postgres://..." ; $env:TEST_PUB="..." ;
  *   $env:TEST_PRIV="..." ; npx tsx scripts/test-push-tbrt.ts
  */
 import { Client } from "pg";
-import { sendNotification, setVapidDetails } from "web-push";
+import { sendNotification, setVapidDetails, type Urgency } from "web-push";
 
 async function main() {
   const pub =
@@ -39,6 +41,7 @@ async function main() {
   }
   const rows = r.rows as { endpoint: string; p256dh: string; auth: string }[];
   const topic = process.env.TEST_TOPIC || "uji";
+  const urgency = (process.env.TEST_URGENCY || "") as Urgency | "";
   let ok = 0;
   let fail = 0;
   for (const s of rows) {
@@ -46,12 +49,12 @@ async function main() {
       await sendNotification(
         { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
         JSON.stringify({
-          title: "Uji notif RevGo Speed",
+          title: "Uji notif (" + (urgency || "normal") + ") RevGo Speed",
           body: "Tes kirim dari server — abaikan.",
           tag: "test-" + Date.now(),
           url: "/pesanan",
         }),
-        { TTL: 600, topic },
+        { TTL: 600, topic, ...(urgency ? { urgency } : {}) },
       );
       ok++;
     } catch (e) {
