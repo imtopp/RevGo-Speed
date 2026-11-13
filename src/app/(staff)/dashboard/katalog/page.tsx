@@ -1,12 +1,12 @@
 import { prisma } from "@/lib/prisma";
-import { requireOwnerOrSysAdmin } from "@/lib/guard";
+import { requireStaffRole } from "@/lib/guard";
 import { CatalogManager } from "./catalog-manager";
 import { CatalogList } from "./catalog-list";
 
 export const metadata = { title: "Katalog Jasa" };
 
 export default async function KatalogPage() {
-  await requireOwnerOrSysAdmin();
+  await requireStaffRole(["OWNER"]);
 
   const catalog = await prisma.serviceCatalog.findMany({
     orderBy: { createdAt: "asc" },

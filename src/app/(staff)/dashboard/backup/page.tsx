@@ -1,4 +1,4 @@
-import { requireStaffRole } from "@/lib/guard";
+import { requireOwnerOrSysAdmin } from "@/lib/guard";
 import { getAppName } from "@/lib/branding";
 import { DownloadLink } from "@/components/download-link";
 import { ImportSection } from "./import-section";
@@ -7,7 +7,7 @@ export const metadata = { title: "Backup" };
 
 export default async function BackupPage() {
   // FR-10: Owner + SysAdmin (nav juga OWNER_SYS) — bukan Owner saja.
-  await requireStaffRole(["OWNER", "SYS_ADMIN"]);
+  await requireOwnerOrSysAdmin();
   const appName = await getAppName();
 
   return (

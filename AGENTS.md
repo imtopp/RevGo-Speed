@@ -134,7 +134,7 @@ Aplikasi sama di-deploy untuk 2 pelanggan dari **1 repo** (bukan fork):
 | Ignore build | skip push selain `main`/`preview` | skip push selain `release/tbrt` |
 
 - **Rilis:** push ke `main` -> deploy RevGo. Tarik ke TBRT lewat halaman **Update**
-  (`/dashboard/update`, OWNER+SYS_ADMIN): pointer `release/tbrt` dipindah ke SHA
+  (`/dashboard/update`, **SYS_ADMIN saja** — Owner tidak akses): pointer `release/tbrt` dipindah ke SHA
   `main` terbaru via GitHub API -> Vercel build otomatis. **Rollback** di halaman
   sama: pointer dikembalikan ke SHA sebelumnya (riwayat: SystemSetting
   `update_history` / `update_pending`, TTL build 8 menit).

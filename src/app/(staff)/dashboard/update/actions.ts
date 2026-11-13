@@ -3,7 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@db/prisma/client";
 import { auth } from "@/lib/auth";
-import { isOwnerOrSysAdmin, assertActiveUser } from "@/lib/guard";
+import { assertActiveUser } from "@/lib/guard";
 import { logAudit } from "@/lib/audit";
 import { resolveVersion } from "@/lib/version";
 import {
@@ -44,7 +44,7 @@ type Actor = Awaited<ReturnType<typeof requireUpdateActor>>;
 
 async function requireUpdateActor() {
   const session = await auth();
-  if (!session?.user || !isOwnerOrSysAdmin(session.user.role)) {
+  if (!session?.user || session.user.role !== "SYS_ADMIN") {
     throw new Error("Tidak punya akses.");
   }
   await assertActiveUser(session.user.id);

@@ -81,17 +81,19 @@ describe("StaffNav mobile (bottom-nav + sheet Lainnya)", () => {
     await click(btn!);
     const sheet = host.querySelector("#menu-lainnya");
     expect(sheet).not.toBeNull();
-    for (const label of ["Katalog", "Pengaturan", "Akun", "Backup", "Update"]) {
+    for (const label of ["Katalog", "Pengaturan", "Akun", "Backup"]) {
       expect(sheet!.textContent).toContain(label);
     }
+    // Update khusus SysAdmin — Owner tidak melihatnya.
+    expect(sheet!.querySelector('a[href="/dashboard/update"]')).toBeNull();
     // Audit sudah ada di bottom-nav → tidak diulang di sheet.
     expect(sheet!.querySelector('a[href="/dashboard/audit"]')).toBeNull();
 
-    const updateLink = sheet!.querySelector<HTMLAnchorElement>(
-      'a[href="/dashboard/update"]',
+    const katalogLink = sheet!.querySelector<HTMLAnchorElement>(
+      'a[href="/dashboard/katalog"]',
     );
-    expect(updateLink).not.toBeNull();
-    await click(updateLink!);
+    expect(katalogLink).not.toBeNull();
+    await click(katalogLink!);
     expect(host.querySelector("#menu-lainnya")).toBeNull();
   });
 
@@ -112,7 +114,7 @@ describe("StaffNav mobile (bottom-nav + sheet Lainnya)", () => {
     ).toBeNull();
   });
 
-  it("SYS_ADMIN: sheet memuat Update (menu yang dilaporkan hilang di mobile)", async () => {
+  it("SYS_ADMIN: sheet memuat Update tanpa Katalog (Katalog khusus Owner)", async () => {
     await render("SYS_ADMIN");
     const btn = host.querySelector<HTMLButtonElement>(
       'button[aria-controls="menu-lainnya"]',
@@ -121,5 +123,8 @@ describe("StaffNav mobile (bottom-nav + sheet Lainnya)", () => {
     await click(btn!);
     const sheet = host.querySelector("#menu-lainnya");
     expect(sheet!.querySelector('a[href="/dashboard/update"]')).not.toBeNull();
+    expect(sheet!.querySelector('a[href="/dashboard/katalog"]')).toBeNull();
+    expect(sheet!.textContent).toContain("Pengaturan");
+    expect(sheet!.textContent).toContain("Backup");
   });
 });

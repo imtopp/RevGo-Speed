@@ -40,7 +40,7 @@
 | Peran | Siapa | Kebutuhan utama |
 |---|---|---|
 | **Owner** | Pemilik bengkel | Semua akses: laporan lintas cabang, katalog, akun, pengaturan |
-| **System Administrator** | Staf IT/kantor pusat | Kelola akun, pengaturan sistem, backup data (bukan data keuangan) |
+| **System Administrator** | Staf IT/kantor pusat | Kelola akun, pengaturan sistem, backup data, update aplikasi (bukan data keuangan) |
 | **Admin** | Karyawan administrasi cabang | Booking, estimasi & konfirmasi, penerimaan unit, pembayaran, stok, kas (1 cabang) |
 | **Mekanik** | Teknisi | Daftar tugas saya, precheck/pengerjaan, catat part terpakai & diagnosis |
 | **Customer** | Pemilik kendaraan | Booking dari HP, setujui estimasi, pantau status, lihat riwayat & tagihan |
@@ -53,7 +53,7 @@
 | Kelola akun staff | ✔ | ✔ | – | – | – |
 | Pengaturan sistem & **backup data** | ✔ | ✔ | – | – | – |
 | Kelola cabang | ✔ | ✔ | – | – | – |
-| Katalog jasa (CRUD) | ✔ | ✔ | ✔ (lihat di form booking) | – | – |
+| Katalog jasa (CRUD) | ✔ | – | ✔ (lihat di form booking) | – | – |
 | Booking (input/konfirmasi/estimasi) | ✔ | – | ✔ (cabangnya) | – | ✔ (mandiri) |
 | Setujui/tolak estimasi | ✔ | – | ✔ | – | ✔ (pesanan saya) |
 | **Penerimaan unit (precheck)** | ✔ | – | ✔ | ✔ | – |
@@ -67,7 +67,7 @@
 
 **Scoping cabang:** owner & system administrator lintas cabang; admin & mekanik terikat 1 cabang; customer lintas cabang.
 
-**Menu adaptif:** Owner: seluruh menu termasuk **Audit**; SysAdmin: **Beranda** (tanpa angka keuangan/stok), **Katalog, Akun, Pengaturan, Backup**; Admin: **operasional + piutang**; Mekanik: **Beranda** (tanpa angka keuangan) + **Tugas Saya**.
+**Menu adaptif:** Owner: seluruh menu operasional + **Katalog, Pengaturan, Akun, Backup, Audit** (tanpa Update); SysAdmin: **Beranda** (tanpa angka keuangan/stok), **Akun, Pengaturan, Backup, Update**; Admin: **operasional + piutang**; Mekanik: **Beranda** (tanpa angka keuangan) + **Tugas Saya**.
 
 ---
 
@@ -333,7 +333,7 @@ Setiap fase selesai = fitur terpasang + role-guard teruji + `build`/`lint` hijau
 | 3 | Katalog jasa belum per-cabang | Global dulu; beda harga per cabang → fase 2 |
 | 4 | Jam operasional | ✅ konfigurasi per cabang (FR-10) |
 | 5 | Mekanik lihat laba? | ✅ ditegakkan (v1.1): menu Tugas + Beranda **tanpa angka keuangan** |
-| 6 | Cakupan SysAdmin | ✅ **Disetujui** + guard ditegakkan (v1.1): Beranda (tanpa angka keuangan/stok) + katalog + akun + pengaturan + backup + kelola cabang; **operasional (servis/stok/kas/piutang/laporan) = OWNER/ADMIN** |
+| 6 | Cakupan SysAdmin | ✅ **Disetujui** + guard ditegakkan (v1.1): Beranda (tanpa angka keuangan/stok) + akun + pengaturan + backup + kelola cabang + update aplikasi (katalog khusus Owner; update khusus SysAdmin); **operasional (servis/stok/kas/piutang/laporan) = OWNER/ADMIN** |
 | 7 | Pengingat booking otomatis (SLA) | Fase 2 bersama notifikasi — mekanisme event-driven + cron sudah didefinisikan (v1.2) |
 | 8 | Aturan penagihan piutang | ✅ **Disetujui**: diskresi admin + piutang terpantau; aturan keras → pengaturan rilis berikut |
 

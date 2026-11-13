@@ -1,4 +1,4 @@
-import { requireOwnerOrSysAdmin } from "@/lib/guard";
+import { requireStaffRole } from "@/lib/guard";
 import { getAppName } from "@/lib/branding";
 import { prisma } from "@/lib/prisma";
 import {
@@ -20,7 +20,7 @@ import { UpdateClient } from "./update-client";
 export const metadata = { title: "Update" };
 
 export default async function UpdatePage() {
-  await requireOwnerOrSysAdmin();
+  await requireStaffRole(["SYS_ADMIN"]);
   const appName = await getAppName();
 
   const token = process.env.GITHUB_TOKEN?.trim() ?? "";

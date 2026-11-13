@@ -18,10 +18,10 @@ function bacaEstimasiMenit(formData: FormData): number | null {
   return n;
 }
 
-async function requireOwnerOrAdmin() {
+async function requireOwner() {
   const session = await auth();
   if (!session?.user) throw new Error("Belum login.");
-  if (!["OWNER", "SYS_ADMIN"].includes(session.user.role)) {
+  if (session.user.role !== "OWNER") {
     throw new Error("Tidak punya akses.");
   }
   await assertActiveUser(session.user.id);
@@ -32,7 +32,7 @@ export async function createCatalog(
   _prev: KatalogState,
   formData: FormData,
 ): Promise<KatalogState> {
-  await requireOwnerOrAdmin();
+  await requireOwner();
   const nama = String(formData.get("nama") ?? "").trim();
   const deskripsi = String(formData.get("deskripsi") ?? "").trim();
   const hargaDasar = Number(formData.get("hargaDasar") ?? 0);
@@ -63,7 +63,7 @@ export async function updateCatalog(
   _prev: KatalogState,
   formData: FormData,
 ): Promise<KatalogState> {
-  await requireOwnerOrAdmin();
+  await requireOwner();
   const id = String(formData.get("id") ?? "").trim();
   const nama = String(formData.get("nama") ?? "").trim();
   const deskripsi = String(formData.get("deskripsi") ?? "").trim();

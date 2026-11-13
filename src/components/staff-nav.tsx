@@ -39,11 +39,11 @@ const SIDEBAR_GROUPS: {
   {
     label: "Sistem",
     items: [
-      { href: "/dashboard/katalog", label: "Katalog", roles: OWNER_SYS },
+      { href: "/dashboard/katalog", label: "Katalog", roles: ["OWNER"] as readonly Role[] },
       { href: "/dashboard/pengaturan", label: "Pengaturan", roles: OWNER_SYS },
       { href: "/dashboard/akun", label: "Akun", roles: OWNER_SYS },
       { href: "/dashboard/backup", label: "Backup", roles: OWNER_SYS },
-      { href: "/dashboard/update", label: "Update", roles: OWNER_SYS },
+      { href: "/dashboard/update", label: "Update", roles: ["SYS_ADMIN"] as readonly Role[] },
       { href: "/dashboard/audit", label: "Audit", roles: ["OWNER"] as readonly Role[] },
     ],
   },
