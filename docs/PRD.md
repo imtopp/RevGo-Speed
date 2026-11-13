@@ -150,7 +150,7 @@ PENDING / WAITING_APPROVAL / CONFIRMED / CHECKED_IN ──(batal)→ CANCELLED (
 ## 4. Fitur (FR)
 
 ### FR-0 Akun, sesi & peran — ✅ sudah ada (tambah SysAdmin)
-- Register customer mandiri, login semua peran, sesi JWT, guard server-side per role, logout, nav adaptif per role.
+- Register customer mandiri — **No. WhatsApp wajib** (dipakai bengkel untuk konfirmasi booking; divalidasi server-side, contoh `0812xxxxxxxx`), login semua peran, sesi JWT, guard server-side per role, logout, nav adaptif per role.
 - Peran: OWNER, CUSTOMER, ADMIN, MECHANIC → **tambah `SYS_ADMIN`** (migrasi Fase A).
 - **Ganti password wajib saat login pertama** (proxy redirect ke `/ganti-password`) + halaman ganti password mandiri untuk semua peran.
 - Akun customer **opsional** untuk booking (lihat FR-3 — walk-in tanpa akun).
@@ -161,13 +161,14 @@ PENDING / WAITING_APPROVAL / CONFIRMED / CHECKED_IN ──(batal)→ CANCELLED (
 - MVP jalan dengan 1 cabang aktif; struktur siap multi sejak awal.
 
 ### FR-2 Katalog jasa — **Rilis 1**
-- Jenis jasa: nama, deskripsi, harga dasar, flag **boleh DP**; CRUD owner & SysAdmin (global; admin memakai saat booking & override harga per transaksi).
+- Jenis jasa: nama, deskripsi, harga dasar, flag **boleh DP**; CRUD **khusus Owner** (global; admin memakai saat booking & override harga per transaksi; SysAdmin tidak — matriks izin §2).
 
 ### FR-3 Booking & persetujuan estimasi — **Rilis 1**
 **Customer:**
 - Kelola kendaraan saya (plat unik, merek, tipe, tahun).
-- Form booking: pilih cabang (jam operasional tampil) + kendaraan + jenis jasa/keluhan + jadwal → `PENDING`.
-- Halaman Pesanan: status real-time; **tombol Setuju/Tolak estimasi** saat `WAITING_APPROVAL`; riwayat & tagihan.
+- Form booking: pilih cabang (jam operasional tampil) + kendaraan + jenis jasa/keluhan + jadwal → `PENDING`. **Booking ditolak bila akun belum punya No. WA** (pesan + tautan ke halaman Profil); nomor ikut tersimpan sebagai snapshot di servis.
+- **Konfirmasi booking via WhatsApp:** tombol **"Konfirmasi via WhatsApp"** setelah booking dibuat (panel sukses) dan di kartu booking aktif — mengirim rincian lengkap (kode booking + motor + layanan + jadwal) ke No. WA bengkel (`wa_bengkel`, FR-10); hanya tampil bila `wa_bengkel` sudah diisi.
+- Halaman Pesanan: status real-time; **tombol Setuju/Tolak estimasi** saat `WAITING_APPROVAL`; riwayat & tagihan; **tombol Chat WA** ke bengkel (bila `wa_bengkel` diisi).
 
 **Admin:**
 - Daftar booking masuk (filter status/tanggal); isi/ubah estimasi + jadwal + mekanik → kirim (`WAITING_APPROVAL`).
@@ -226,7 +227,7 @@ PENDING / WAITING_APPROVAL / CONFIRMED / CHECKED_IN ──(batal)→ CANCELLED (
 Akses: **Owner + SysAdmin**; perubahan tercatat (siapa, kapan).
 - **Jam operasional per cabang** (hari aktif, jam buka/tutup) → tampil saat booking; patokan tindak lanjut admin.
 - **Kebijakan DP & pembatalan:** `TANPA_REFUND` / `REFUND_PENUH` (MVP: panduan + eksekusi manual lewat kas; otomatis fase 2).
-- **Parameter:** nama tampilan aplikasi, **logo** (upload file — auto-resize 512px WebP; atau URL https), **prefix kode servis** (mis. `SV-`).
+- **Parameter:** nama tampilan aplikasi, **logo** (upload file — auto-resize 512px WebP; atau URL https), **prefix kode servis** (mis. `SV-`), **No. WA bengkel** (`wa_bengkel` — sumber tombol Chat WA & konfirmasi booking FR-3; kosong = tombol tidak tampil).
 - **Kelola akun staff:** buat akun Admin/Mekanik/SysAdmin, assign cabang, reset password, nonaktifkan. **Admin & Mekanik wajib terikat 1 cabang** (server menolak tanpa cabang); lintas cabang hanya untuk SysAdmin. **Akun customer ditampilkan terpisah** dari daftar staff (reset/nonaktifkan saja, tanpa assign cabang).
 - **Backup data:** unduh salinan **seluruh tabel** database (JSON export) — rutinitas SysAdmin.
 - **Restore data (v1.6):** pulihkan penuh dari file backup JSON — replace **semua data** dalam **1 transaksi DB** (gagal di tengah = rollback, data lama utuh); wajib ketik `RESTORE` untuk konfirmasi; jejak `SYSTEM_IMPORT` di AuditLog; rate limit paling ketat. Akses Owner + SysAdmin.
@@ -366,7 +367,7 @@ Setiap fase selesai = fitur terpasang + role-guard teruji + `build`/`lint` hijau
 
 ---
 
-## App. B — Praktik implementasi (kualitas di atas minimum FR) — v1.3
+## App. B — Praktik implementasi (kualitas di atas minimum FR) — v1.4
 
 Bagian ini mendokumentasikan perilaku nyata di kode yang **melampaui ketentuan minimum** §4 — bukan fitur baru, melainkan *cara* fitur lama dieksekusi agar lebih efisien, ramah-pengguna, dan aman. Dipertahankan sebagai standar saat menambah fitur berikutnya.
 
@@ -376,6 +377,7 @@ Bagian ini mendokumentasikan perilaku nyata di kode yang **melampaui ketentuan m
 - Booking dibuat dalam transaksi + **`pg_advisory_xact_lock` per cabang+tanggal** (anti double-booking paralel — di luar PRD).
 - Validasi plat live saat mengetik; datalist tipe difilter menurut merek + cek silang server ("X bukan tipe merek Y"); estimasi & durasi auto-isi dari katalog.
 - Tombol Setuju/Tolak tampil di kartu aktif **dan** riwayat; reject otomatis mengisi `cancelReason`; penjelasan "langkah berikutnya" per status di kartu.
+- **Motor listrik opsional per instance:** env `HIDE_EV_MEREK=true` menyembunyikan group merek EV di **semua** dropdown merek (booking, walk-in, kendaraan) **dan** server menolak merek EV — konfigurasi per project Vercel (TBRT `true`, RevGo kosong), bukan per user.
 
 ### Papan kerja & navigasi (FR-4)
 - 9 tab filter status via URL dengan **guard enum** (parameter asing ditolak sebelum masuk query); **`PendingLink`** memberi spinner "Memuat…" agar ganti filter tidak terasa aplikasi hang; state form booking dipertahankan antar filter; empty state per filter.
@@ -418,3 +420,4 @@ Bagian ini mendokumentasikan perilaku nyata di kode yang **melampaui ketentuan m
 - **Auto-close form sukses + flash notif otomatis hilang** (katalog, akun, kas manual, cabang, stok, customer) — error → form tetap terbuka.
 - Spinner `SubmitButton` di semua aksi server, `PendingLink` untuk ganti-query, **skeleton meniru layout nyata** per halaman, empty state mengarahkan aksi berikutnya.
 - Format Rupiah/tanggal Indonesia dari satu modul util; angka moneter selalu **integer**; badge warna status dari token tunggal `STATUS_COLOR`.
+- **Nomor HP/WA seragam** (`src/lib/wa.ts`): tampilan selalu lokal `0812xxxxxxxx` (`formatWaLocal`), penyimpanan kanonik `628…` (`normalizeWa` — migrasi data `20261112124500_normalize_wa_numbers`), link chat `waLink()`; placeholder form `0812xxxxxxxx`; nomor WA di **detail servis & kartu booking bisa diklik → chat WA** (tab baru).

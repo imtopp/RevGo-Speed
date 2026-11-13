@@ -46,7 +46,8 @@ const BOOKING_FIELDS = [
 ];
 
 export default async function PengaturanPage() {
-  await requireOwnerOrSysAdmin();
+  const session = await requireOwnerOrSysAdmin();
+  const isOwner = session.user.role === "OWNER";
 
   const [settings, branches] = await Promise.all([
     prisma.systemSetting.findMany(),
@@ -105,7 +106,7 @@ export default async function PengaturanPage() {
 
       <section className="space-y-3">
         <h2 className="text-sm font-semibold text-foreground">Manajemen</h2>
-        <div className="grid grid-cols-3 gap-3">
+        <div className={`grid gap-3 ${isOwner ? "grid-cols-3" : "grid-cols-2"}`}>
           <Link
             href="/dashboard/akun"
             className="rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card active:opacity-90"
@@ -115,13 +116,17 @@ export default async function PengaturanPage() {
               Buat &amp; atur akun staff
             </p>
           </Link>
-          <Link
-            href="/dashboard/katalog"
-            className="rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card active:opacity-90"
-          >
-            <p className="font-medium">Katalog</p>
-            <p className="mt-1 text-xs text-muted-foreground">Jenis jasa &amp; harga</p>
-          </Link>
+          {isOwner && (
+            <Link
+              href="/dashboard/katalog"
+              className="rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card active:opacity-90"
+            >
+              <p className="font-medium">Katalog</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Jenis jasa &amp; harga
+              </p>
+            </Link>
+          )}
           <Link
             href="/dashboard/backup"
             className="rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card active:opacity-90"

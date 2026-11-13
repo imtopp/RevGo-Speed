@@ -97,7 +97,7 @@ export default async function ServisPage({
           <p className="mt-1 text-sm text-muted-foreground">
             {services.length} servis · papan kerja
           </p>
-          {/* Katalog hanya untuk OWNER/SYS_ADMIN — jangan tautkan ADMIN ke
+          {/* Katalog hanya untuk OWNER — jangan tautkan ADMIN/SYS_ADMIN ke
               halaman yang akan ditolak guard. */}
           {session.user.role === "OWNER" && (
             <Link

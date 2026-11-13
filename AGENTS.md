@@ -82,6 +82,7 @@ generated/                  # Prisma client output (gitignored)
   ```
   Dipanggil dari client component via `useActionState`.
 - **Format:** Rupiah via `formatRupiah()` (integer, tanpa desimal), tanggal via `formatTanggal()` / `formatTanggalPendek()` â€” semua di `src/lib/service-status.ts`.
+- **Nomor HP/WA** (`src/lib/wa.ts`): tampilan lokal `0812xxxxxxxx` via `formatWaLocal()`, penyimpanan kanonik `628…` via `normalizeWa()`, link chat via `waLink()` â€” jangan format nomor manual; placeholder form `0812xxxxxxxx`.
 - **Bahasa:** Seluruh UI, label, dan pesan error dalam bahasa Indonesia.
 - **Desain:** Mobile-first, max-width `max-w-lg` (staff) / `max-w-md` (customer), bottom-nav, Tailwind utility classes, tidak pakai component library eksternal.
 - **Design system:** token di `src/app/globals.css` (`@theme`) â€” CTA/active `bg-primary` (#D32F2F), top navbar `bg-secondary` (#1E293B), halaman `bg-background` (#F8FAFC), kartu `bg-surface` + `shadow-card` (radius 12/16px), teks `text-foreground` / `text-muted-foreground`, status `text-success` / `text-warning`, font Inter via `--font-sans`. **Jangan pakai hex warna hardcoded** di komponen â€” gunakan token ini.
@@ -148,7 +149,8 @@ Aplikasi sama di-deploy untuk 2 pelanggan dari **1 repo** (bukan fork):
   pernah dibangun, kasus rollback/tarik-ulang; `VERCEL_TOKEN` wajib PAT dari
   dashboard `vercel.com/account/tokens`, token OAuth CLI kedaluwarsa ±12 jam),
   plus `DATABASE_URL`, `DATABASE_URL_UNPOOLED`,
-  `AUTH_SECRET`, `AUTH_URL`.
+  `AUTH_SECRET`, `AUTH_URL`, `HIDE_EV_MEREK`
+  (TBRT `true` â€” tanpa motor listrik; RevGo tidak di-set).
 - **Production branch Vercel** (Environments -> Production -> Branch Tracking)
   **hanya bisa di-set via dashboard**, tidak ada API-nya. Setelah di-set,
   trigger build pertama dengan push kosong ke `release/tbrt`.
@@ -185,6 +187,8 @@ Lihat `.env.example`. Yang dibutuhkan:
 DATABASE_URL="postgresql://..."   # Neon Postgres
 AUTH_SECRET="..."                 # openssl rand -hex 32
 AUTH_URL="http://localhost:3000"  # production: URL Vercel
+HIDE_EV_MEREK="true"              # opsional: sembunyikan group motor listrik
+                                  #   (TBRT=true; RevGo tidak di-set)
 ```
 
 ## Testing
