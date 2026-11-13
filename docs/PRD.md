@@ -417,7 +417,7 @@ Bagian ini mendokumentasikan perilaku nyata di kode yang **melampaui ketentuan m
 - Chip filter aksi (pill, divalidasi enum — parameter asing diabaikan), diff before→after collapsible, kartu peringatan berincian (kode servis, plat, nominal, alasan) + sisa "…N lagi".
 
 ### Pola UX lintas modul (standar, di luar FR)
-- **Auto-close form sukses + flash notif otomatis hilang** (katalog, akun, kas manual, cabang, stok, customer) — error → form tetap terbuka.
+- **Auto-close form sukses + flash notif otomatis hilang** (katalog, akun, kas manual, cabang, stok, customer) — error → form tetap terbuka. **Pengecualian: panel sukses booking permanen** sampai ditutup user — berisi kode booking, rincian, & tombol konfirmasi WA (FR-3), agar waktu menekan tombol tidak keburu habis.
 - Spinner `SubmitButton` di semua aksi server, `PendingLink` untuk ganti-query, **skeleton meniru layout nyata** per halaman, empty state mengarahkan aksi berikutnya.
 - Format Rupiah/tanggal Indonesia dari satu modul util; angka moneter selalu **integer**; badge warna status dari token tunggal `STATUS_COLOR`.
 - **Nomor HP/WA seragam** (`src/lib/wa.ts`): tampilan selalu lokal `0812xxxxxxxx` (`formatWaLocal`), penyimpanan kanonik `628…` (`normalizeWa` — migrasi data `20261112124500_normalize_wa_numbers`), link chat `waLink()`; placeholder form `0812xxxxxxxx`; nomor WA di **detail servis & kartu booking bisa diklik → chat WA** (tab baru).
