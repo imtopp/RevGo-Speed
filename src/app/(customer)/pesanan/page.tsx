@@ -11,6 +11,8 @@ import {
 import { BookingSection, RespondForm } from "./booking-section";
 import { buildModelPerMerek, merekGroupsTampil } from "@/lib/vehicle";
 import { getBranding } from "@/lib/branding";
+import { pushEnabled } from "@/lib/push";
+import { PushOptInCard } from "@/components/push-opt-in-card";
 import { waLink, pesanKonfirmasiBooking } from "@/lib/wa";
 import type { ServiceStatus } from "@db/prisma/client";
 
@@ -82,6 +84,8 @@ export default async function PesananPage() {
           Booking, status, &amp; riwayat servis kamu
         </p>
       </div>
+
+      <PushOptInCard enabled={pushEnabled()} konteks="customer" />
 
       {active && (
         <div className="rounded-xl bg-surface p-4 ring-2 ring-primary/30 shadow-card">

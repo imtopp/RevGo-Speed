@@ -8,6 +8,8 @@ import { DURASI_DEFAULT_MENIT, parseJadwal, pesanDitolak } from "@/lib/availabil
 import { normalizeWa } from "@/lib/wa";
 import { formatTanggalWIB } from "@/lib/service-status";
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
+import { notifyBookingBaru } from "@/lib/push";
 import type { Prisma } from "@db/prisma/client";
 
 export type CustomerState = {
@@ -140,6 +142,7 @@ export async function customerBooking(
     return { error: pesanDitolak(hasil) };
   }
 
+  after(() => notifyBookingBaru(hasil.id));
   revalidatePath("/pesanan");
   return {
     success: `Booking ${hasil.code} terkirim. Menunggu konfirmasi bengkel.`,

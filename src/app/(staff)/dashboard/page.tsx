@@ -3,6 +3,8 @@ import { auth } from "@/lib/auth";
 import { getStaffBranchId } from "@/lib/guard";
 import { redirect } from "next/navigation";
 import { formatRupiah } from "@/lib/service-status";
+import { pushEnabled } from "@/lib/push";
+import { PushOptInCard } from "@/components/push-opt-in-card";
 import Link from "next/link";
 
 export const metadata = { title: "Dashboard" };
@@ -128,6 +130,12 @@ export default async function DashboardHome() {
           >
             Lihat Piutang &rarr;
           </Link>
+        </div>
+      )}
+
+      {isOperational && (
+        <div className="max-w-xl">
+          <PushOptInCard enabled={pushEnabled()} konteks="staff" />
         </div>
       )}
     </div>

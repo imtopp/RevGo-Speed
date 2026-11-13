@@ -8,6 +8,8 @@ import { samakanKategori } from "@/lib/category";
 import { skuBerikutnya } from "@/lib/sku";
 import { alasanTolakHapusPart } from "@/lib/part";
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
+import { notifyStokMenipis } from "@/lib/push";
 import {
   movingAverageBuyPrice,
   estimateAvgAfterCostCorrection,
@@ -680,6 +682,8 @@ export async function returKonsinyasi(
     return { error: `Stok ${part.name} kurang (tersisa ${part.quantity}).` };
   }
 
+  let qtySebelum = 0;
+  let qtySesudah = 0;
   try {
     await prisma.$transaction(async (tx) => {
       await tx.$queryRaw`SELECT id FROM "Part" WHERE id = ${partId} FOR UPDATE`;
@@ -690,6 +694,8 @@ export async function returKonsinyasi(
       });
       if (updated.count === 0) throw new Error(`Stok ${part.name} kurang.`);
       const partF = (await tx.part.findUnique({ where: { id: partId } }))!;
+      qtySebelum = partF.quantity + quantity;
+      qtySesudah = partF.quantity;
 
       await tx.stockMovement.create({
         data: {
@@ -719,6 +725,7 @@ export async function returKonsinyasi(
     return { error: e instanceof Error ? e.message : "Retur gagal." };
   }
 
+  after(() => notifyStokMenipis(partId, qtySebelum, qtySesudah));
   revalidatePath("/dashboard/stok");
   revalidatePath("/dashboard/laporan");
   return {
@@ -766,6 +773,8 @@ export async function sellPart(
   // Penjualan selalu memakai sellPrice data part apa adanya — tanpa konfirmasi di sini.
 
   let totalAkhir = 0;
+  let qtySebelum = 0;
+  let qtySesudah = 0;
 
   await prisma.$transaction(async (tx) => {
     await tx.$queryRaw`SELECT id FROM "Part" WHERE id = ${partId} FOR UPDATE`;
@@ -779,6 +788,8 @@ export async function sellPart(
     // Baca ulang SETELAH baris terkunci — harga & HPP FIFO dari angka terkini.
     const partF = await tx.part.findUnique({ where: { id: partId } });
     if (!partF) throw new Error("Part tidak ditemukan.");
+    qtySebelum = partF.quantity + quantity;
+    qtySesudah = partF.quantity;
     const price = partF.sellPrice;
     const hargaError = validasiItemJual(quantity, price);
     if (hargaError) throw new Error(hargaError);
@@ -897,6 +908,7 @@ export async function sellPart(
     });
   });
 
+  after(() => notifyStokMenipis(partId, qtySebelum, qtySesudah));
   revalidatePath("/dashboard/stok");
   revalidatePath("/dashboard/kas");
   revalidatePath("/dashboard/laporan");
@@ -979,6 +991,14 @@ export async function adjustStock(
   if (!ok) {
     return { error: `Stok tidak boleh negatif (tersisa ${part.quantity}).` };
   }
+  // Baca ulang qty sesudah (akurat) → sebelum = sesudah − delta, untuk
+  // deteksi penyeberangan minStock (notifikasi stok menipis).
+  const sesudahRow = await prisma.part.findUnique({
+    where: { id: partId },
+    select: { quantity: true },
+  });
+  const qtySesudahAdj = sesudahRow?.quantity ?? part.quantity + delta;
+  after(() => notifyStokMenipis(partId, qtySesudahAdj - delta, qtySesudahAdj));
 
   revalidatePath("/dashboard/stok");
   return {

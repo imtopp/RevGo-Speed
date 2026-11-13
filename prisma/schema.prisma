@@ -82,6 +82,7 @@ model User {
   cashflows          Cashflow[]
   paymentsReceived   Payment[]       @relation("PaymentReceivedBy")
   partSalesCreated   PartSale[]      @relation("PartSaleCreatedBy")
+  pushSubscriptions  PushSubscription[]
 }
 
 model Branch {
@@ -380,4 +381,32 @@ model RateLimitBucket {
   count       Int
 
   @@index([windowStart])
+}
+
+/// Langganan Web Push per user per device (endpoint unik = 1 baris/device —
+/// subscribe ulang dari device sama upsert, tidak pernah dobel kirim).
+model PushSubscription {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// Endpoint push service (FCM/APNs) — unik global, jadi idempoten per device.
+  endpoint   String   @unique
+  p256dh     String
+  auth       String
+  userAgent  String?
+  createdAt  DateTime @default(now())
+  lastSeenAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+/// Klaim anti-dobel pengiriman push: insert dedupKey dulu (unique), kirim hanya
+/// bila insert menang — aksi paralel/ganda tidak pernah mengirim dua kali.
+model PushSent {
+  id        String   @id @default(cuid())
+  /// Contoh: "booking:{serviceId}", "jadwal:{serviceId}:{epoch}", "stok:{partId}:{menit}".
+  dedupKey  String   @unique
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
 }

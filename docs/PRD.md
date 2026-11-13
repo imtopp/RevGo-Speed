@@ -17,6 +17,7 @@
 - v1.6 — **backup & restore penuh (26 Okt, FR-10):** akses backup **Owner + SysAdmin** (sesuai nav & PRD — sebelumnya kode mengunci Owner); export **seluruh tabel** (tambah `RateLimitBuckets` — daftar tunggal `src/lib/backup.ts`); **Restore dari file JSON** (`POST /api/backup/import`, konfirmasi ketik `RESTORE`): replace **SEMUA data dalam 1 transaksi** (gagal = rollback, data lama utuh), jejak AuditLog `SYSTEM_IMPORT`, rate limit paling ketat. **⚠️ Aturan sinkronisasi:** setiap perubahan `schema.prisma` (tambah/hapus model, ubah kolom/tipe) **wajib** disinkronkan dengan `src/lib/backup.ts` + export/import route — unit test `backup.test.ts` membaca `schema.prisma` dan **gagal otomatis** bila lupa.
 - v1.7 — **upload logo otomatis (26 Okt, FR-10):** SysAdmin/Owner cukup pilih file — server **auto-orient (EXIF), resize maks 512px, konversi WebP** (sharp), hasil disimpan sebagai **data URL** di `SystemSetting.logo_url` (ikut backup & branding otomatis; tanpa layanan storage eksternal). Terima PNG/JPEG/WebP/SVG ≤ 5 MB; opsi lama **pakai URL https tetap ada**. Validasi tipe/ukuran & sanitasi `data:image/webp|png|jpeg` terpusat di `src/lib/logo.ts` (unit test); body limit server action dinaikkan ke 6 MB (`next.config.ts`).
 - v1.8 — **penguatan kelola akun (26 Okt, FR-10):** **Admin & Mekanik wajib terikat 1 cabang** — validasi server `src/lib/staff-branch.ts` (unit test) menolak buat/assign tanpa cabang (sebelumnya opsi "Lintas cabang" bisa dipilih → efektif lintas padahal desain `getStaffBranchId` hanya utk Owner/SysAdmin); opsi lintas cabang hanya untuk **SysAdmin**; **akun customer dipisah** dari daftar staff (section terpisah — sebelumnya customer ikut tampil & kebagian form assign cabang).
+- v1.9 — **Web Push notification (13 Nov, FR-9):** notifikasi native-like 6 event — **booking baru & stok menipis** → staff (Owner lintas cabang + Admin cabang terkait), **estimasi masuk / jadwal diubah / dibatalkan / servis selesai** → customer (penerima unik `[customerId, vehicle.ownerId]` ber-role CUSTOMER aktif; walk-in tanpa akun skip). Kartu opt-in di Beranda staff (OWNER/ADMIN) & Pesanan — izin selalu dari **tap** (syarat iOS); klik notifikasi → detail servis/Pesanan/Stok. **Anti-dobel 4 lapis** (guard status + crossing minStock, klaim `PushSent.dedupKey @unique`, `tag` OS-replace, endpoint unik); kirim via `after()` no-op; env `NEXT_PUBLIC_VAPID_PUBLIC_KEY` + `VAPID_PRIVATE_KEY` (Vercel, kedua project); model ikut `BACKUP_TABLES`. + **navigasi back ala native** (App. B v1.5, `tab-history.ts` + `BackLink`).
 
 ---
 
@@ -222,6 +223,7 @@ PENDING / WAITING_APPROVAL / CONFIRMED / CHECKED_IN ──(batal)→ CANCELLED (
 ### FR-9 PWA, mobile & cetak — **Rilis 1**
 - Sudah ada: manifest, SW, ikon, bottom-nav; **responsif desktop (sidebar)**. Wajib: semua halaman nyaman di HP, format Rupiah & tanggal Indonesia, navigasi tanpa dead-end.
 - **Cetak:** halaman **nota servis** siap cetak (print browser). Cetak estimasi & daftar piutang → §7.
+- **Web Push (v1.9):** notifikasi event-driven — booking baru & stok menipis (staff), estimasi/jadwal/batal/selesai (customer); izin dari kartu opt-in (tap, syarat iOS); klik → halaman terkait; anti-dobel (dedup DB + tag OS-replace); mati senyap tanpa env VAPID → §App. B.
 
 ### FR-10 Pengaturan sistem — **Rilis 1**
 Akses: **Owner + SysAdmin**; perubahan tercatat (siapa, kapan).
@@ -367,7 +369,7 @@ Setiap fase selesai = fitur terpasang + role-guard teruji + `build`/`lint` hijau
 
 ---
 
-## App. B — Praktik implementasi (kualitas di atas minimum FR) — v1.5
+## App. B — Praktik implementasi (kualitas di atas minimum FR) — v1.6
 
 Bagian ini mendokumentasikan perilaku nyata di kode yang **melampaui ketentuan minimum** §4 — bukan fitur baru, melainkan *cara* fitur lama dieksekusi agar lebih efisien, ramah-pengguna, dan aman. Dipertahankan sebagai standar saat menambah fitur berikutnya.
 
@@ -421,6 +423,12 @@ Bagian ini mendokumentasikan perilaku nyata di kode yang **melampaui ketentuan m
 - **Tombol "Kembali"** (detail servis, cetak nota) = komponen `BackLink` → `history.back()` **hanya bila halaman sebelumnya memang targetnya**; selain itu (deep-link, sesi baru, datang dari halaman lain) tetap Link biasa yang membuka targetnya — back tidak pernah melempar ke login.
 - **Ganti query** (`PendingLink`, paginasi audit, "Semua tanggal") selalu `replace` — back meninggalkan halaman, bukan mengurangi filter satu per satu.
 - **Cetak Nota tetap satu tab** (bukan `target="_blank"`): back → detail; membuka tab baru di iOS PWA justru mengeluarkan app ke Safari.
+
+### Push notification (native-like)
+- **6 event**: booking baru & stok menipis → staff (**Owner lintas cabang + Admin cabang** booking/part); estimasi masuk, jadwal diubah, dibatalkan (+alasan), servis selesai → **customer** — penerima unik `[customerId, vehicle.ownerId]` ber-role CUSTOMER aktif (logika OR yang sama dengan query Pesanan); walk-in tanpa akun → skip diam. Customer tidak pernah menerima notifikasi stok.
+- **Izin dari tap** (syarat iOS — tanpa gesture tidak ada notifikasi): kartu lembut di Beranda staff (**OWNER+ADMIN saja**) & halaman Pesanan; "Nanti" = dismiss permanen (localStorage); izin ditolak → petunjuk Pengaturan HP; tanpa Push API (tab biasa iPhone) → hint "Tambahkan ke Layar Utama". Tidak ada `requestPermission()` otomatis saat halaman dimuat.
+- **Anti-dobel 4 lapis:** (1) guard status transisi + stok hanya saat **menyeberangi** minStock (qtySebelum > min ≥ qtySesudah) — gerakan berulang di bawah batas tidak spam, (2) klaim **`PushSent.dedupKey @unique`** sebelum kirim — aksi paralel/ganda hanya satu yang menang (P2002 → skip), (3) `tag` = dedupKey → OS **menimpa** notif lama, bukan menumpuk, (4) `PushSubscription.endpoint @unique` (upsert per device; endpoint mati 404/410 dibersihkan otomatis). Key: `booking:{id}`, `estimasi:{id}`, `jadwal:{id}:{epoch}`, `batal:{id}`, `selesai:{id}`, `stok:{partId}:{menit}`.
+- **Tidak pernah mengganggu aksi bisnis:** semua kirim lewat `after()` + try/catch → **no-op** kalau gagal/env hilang (TBRT aman sebelum env terpasang); tanpa `NEXT_PUBLIC_VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY` fitur mati senyap. Payload `url` → detail servis (staff) / Pesanan / Stok; `sw.js` handler `push` (JSON `{title,body,tag,url}`) + `notificationclick` (focus+navigate bila tab terbuka, else `openWindow`).
 
 ### Pola UX lintas modul (standar, di luar FR)
 - **Auto-close form sukses + flash notif otomatis hilang** (katalog, akun, kas manual, cabang, stok, customer) — error → form tetap terbuka. **Pengecualian: panel sukses booking permanen** sampai ditutup user — berisi kode booking, rincian, & tombol konfirmasi WA (FR-3), agar waktu menekan tombol tidak keburu habis.

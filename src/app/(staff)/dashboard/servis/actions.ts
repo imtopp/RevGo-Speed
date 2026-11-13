@@ -16,7 +16,16 @@ import {
   pesanDitolak,
 } from "@/lib/availability";
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { formatRupiah, formatTanggalWIB } from "@/lib/service-status";
+import {
+  notifyBatal,
+  notifyBookingBaru,
+  notifyEstimasi,
+  notifyJadwalDiubah,
+  notifySelesai,
+  notifyStokMenipis,
+} from "@/lib/push";
 import { normalizeWa, formatWaLocal } from "@/lib/wa";
 import type { Prisma, ServiceStatus } from "@db/prisma/client";
 
@@ -273,13 +282,14 @@ export async function createBooking(
         estimasiMenit: durasiMenit,
       },
     });
-    return { ok: true as const, code, passwordSementara, peringatan };
+    return { ok: true as const, id: created.id, code, passwordSementara, peringatan };
   });
 
   if (!hasil.ok) {
     return { error: hasil.error };
   }
 
+  after(() => notifyBookingBaru(hasil.id));
   revalidatePath("/dashboard/servis");
   return {
     success:
@@ -423,6 +433,7 @@ export async function submitEstimate(
     return { error: e instanceof Error ? e.message : "Gagal menyimpan estimasi." };
   }
 
+  after(() => notifyEstimasi(id));
   revalidatePath("/dashboard/servis");
   revalidatePath(`/dashboard/servis/${id}`);
   return { success: "Estimasi dikirim — menunggu persetujuan pelanggan." };
@@ -586,6 +597,7 @@ export async function changeSchedule(
     return { error: e instanceof Error ? e.message : "Gagal mengubah jadwal." };
   }
 
+  after(() => notifyJadwalDiubah(id));
   revalidatePath("/dashboard/servis");
   revalidatePath(`/dashboard/servis/${id}`);
   return {
@@ -755,6 +767,7 @@ export async function qcDone(
   await transition(id, ["IN_PROGRESS", "WAITING_PARTS"], "DONE", {
     finishedAt: new Date(),
   });
+  after(() => notifySelesai(id));
   revalidatePath("/dashboard/servis");
   revalidatePath(`/dashboard/servis/${id}`);
   return { success: "QC lolos → servis SELESAI. Siap diambil & bayar." };
@@ -786,6 +799,7 @@ export async function cancelService(
     "CANCELLED",
     { cancelReason: reason },
   );
+  after(() => notifyBatal(id));
   revalidatePath("/dashboard/servis");
   revalidatePath(`/dashboard/servis/${id}`);
   revalidatePath("/pesanan");
@@ -834,6 +848,8 @@ export async function addServicePart(
   }
 
   // Transaksi atomik: tambah ServicePart + kurangi stok + catat movement
+  let qtySebelum = 0;
+  let qtySesudah = 0;
   await prisma.$transaction(async (tx) => {
     // Guard atomik anti-race: decrement hanya bila stok masih mencukupi di DB.
     const updated = await tx.part.updateMany({
@@ -848,6 +864,8 @@ export async function addServicePart(
     // harus dari angka terkini, bukan bacaan basi sebelum transaksi.
     const partF = await tx.part.findUnique({ where: { id: partId } });
     if (!partF) throw new Error("Part tidak ditemukan.");
+    qtySebelum = partF.quantity + quantity;
+    qtySesudah = partF.quantity;
 
     // Alokasi FIFO: unit diambil dari batch pembelian tertua yang masih sisa,
     // jejaknya dicatat di PartBatchUsage supaya koreksi harga batch nanti bisa
@@ -912,6 +930,7 @@ export async function addServicePart(
     }
   });
 
+  after(() => notifyStokMenipis(partId, qtySebelum, qtySesudah));
   revalidatePath(`/dashboard/servis/${serviceId}`);
   revalidatePath("/dashboard/tugas");
   return { success: `${quantity} ${part.unit} ${part.name} dicatat & stok berkurang.` };

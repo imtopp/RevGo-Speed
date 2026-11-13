@@ -151,7 +151,9 @@ Aplikasi sama di-deploy untuk 2 pelanggan dari **1 repo** (bukan fork):
   dashboard `vercel.com/account/tokens`, token OAuth CLI kedaluwarsa ±12 jam),
   plus `DATABASE_URL`, `DATABASE_URL_UNPOOLED`,
   `AUTH_SECRET`, `AUTH_URL`, `HIDE_EV_MEREK`
-  (TBRT `true` â€” tanpa motor listrik; RevGo tidak di-set).
+  (TBRT `true` â€” tanpa motor listrik; RevGo tidak di-set),
+  `NEXT_PUBLIC_VAPID_PUBLIC_KEY` + `VAPID_PRIVATE_KEY`
+  (Web Push — pair sama di kedua project; subscription per-DB).
 - **Production branch Vercel** (Environments -> Production -> Branch Tracking)
   **hanya bisa di-set via dashboard**, tidak ada API-nya. Setelah di-set,
   trigger build pertama dengan push kosong ke `release/tbrt`.
@@ -190,7 +192,30 @@ AUTH_SECRET="..."                 # openssl rand -hex 32
 AUTH_URL="http://localhost:3000"  # production: URL Vercel
 HIDE_EV_MEREK="true"              # opsional: sembunyikan group motor listrik
                                   #   (TBRT=true; RevGo tidak di-set)
+NEXT_PUBLIC_VAPID_PUBLIC_KEY="..." # Web Push public key (boleh terbit)
+VAPID_PRIVATE_KEY="..."           # Web Push PRIVATE - hanya env Vercel,
+                                  #   jangan commit/print/log (push mati
+                                  #   senyap kalau kosong)
 ```
+
+## Web Push (notifikasi)
+
+- Inti: `src/lib/push.ts` (payload+dedupKey+seleksi penerima murni, orchestrator
+  `notify*`), server action `src/lib/push-actions.ts` (save/remove subscription),
+  kartu opt-in `src/components/push-opt-in-card.tsx` (Beranda staff OWNER/ADMIN +
+  halaman Pesanan), handler `push`/`notificationclick` di `public/sw.js`
+  (cache v5). Test: `src/lib/push.test.ts`.
+- Skema: model `PushSubscription` (endpoint @unique, FK User cascade) +
+  `PushSent` (dedupKey @unique) - **wajib ikut `BACKUP_TABLES`** (backup.test).
+- **Kirim hanya via `after()` + try/catch** setelah aksi sukses - push gagal
+  tidak pernah menggagalkan aksi bisnis; tanpa env VAPID = no-op.
+- **Anti-dobel wajib dipertahankan:** guard status/crossing minStock -> klaim
+  `PushSent.dedupKey` unique sebelum kirim (P2002 = skip) -> payload `tag`
+  (OS replace) -> endpoint unique. Jangan kirim tanpa klaim.
+- Penerima: booking baru & stok = Owner lintas cabang + Admin cabang; event
+  customer = unik [customerId, vehicle.ownerId] ber-role CUSTOMER aktif.
+- Generate ulang pair (jarang): `node -e "console.log(JSON.stringify(require('web-push').generateVAPIDKeys()))"`
+  lalu update env Vercel kedua project (production+preview) - lama otomatis mati.
 
 ## Testing
 
