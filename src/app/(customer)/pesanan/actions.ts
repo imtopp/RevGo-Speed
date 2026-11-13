@@ -6,10 +6,20 @@ import { normalizeMerek, normalizeTipe, modelTidakSesuaiMerek, normalizePlate, M
 import { cekSlotTersedia, kunciSlot } from "@/lib/booking";
 import { DURASI_DEFAULT_MENIT, parseJadwal, pesanDitolak } from "@/lib/availability";
 import { normalizeWa } from "@/lib/wa";
+import { formatTanggalWIB } from "@/lib/service-status";
 import { revalidatePath } from "next/cache";
 import type { Prisma } from "@db/prisma/client";
 
-export type CustomerState = { error?: string; success?: string; code?: string };
+export type CustomerState = {
+  error?: string;
+  success?: string;
+  code?: string;
+  rincian?: {
+    kendaraan: string;
+    layanan: string | null;
+    jadwal: string | null;
+  };
+};
 
 async function requireCustomer() {
   const session = await auth();
@@ -134,6 +144,11 @@ export async function customerBooking(
   return {
     success: `Booking ${hasil.code} terkirim. Menunggu konfirmasi bengkel.`,
     code: hasil.code,
+    rincian: {
+      kendaraan: `${vehicle.plateNumber} · ${vehicle.brand} ${vehicle.model}`,
+      layanan: complaint || catalog?.nama || null,
+      jadwal: formatTanggalWIB(new Date(epoch)),
+    },
   };
 }
 

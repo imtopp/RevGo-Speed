@@ -55,3 +55,24 @@ export function formatWaLocal(nomor: string): string {
   const lokal = "0" + kanonik.slice(2);
   return lokal.replace(/^(\d{4})(\d{4})(\d+)$/, "$1-$2-$3");
 }
+
+/**
+ * Pesan pratinjau WhatsApp konfirmasi booking — kode + rincian (motor,
+ * layanan, jadwal) supaya customer tinggal kirim ke bengkel.
+ * Rincian opsional yang kosong tidak menghasilkan baris kosong.
+ */
+export function pesanKonfirmasiBooking(opts: {
+  appName: string;
+  code: string;
+  kendaraan?: string | null;
+  layanan?: string | null;
+  jadwal?: string | null;
+}): string {
+  const baris = [
+    `Halo ${opts.appName}, saya mau konfirmasi booking ${opts.code}.`,
+  ];
+  if (opts.kendaraan) baris.push(`Motor: ${opts.kendaraan}`);
+  if (opts.layanan) baris.push(`Layanan: ${opts.layanan}`);
+  if (opts.jadwal) baris.push(`Jadwal: ${opts.jadwal}`);
+  return baris.join("\n");
+}

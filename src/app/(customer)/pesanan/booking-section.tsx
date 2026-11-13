@@ -18,7 +18,7 @@ import {
 } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
 import { SlotPicker } from "@/components/slot-picker";
-import { waLink } from "@/lib/wa";
+import { waLink, pesanKonfirmasiBooking } from "@/lib/wa";
 
 type Vehicle = { id: string; plateNumber: string; brand: string; model: string };
 type Branch = { id: string; name: string };
@@ -283,15 +283,18 @@ export function BookingSection({
   const [showBooking, setShowBooking] = useState(false);
   const [flash, setFlash] = useState<string | null>(null);
   // Panel sukses booking — menempel sampai ditutup (bukan flash 6 detik),
-  // berisi kode booking + tombol konfirmasi WhatsApp.
-  const [lastBooking, setLastBooking] = useState<string | null>(null);
+  // berisi kode booking + rincian + tombol konfirmasi WhatsApp.
+  const [lastBooking, setLastBooking] = useState<{
+    code: string;
+    rincian?: CustomerState["rincian"];
+  } | null>(null);
   const [branchId, setBranchId] = useState(branches[0]?.id ?? "");
   const [jadwal, setJadwal] = useState("");
 
   const runBooking = async (prev: CustomerState, fd: FormData) => {
     const r = await customerBooking(prev, fd);
-    if (r.success) {
-      setLastBooking(r.code ?? "");
+    if (r.success && r.code) {
+      setLastBooking({ code: r.code, rincian: r.rincian });
       setShowBooking(false);
       setJadwal("");
     }
@@ -330,15 +333,19 @@ export function BookingSection({
       {lastBooking && (
         <div className="space-y-2 rounded-xl border border-emerald-200 bg-emerald-50 p-4 shadow-card">
           <p className="text-sm font-medium text-emerald-800">
-            Booking <span className="font-mono">{lastBooking}</span> terkirim.
-            Menunggu konfirmasi bengkel.
+            Booking <span className="font-mono">{lastBooking.code}</span>{" "}
+            terkirim. Menunggu konfirmasi bengkel.
           </p>
           <div className="flex flex-wrap items-center gap-2">
             {waNumber && (
               <a
                 href={waLink(
                   waNumber,
-                  `Halo ${appName}, saya mau konfirmasi booking ${lastBooking}.`,
+                  pesanKonfirmasiBooking({
+                    appName,
+                    code: lastBooking.code,
+                    ...lastBooking.rincian,
+                  }),
                 )}
                 target="_blank"
                 rel="noopener noreferrer"

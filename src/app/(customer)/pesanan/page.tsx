@@ -11,6 +11,7 @@ import {
 import { BookingSection, RespondForm } from "./booking-section";
 import { buildModelPerMerek, merekGroupsTampil } from "@/lib/vehicle";
 import { getBranding } from "@/lib/branding";
+import { waLink, pesanKonfirmasiBooking } from "@/lib/wa";
 import type { ServiceStatus } from "@db/prisma/client";
 
 export const metadata = { title: "Pesanan Saya" };
@@ -131,6 +132,28 @@ export default async function PesananPage() {
             <div className="mt-3">
               <RespondForm id={active.id} />
             </div>
+          )}
+
+          {waNumber && (
+            <a
+              href={waLink(
+                waNumber,
+                pesanKonfirmasiBooking({
+                  appName,
+                  code: active.code,
+                  kendaraan: `${active.vehicle.plateNumber} · ${active.vehicle.brand} ${active.vehicle.model}`,
+                  layanan: active.complaint,
+                  jadwal: active.scheduledAt
+                    ? formatTanggalWIB(active.scheduledAt)
+                    : null,
+                }),
+              )}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-3 inline-flex items-center rounded-lg bg-success px-3 py-2 text-sm font-medium text-white active:opacity-90"
+            >
+              Konfirmasi via WhatsApp &rarr;
+            </a>
           )}
         </div>
       )}

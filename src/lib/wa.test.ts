@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { formatWaLocal, normalizeWa, waLink } from "./wa";
+import {
+  formatWaLocal,
+  normalizeWa,
+  pesanKonfirmasiBooking,
+  waLink,
+} from "./wa";
 
 describe("normalizeWa", () => {
   it("menerima format lokal 08xx dengan spasi/strip", () => {
@@ -67,6 +72,52 @@ describe("waLink", () => {
     expect(waLink("6281234567890", "Halo, saya mau konfirmasi booking SV-1")).toBe(
       "https://wa.me/6281234567890?text=" +
         encodeURIComponent("Halo, saya mau konfirmasi booking SV-1"),
+    );
+  });
+});
+
+describe("pesanKonfirmasiBooking", () => {
+  it("gabungkan greeting, kode, dan semua rincian yang tersedia", () => {
+    expect(
+      pesanKonfirmasiBooking({
+        appName: "TBRT",
+        code: "SV-BT26-0001",
+        kendaraan: "B 1234 XY · Honda Beat",
+        layanan: "Ganti oli",
+        jadwal: "13 Nov 2026, 10:00 WIB",
+      }),
+    ).toBe(
+      "Halo TBRT, saya mau konfirmasi booking SV-BT26-0001.\n" +
+        "Motor: B 1234 XY · Honda Beat\n" +
+        "Layanan: Ganti oli\n" +
+        "Jadwal: 13 Nov 2026, 10:00 WIB",
+    );
+  });
+
+  it("hanya greeting + kode bila rincian tidak ada", () => {
+    expect(pesanKonfirmasiBooking({ appName: "RevGo", code: "SV-01" })).toBe(
+      "Halo RevGo, saya mau konfirmasi booking SV-01.",
+    );
+    expect(
+      pesanKonfirmasiBooking({
+        appName: "RevGo",
+        code: "SV-01",
+        kendaraan: null,
+        layanan: "",
+        jadwal: undefined,
+      }),
+    ).toBe("Halo RevGo, saya mau konfirmasi booking SV-01.");
+  });
+
+  it("lewatkan rincian sebagian tanpa baris kosong", () => {
+    expect(
+      pesanKonfirmasiBooking({
+        appName: "TBRT",
+        code: "SV-BT26-0002",
+        layanan: "Servis rem",
+      }),
+    ).toBe(
+      "Halo TBRT, saya mau konfirmasi booking SV-BT26-0002.\nLayanan: Servis rem",
     );
   });
 });
