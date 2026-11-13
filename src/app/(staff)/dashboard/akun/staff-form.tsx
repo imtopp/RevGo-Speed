@@ -94,6 +94,7 @@ export function StaffForm({ branches }: { branches: Branch[] }) {
           <input
             name="phone"
             type="tel"
+            placeholder="0812xxxxxxxx"
             className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-base outline-none focus:border-slate-900"
           />
         </div>

@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { requireStaffRole, getStaffBranchId } from "@/lib/guard";
 import { formatRupiah, STATUS_LABEL, bolehBayar, PESAN_BAYAR_DITAHAN } from "@/lib/service-status";
+import { formatWaLocal } from "@/lib/wa";
 import { PaymentForm } from "../kas/payment-form";
 import { BranchPicker } from "../stok/branch-picker";
 import Link from "next/link";
@@ -88,7 +89,7 @@ export default async function PiutangPage({
                 <p className="text-sm text-muted-foreground">
                   {s.customerName ?? s.customer?.name ?? "—"}
                   {(s.customerPhone ?? s.customer?.phone)
-                    ? ` · ${s.customerPhone ?? s.customer?.phone}`
+                    ? ` · ${formatWaLocal((s.customerPhone ?? s.customer?.phone) ?? "")}`
                     : ""} ·{" "}
                   {s.vehicle.plateNumber}
                 </p>

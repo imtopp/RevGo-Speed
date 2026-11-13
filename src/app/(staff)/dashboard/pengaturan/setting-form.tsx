@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import { updateSetting, type SettingState } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
+import { formatWaLocal } from "@/lib/wa";
 
 type Field = { key: string; label: string; placeholder: string };
 
@@ -31,7 +32,9 @@ export function SettingForm({
         </label>
         <input
           name="value"
-          defaultValue={initialValue}
+          defaultValue={
+            field.key === "wa_bengkel" ? formatWaLocal(initialValue) : initialValue
+          }
           placeholder={field.placeholder}
           className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-base outline-none focus:border-slate-900"
         />

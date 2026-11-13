@@ -55,7 +55,7 @@ export function WaEdit({
               name="phone"
               type="tel"
               required
-              defaultValue={current ?? ""}
+              defaultValue={current ? formatWaLocal(current) : ""}
               placeholder="0812xxxxxxxx — aktif WhatsApp"
               className={inputCls}
             />

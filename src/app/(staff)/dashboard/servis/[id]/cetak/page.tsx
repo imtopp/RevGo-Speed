@@ -4,6 +4,7 @@ import { getAppName } from "@/lib/branding";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { formatRupiah, formatTanggal } from "@/lib/service-status";
+import { formatWaLocal } from "@/lib/wa";
 import { PrintButton } from "./print-button";
 
 export const metadata = { title: "Cetak Nota" };
@@ -74,7 +75,11 @@ export default async function CetakNotaPage({
           {(service.customerPhone ?? service.customer?.phone) && (
             <div className="flex justify-between">
               <span className="text-muted-foreground">HP</span>
-              <span>{service.customerPhone ?? service.customer?.phone}</span>
+              <span>
+                {formatWaLocal(
+                  (service.customerPhone ?? service.customer?.phone) ?? "",
+                )}
+              </span>
             </div>
           )}
         </div>

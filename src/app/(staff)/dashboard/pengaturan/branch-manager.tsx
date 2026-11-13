@@ -4,6 +4,7 @@ import { useActionState, useEffect, useState } from "react";
 import { createBranch, updateBranch, type BranchState } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
 import { NumberInput } from "@/components/number-input";
+import { formatWaLocal } from "@/lib/wa";
 
 type Branch = {
   id: string;
@@ -46,7 +47,8 @@ function BranchFields({ branch }: { branch?: Branch }) {
           </label>
           <input
             name="phone"
-            defaultValue={branch?.phone ?? ""}
+            defaultValue={formatWaLocal(branch?.phone ?? "")}
+            placeholder="0812xxxxxxxx"
             className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-base outline-none focus:border-slate-900"
           />
         </div>

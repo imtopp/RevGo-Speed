@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import { updateProfilWa, type ProfilState } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
+import { formatWaLocal } from "@/lib/wa";
 
 const inputCls =
   "mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-base outline-none focus:border-slate-900";
@@ -75,7 +76,7 @@ export function ProfilForm({
             type="tel"
             required
             autoComplete="tel"
-            defaultValue={phone ?? ""}
+            defaultValue={phone ? formatWaLocal(phone) : ""}
             placeholder="0812xxxxxxxx — aktif WhatsApp"
             className={inputCls}
           />
