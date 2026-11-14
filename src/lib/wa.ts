@@ -57,6 +57,42 @@ export function formatWaLocal(nomor: string): string {
 }
 
 /**
+ * Pesan pratinjau WhatsApp pembatalan booking — kode + alasan (opsional)
+ * supaya admin tinggal kirim ke customer setelah membatalkan.
+ * Alasan kosong tidak menghasilkan baris kosong.
+ */
+export function pesanPembatalan(opts: {
+  appName: string;
+  code: string;
+  alasan?: string | null;
+}): string {
+  const baris = [
+    `Halo, booking ${opts.code} di ${opts.appName} dibatalkan oleh bengkel.`,
+  ];
+  if (opts.alasan) baris.push(`Alasan: ${opts.alasan}`);
+  baris.push(
+    "Mohon maaf atas ketidaknyamanannya — silakan booking ulang kapan saja.",
+  );
+  return baris.join("\n");
+}
+
+/**
+ * Pesan pratinjau WhatsApp perubahan jadwal — kode + jadwal baru
+ * (sudah diformat pemanggil) supaya admin tinggal kirim ke customer.
+ */
+export function pesanJadwalBaru(opts: {
+  appName: string;
+  code: string;
+  jadwal: string;
+}): string {
+  return [
+    `Halo, jadwal kedatangan booking ${opts.code} di ${opts.appName} diubah.`,
+    `Jadwal baru: ${opts.jadwal}`,
+    "Mohon dikonfirmasi bila berkenan. Terima kasih.",
+  ].join("\n");
+}
+
+/**
  * Pesan pratinjau WhatsApp konfirmasi booking — kode + rincian (motor,
  * layanan, jadwal) supaya customer tinggal kirim ke bengkel.
  * Rincian opsional yang kosong tidak menghasilkan baris kosong.

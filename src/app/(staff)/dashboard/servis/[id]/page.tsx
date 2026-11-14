@@ -22,6 +22,8 @@ import { RemovePartButton } from "./remove-part-button";
 import { WaEdit } from "./wa-edit";
 import { PaymentForm } from "../../kas/payment-form";
 import { formatTanggalPendek } from "@/lib/service-status";
+import { getAppName } from "@/lib/branding";
+import { waLink, pesanPembatalan } from "@/lib/wa";
 
 export const metadata = { title: "Detail Servis" };
 
@@ -50,6 +52,10 @@ export default async function ServisDetailPage({
     },
   });
   if (!service) notFound();
+
+  const appName = await getAppName();
+  const waCustomer =
+    service.customer?.phone ?? service.customerPhone ?? service.vehicle.owner?.phone ?? null;
 
   // Scoping cabang: ADMIN/MECHANIC tidak boleh membuka servis cabang lain.
   const branchIdStaff = await getStaffBranchId();
@@ -374,6 +380,7 @@ export default async function ServisDetailPage({
           <ActionForms
             service={{
               id: service.id,
+              code: service.code,
               branchId: service.branchId,
               status: service.status,
               catalogId: service.catalogId,
@@ -385,6 +392,7 @@ export default async function ServisDetailPage({
               complaint: service.complaint,
               diagnosis: service.diagnosis,
               finishedAt: service.finishedAt,
+              customerWa: waCustomer,
             }}
             mechanics={mekanikTersedia}
             busyMechanics={busyMechanics}
@@ -392,6 +400,7 @@ export default async function ServisDetailPage({
             parts={parts}
             isMechanic={isMechanic}
             isAssignedMechanic={isAssignedMechanic}
+            appName={appName}
           />
           {/* Sticky action bar — mobile, zona jempol */}
           <div className="sticky bottom-[45px] z-30 md:hidden">
@@ -411,7 +420,7 @@ export default async function ServisDetailPage({
       )}
 
       {(service.status === "DONE" || service.status === "CANCELLED") && (
-        <div className="rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
+        <div className="space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
           <p className="text-sm text-muted-foreground">
             {service.status === "DONE"
               ? remaining > 0
@@ -419,6 +428,23 @@ export default async function ServisDetailPage({
                 : "Servis selesai dan tagihan sudah lunas."
               : `Servis sudah ${STATUS_LABEL[service.status].toLowerCase()}.`}
           </p>
+          {service.status === "CANCELLED" && waCustomer && (
+            <a
+              href={waLink(
+                waCustomer,
+                pesanPembatalan({
+                  appName,
+                  code: service.code,
+                  alasan: service.cancelReason,
+                }),
+              )}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block w-full rounded-lg bg-success px-3 py-2.5 text-center text-sm font-medium text-white active:opacity-90"
+            >
+              Kirim info pembatalan via WhatsApp &rarr;
+            </a>
+          )}
         </div>
       )}
     </div>

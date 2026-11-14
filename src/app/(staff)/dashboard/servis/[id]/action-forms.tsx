@@ -22,10 +22,12 @@ import { SlotPicker } from "@/components/slot-picker";
 import { PartPicker } from "@/components/part-picker";
 import { NumberInput } from "@/components/number-input";
 import { formatRupiah, formatTanggalWIB } from "@/lib/service-status";
+import { waLink, pesanJadwalBaru } from "@/lib/wa";
 import type { ServiceStatus } from "@db/prisma/client";
 
 type ServiceInfo = {
   id: string;
+  code: string;
   branchId: string;
   status: ServiceStatus;
   catalogId: string | null;
@@ -37,6 +39,7 @@ type ServiceInfo = {
   complaint: string | null;
   diagnosis: string | null;
   finishedAt: Date | null;
+  customerWa: string | null;
 };
 
 type Mechanic = { id: string; name: string };
@@ -194,7 +197,13 @@ function EstimateForm({
   );
 }
 
-function RescheduleForm({ service }: { service: ServiceInfo }) {
+function RescheduleForm({
+  service,
+  appName,
+}: {
+  service: ServiceInfo;
+  appName: string;
+}) {
   const { state, formAction } = useForm(changeSchedule);
   const [jadwal, setJadwal] = useState("");
   return (
@@ -224,6 +233,23 @@ function RescheduleForm({ service }: { service: ServiceInfo }) {
       >
         Simpan Jadwal Baru
       </SubmitButton>
+      {state.success && service.customerWa && jadwal && (
+        <a
+          href={waLink(
+            service.customerWa,
+            pesanJadwalBaru({
+              appName,
+              code: service.code,
+              jadwal: formatTanggalWIB(jadwal),
+            }),
+          )}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="block w-full rounded-lg bg-success px-3 py-2.5 text-center text-sm font-medium text-white active:opacity-90"
+        >
+          Kirim jadwal baru via WhatsApp &rarr;
+        </a>
+      )}
     </form>
   );
 }
@@ -492,6 +518,7 @@ export function ActionForms({
   parts,
   isMechanic,
   isAssignedMechanic,
+  appName,
 }: {
   service: ServiceInfo;
   mechanics: Mechanic[];
@@ -500,6 +527,7 @@ export function ActionForms({
   parts: Part[];
   isMechanic: boolean;
   isAssignedMechanic: boolean;
+  appName: string;
 }) {
   const canAdmin = !isMechanic;
 
@@ -519,7 +547,7 @@ export function ActionForms({
         );
         others = [
           <ApproveForm key="approve" service={service} />,
-          <RescheduleForm key="jadwal" service={service} />,
+          <RescheduleForm key="jadwal" service={service} appName={appName} />,
           <CancelForm key="cancel" service={service} />,
         ];
       }

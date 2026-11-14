@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   formatWaLocal,
   normalizeWa,
+  pesanJadwalBaru,
   pesanKonfirmasiBooking,
+  pesanPembatalan,
   waLink,
 } from "./wa";
 
@@ -118,6 +120,50 @@ describe("pesanKonfirmasiBooking", () => {
       }),
     ).toBe(
       "Halo TBRT, saya mau konfirmasi booking SV-BT26-0002.\nLayanan: Servis rem",
+    );
+  });
+});
+
+describe("pesanPembatalan", () => {
+  it("gabungkan greeting, kode, alasan, dan penutup", () => {
+    expect(
+      pesanPembatalan({
+        appName: "TBRT",
+        code: "SV-BT26-0009",
+        alasan: "Customer tidak jadi datang",
+      }),
+    ).toBe(
+      "Halo, booking SV-BT26-0009 di TBRT dibatalkan oleh bengkel.\n" +
+        "Alasan: Customer tidak jadi datang\n" +
+        "Mohon maaf atas ketidaknyamanannya — silakan booking ulang kapan saja.",
+    );
+  });
+
+  it("alasan kosong/tidak ada tidak menghasilkan baris kosong", () => {
+    const tanpaAlasan = "Halo, booking SV-01 di RevGo dibatalkan oleh bengkel.\n" +
+      "Mohon maaf atas ketidaknyamanannya — silakan booking ulang kapan saja.";
+    expect(pesanPembatalan({ appName: "RevGo", code: "SV-01" })).toBe(tanpaAlasan);
+    expect(
+      pesanPembatalan({ appName: "RevGo", code: "SV-01", alasan: null }),
+    ).toBe(tanpaAlasan);
+    expect(
+      pesanPembatalan({ appName: "RevGo", code: "SV-01", alasan: "" }),
+    ).toBe(tanpaAlasan);
+  });
+});
+
+describe("pesanJadwalBaru", () => {
+  it("gabungkan greeting, kode, dan jadwal baru", () => {
+    expect(
+      pesanJadwalBaru({
+        appName: "TBRT",
+        code: "SV-BT26-0010",
+        jadwal: "14 Nov 2026, 10.00",
+      }),
+    ).toBe(
+      "Halo, jadwal kedatangan booking SV-BT26-0010 di TBRT diubah.\n" +
+        "Jadwal baru: 14 Nov 2026, 10.00\n" +
+        "Mohon dikonfirmasi bila berkenan. Terima kasih.",
     );
   });
 });
