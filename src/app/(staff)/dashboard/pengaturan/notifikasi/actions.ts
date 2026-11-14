@@ -37,6 +37,19 @@ async function requireOwnerOrSysAdminAction() {
   return session;
 }
 
+// Penerima notifikasi staf = OWNER + ADMIN; keduanya (plus SYS_ADMIN) boleh
+// menghubungkan/memutus akun Telegram miliknya sendiri.
+const BOLEH_HUBUNGKAN: string[] = ["OWNER", "SYS_ADMIN", "ADMIN"];
+
+async function requireBisaHubungkanTelegram() {
+  const session = await auth();
+  if (!session?.user || !BOLEH_HUBUNGKAN.includes(session.user.role)) {
+    throw new Error("Tidak punya akses.");
+  }
+  await assertActiveUser(session.user.id);
+  return session;
+}
+
 export async function updateNotifTemplates(
   _prev: TemplateState,
   formData: FormData,
@@ -143,7 +156,7 @@ export async function aktifkanTelegramWebhook(): Promise<TemplateState> {
 }
 
 export async function buatLinkHubungkanTelegram(): Promise<TemplateState> {
-  const session = await requireOwnerOrSysAdminAction();
+  const session = await requireBisaHubungkanTelegram();
   if (!telegramEnabled()) {
     return { error: "Env TELEGRAM_BOT_TOKEN belum diatur di Vercel." };
   }
@@ -169,6 +182,7 @@ export async function buatLinkHubungkanTelegram(): Promise<TemplateState> {
   const next = { ...config, botUsername: me.username, tokens };
 
   await simpanTelegramConfig(next, session.user.id);
+  revalidatePath("/dashboard");
   revalidatePath("/dashboard/pengaturan/notifikasi");
   return {
     success: "Buka link di bawah ini, lalu tap Start di bot Telegram.",
@@ -177,7 +191,7 @@ export async function buatLinkHubungkanTelegram(): Promise<TemplateState> {
 }
 
 export async function putuskanTelegramSaya(): Promise<TemplateState> {
-  const session = await requireOwnerOrSysAdminAction();
+  const session = await requireBisaHubungkanTelegram();
   const prev = await muatTelegramConfig();
   if (!prev.chats[session.user.id]) {
     return { error: "Akun Telegram Anda belum terhubung." };
@@ -196,6 +210,7 @@ export async function putuskanTelegramSaya(): Promise<TemplateState> {
     });
   });
 
+  revalidatePath("/dashboard");
   revalidatePath("/dashboard/pengaturan/notifikasi");
   return { success: "Akun Telegram Anda diputus." };
 }

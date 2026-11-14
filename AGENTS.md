@@ -249,8 +249,11 @@ TELEGRAM_BOT_TOKEN="..."          # opsional - token bot @BotFather; channel
   userId→chatId, tokens satu-pakai; kirim `sendMessage` plain text + tombol
   "Buka"). Webhook `POST /api/telegram/webhook` (verifikasi header
   `X-Telegram-Bot-Api-Secret-Token`; `/start <token>` → ikat chatId).
-  Alur hubungkan: Pengaturan > Notifikasi → "Hubungkan" → tap link t.me →
-  Start. **Mati senyap tanpa env `TELEGRAM_BOT_TOKEN`** (buat via
+  Alur hubungkan: kartu "Notifikasi Telegram" di **Beranda staff
+  (OWNER/ADMIN)** atau Pengaturan > Notifikasi (OWNER/SYS_ADMIN) →
+  "Hubungkan" → tap link t.me → Start; **aktifkan webhook hanya
+  OWNER/SYS_ADMIN** (ADMIN cabang = penerima, menghubungkan akunnya
+  sendiri dari Beranda). **Mati senyap tanpa env `TELEGRAM_BOT_TOKEN`** (buat via
   @BotFather); webhook butuh `AUTH_URL` produksi. Kirim dibungkus
   try/catch — tidak pernah menjatuhkan aksi bisnis; teks = template push
   yang sama. Test: `telegram.test.ts` (bagian murni).

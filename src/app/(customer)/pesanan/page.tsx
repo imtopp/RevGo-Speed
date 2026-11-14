@@ -88,8 +88,6 @@ export default async function PesananPage() {
         </p>
       </div>
 
-      <PushOptInCard enabled={pushEnabled()} konteks="customer" />
-
       {active && (
         <div className="rounded-xl bg-surface p-4 ring-2 ring-primary/30 shadow-card">
           <div className="flex items-start justify-between gap-2">
@@ -276,6 +274,8 @@ export default async function PesananPage() {
           })}
         </div>
       )}
+
+      <PushOptInCard enabled={pushEnabled()} konteks="customer" />
     </div>
   );
 }

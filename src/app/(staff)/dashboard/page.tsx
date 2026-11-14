@@ -5,6 +5,12 @@ import { redirect } from "next/navigation";
 import { formatRupiah } from "@/lib/service-status";
 import { pushEnabled } from "@/lib/push";
 import { PushOptInCard } from "@/components/push-opt-in-card";
+import {
+  muatTelegramConfig,
+  telegramEnabled,
+  webhookUrlTelegram,
+} from "@/lib/telegram";
+import { TelegramOptInCard } from "@/components/telegram-opt-in-card";
 import Link from "next/link";
 
 export const metadata = { title: "Dashboard" };
@@ -15,6 +21,7 @@ export default async function DashboardHome() {
 
   const role = session.user.role;
   const isOperational = role === "OWNER" || role === "ADMIN";
+  const bawahAktifkanTelegram = role === "OWNER" || role === "SYS_ADMIN";
   const showStokStat = role !== "SYS_ADMIN";
   const branchIdStaff = await getStaffBranchId();
   const branchWhere = branchIdStaff ? { branchId: branchIdStaff } : {};
@@ -59,6 +66,8 @@ export default async function DashboardHome() {
     const paid = s.payments.reduce((x, p) => x + p.amount, 0);
     return sum + Math.max(0, total - paid);
   }, 0);
+
+  const tgConfig = isOperational ? await muatTelegramConfig() : null;
 
   const stokMenipis = parts.filter((p) => p.quantity <= p.minStock).length;
 
@@ -134,8 +143,16 @@ export default async function DashboardHome() {
       )}
 
       {isOperational && (
-        <div className="max-w-xl">
+        <div className="max-w-xl space-y-3">
           <PushOptInCard enabled={pushEnabled()} konteks="staff" />
+          <TelegramOptInCard
+            enabled={telegramEnabled()}
+            webhookAktif={
+              !!tgConfig?.webhookSecret && !!webhookUrlTelegram()
+            }
+            sayaTerhubung={!!tgConfig?.chats[session.user.id]}
+            bawahAktifkan={bawahAktifkanTelegram}
+          />
         </div>
       )}
     </div>
