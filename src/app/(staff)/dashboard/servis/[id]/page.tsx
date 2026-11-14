@@ -24,6 +24,7 @@ import { PaymentForm } from "../../kas/payment-form";
 import { formatTanggalPendek } from "@/lib/service-status";
 import { getAppName } from "@/lib/branding";
 import { waLink, pesanPembatalan } from "@/lib/wa";
+import { muatTemplateNotif } from "@/lib/notif-template-db";
 
 export const metadata = { title: "Detail Servis" };
 
@@ -54,6 +55,7 @@ export default async function ServisDetailPage({
   if (!service) notFound();
 
   const appName = await getAppName();
+  const tplNotif = await muatTemplateNotif();
   const waCustomer =
     service.customer?.phone ?? service.customerPhone ?? service.vehicle.owner?.phone ?? null;
 
@@ -401,6 +403,7 @@ export default async function ServisDetailPage({
             isMechanic={isMechanic}
             isAssignedMechanic={isAssignedMechanic}
             appName={appName}
+            tplWaJadwal={tplNotif["wa.jadwal_baru"]?.body}
           />
           {/* Sticky action bar — mobile, zona jempol */}
           <div className="sticky bottom-[45px] z-30 md:hidden">
@@ -436,6 +439,7 @@ export default async function ServisDetailPage({
                   appName,
                   code: service.code,
                   alasan: service.cancelReason,
+                  tpl: tplNotif["wa.pembatalan"]?.body,
                 }),
               )}
               target="_blank"

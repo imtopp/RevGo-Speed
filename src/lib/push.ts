@@ -20,6 +20,13 @@
 import { sendNotification, setVapidDetails } from "web-push";
 import { prisma } from "@/lib/prisma";
 import { formatRupiah, formatTanggalWIB } from "@/lib/service-status";
+import {
+  defaultTemplate,
+  renderTemplate,
+  type TemplateInput,
+} from "@/lib/notif-template";
+import { muatTemplateNotif } from "@/lib/notif-template-db";
+import { kirimTelegramStaf } from "@/lib/telegram";
 
 export type PushPayload = {
   title: string;
@@ -89,10 +96,22 @@ export function payloadBookingBaru(d: {
   plate: string;
   scheduledAt: Date;
   tag: string;
+  tpl?: TemplateInput;
 }): PushPayload {
+  const vars = {
+    code: d.code,
+    plate: d.plate,
+    jadwal: formatTanggalWIB(d.scheduledAt),
+  };
   return {
-    title: "Booking baru masuk",
-    body: `${d.code} · ${d.plate} · ${formatTanggalWIB(d.scheduledAt)}`,
+    title: renderTemplate(
+      d.tpl?.title ?? defaultTemplate("push.booking_baru", "title"),
+      vars,
+    ),
+    body: renderTemplate(
+      d.tpl?.body ?? defaultTemplate("push.booking_baru", "body"),
+      vars,
+    ),
     tag: d.tag,
     url: `/dashboard/servis/${d.id}`,
   };
@@ -103,10 +122,18 @@ export function payloadEstimasi(d: {
   code: string;
   estimate: number;
   tag: string;
+  tpl?: TemplateInput;
 }): PushPayload {
+  const vars = { code: d.code, estimasi: formatRupiah(d.estimate) };
   return {
-    title: "Estimasi menunggu persetujuan",
-    body: `${d.code} · estimasi ${formatRupiah(d.estimate)} — buka Pesanan untuk menyetujui`,
+    title: renderTemplate(
+      d.tpl?.title ?? defaultTemplate("push.estimasi", "title"),
+      vars,
+    ),
+    body: renderTemplate(
+      d.tpl?.body ?? defaultTemplate("push.estimasi", "body"),
+      vars,
+    ),
     tag: d.tag,
     url: "/pesanan",
   };
@@ -117,10 +144,18 @@ export function payloadJadwal(d: {
   code: string;
   scheduledAt: Date;
   tag: string;
+  tpl?: TemplateInput;
 }): PushPayload {
+  const vars = { code: d.code, jadwal: formatTanggalWIB(d.scheduledAt) };
   return {
-    title: "Jadwal booking berubah",
-    body: `${d.code} → ${formatTanggalWIB(d.scheduledAt)}`,
+    title: renderTemplate(
+      d.tpl?.title ?? defaultTemplate("push.jadwal", "title"),
+      vars,
+    ),
+    body: renderTemplate(
+      d.tpl?.body ?? defaultTemplate("push.jadwal", "body"),
+      vars,
+    ),
     tag: d.tag,
     url: "/pesanan",
   };
@@ -131,10 +166,19 @@ export function payloadBatal(d: {
   code: string;
   reason: string | null;
   tag: string;
+  tpl?: TemplateInput;
 }): PushPayload {
+  // {alasan} membawa pemisahnya sendiri — kosong bila tanpa alasan.
+  const vars = { code: d.code, alasan: d.reason ? ` — ${d.reason}` : "" };
   return {
-    title: "Booking dibatalkan",
-    body: `${d.code}${d.reason ? ` — ${d.reason}` : ""}`,
+    title: renderTemplate(
+      d.tpl?.title ?? defaultTemplate("push.batal", "title"),
+      vars,
+    ),
+    body: renderTemplate(
+      d.tpl?.body ?? defaultTemplate("push.batal", "body"),
+      vars,
+    ),
     tag: d.tag,
     url: "/pesanan",
   };
@@ -144,10 +188,18 @@ export function payloadSelesai(d: {
   id: string;
   code: string;
   tag: string;
+  tpl?: TemplateInput;
 }): PushPayload {
+  const vars = { code: d.code };
   return {
-    title: "Servis selesai",
-    body: `${d.code} — motor siap diambil`,
+    title: renderTemplate(
+      d.tpl?.title ?? defaultTemplate("push.selesai", "title"),
+      vars,
+    ),
+    body: renderTemplate(
+      d.tpl?.body ?? defaultTemplate("push.selesai", "body"),
+      vars,
+    ),
     tag: d.tag,
     url: "/pesanan",
   };
@@ -159,10 +211,23 @@ export function payloadStokMenipis(d: {
   unit: string;
   minStock: number;
   tag: string;
+  tpl?: TemplateInput;
 }): PushPayload {
+  const vars = {
+    nama: d.name,
+    qty: d.qty,
+    unit: d.unit,
+    min_stok: d.minStock,
+  };
   return {
-    title: "Stok menipis",
-    body: `${d.name} tersisa ${d.qty} ${d.unit} (min ${d.minStock})`,
+    title: renderTemplate(
+      d.tpl?.title ?? defaultTemplate("push.stok", "title"),
+      vars,
+    ),
+    body: renderTemplate(
+      d.tpl?.body ?? defaultTemplate("push.stok", "body"),
+      vars,
+    ),
     tag: d.tag,
     url: "/dashboard/stok",
   };
@@ -303,16 +368,17 @@ export async function notifyBookingBaru(serviceId: string): Promise<void> {
     });
     if (!svc) return;
     const penerima = await penerimaStaff(svc.branchId);
-    await kirimKe(
-      penerima,
-      payloadBookingBaru({
-        id: svc.id,
-        code: svc.code,
-        plate: svc.vehicle.plateNumber,
-        scheduledAt: svc.scheduledAt ?? svc.createdAt,
-        tag,
-      }),
-    );
+    const tpl = await muatTemplateNotif();
+    const payload = payloadBookingBaru({
+      id: svc.id,
+      code: svc.code,
+      plate: svc.vehicle.plateNumber,
+      scheduledAt: svc.scheduledAt ?? svc.createdAt,
+      tag,
+      tpl: tpl["push.booking_baru"],
+    });
+    await kirimKe(penerima, payload);
+    await kirimTelegramStaf(penerima, payload);
   } catch {
     /* no-op */
   }
@@ -328,6 +394,7 @@ export async function notifyEstimasi(serviceId: string): Promise<void> {
     });
     if (!svc) return;
     const penerima = await penerimaCustomerService(svc);
+    const tpl = await muatTemplateNotif();
     await kirimKe(
       penerima,
       payloadEstimasi({
@@ -335,6 +402,7 @@ export async function notifyEstimasi(serviceId: string): Promise<void> {
         code: svc.code,
         estimate: svc.estimate,
         tag,
+        tpl: tpl["push.estimasi"],
       }),
     );
   } catch {
@@ -354,6 +422,7 @@ export async function notifyJadwalDiubah(serviceId: string): Promise<void> {
     const tag = dedupJadwal(svc.id, jadwal.getTime());
     if (!(await claimDedup(tag))) return;
     const penerima = await penerimaCustomerService(svc);
+    const tpl = await muatTemplateNotif();
     await kirimKe(
       penerima,
       payloadJadwal({
@@ -361,6 +430,7 @@ export async function notifyJadwalDiubah(serviceId: string): Promise<void> {
         code: svc.code,
         scheduledAt: jadwal,
         tag,
+        tpl: tpl["push.jadwal"],
       }),
     );
   } catch {
@@ -378,6 +448,7 @@ export async function notifyBatal(serviceId: string): Promise<void> {
     });
     if (!svc) return;
     const penerima = await penerimaCustomerService(svc);
+    const tpl = await muatTemplateNotif();
     await kirimKe(
       penerima,
       payloadBatal({
@@ -385,6 +456,7 @@ export async function notifyBatal(serviceId: string): Promise<void> {
         code: svc.code,
         reason: svc.cancelReason,
         tag,
+        tpl: tpl["push.batal"],
       }),
     );
   } catch {
@@ -402,9 +474,15 @@ export async function notifySelesai(serviceId: string): Promise<void> {
     });
     if (!svc) return;
     const penerima = await penerimaCustomerService(svc);
+    const tpl = await muatTemplateNotif();
     await kirimKe(
       penerima,
-      payloadSelesai({ id: svc.id, code: svc.code, tag }),
+      payloadSelesai({
+        id: svc.id,
+        code: svc.code,
+        tag,
+        tpl: tpl["push.selesai"],
+      }),
     );
   } catch {
     /* no-op */
@@ -428,16 +506,17 @@ export async function notifyStokMenipis(
     const tag = dedupStokMenipis(partId, new Date());
     if (!(await claimDedup(tag))) return;
     const penerima = await penerimaStaff(part.branchId);
-    await kirimKe(
-      penerima,
-      payloadStokMenipis({
-        name: part.name,
-        qty: qtySesudah,
-        unit: part.unit,
-        minStock: part.minStock,
-        tag,
-      }),
-    );
+    const tpl = await muatTemplateNotif();
+    const payload = payloadStokMenipis({
+      name: part.name,
+      qty: qtySesudah,
+      unit: part.unit,
+      minStock: part.minStock,
+      tag,
+      tpl: tpl["push.stok"],
+    });
+    await kirimKe(penerima, payload);
+    await kirimTelegramStaf(penerima, payload);
   } catch {
     /* no-op */
   }

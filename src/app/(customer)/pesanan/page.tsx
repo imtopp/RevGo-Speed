@@ -14,6 +14,7 @@ import { getBranding } from "@/lib/branding";
 import { pushEnabled } from "@/lib/push";
 import { PushOptInCard } from "@/components/push-opt-in-card";
 import { waLink, pesanKonfirmasiBooking } from "@/lib/wa";
+import { muatTemplateNotif } from "@/lib/notif-template-db";
 import type { ServiceStatus } from "@db/prisma/client";
 
 export const metadata = { title: "Pesanan Saya" };
@@ -35,7 +36,8 @@ export default async function PesananPage() {
 
   const { appName, waNumber } = await getBranding();
 
-  const [services, vehicles, branches, catalog, modelRows] = await Promise.all([
+  const [services, vehicles, branches, catalog, modelRows, tplNotif] =
+    await Promise.all([
     prisma.service.findMany({
       // Syarat ganda: milik akun ini, ATAU booking walk-in pada kendaraan
       // yang sudah diadopsi (customerId null tapi vehicle.ownerId = saya).
@@ -65,8 +67,9 @@ export default async function PesananPage() {
     prisma.vehicle.findMany({
       distinct: ["brand", "model"],
       select: { brand: true, model: true },
-      orderBy: { model: "asc" },
+      orderBy: { brand: "asc" },
     }),
+    muatTemplateNotif(),
   ]);
 
   const active = services.find(
@@ -142,15 +145,16 @@ export default async function PesananPage() {
             <a
               href={waLink(
                 waNumber,
-                pesanKonfirmasiBooking({
-                  appName,
-                  code: active.code,
-                  kendaraan: `${active.vehicle.plateNumber} · ${active.vehicle.brand} ${active.vehicle.model}`,
-                  layanan: active.complaint,
-                  jadwal: active.scheduledAt
-                    ? formatTanggalWIB(active.scheduledAt)
-                    : null,
-                }),
+              pesanKonfirmasiBooking({
+                appName,
+                code: active.code,
+                kendaraan: `${active.vehicle.plateNumber} · ${active.vehicle.brand} ${active.vehicle.model}`,
+                layanan: active.complaint,
+                jadwal: active.scheduledAt
+                  ? formatTanggalWIB(active.scheduledAt)
+                  : null,
+                tpl: tplNotif["wa.konfirmasi_booking"]?.body,
+              }),
               )}
               target="_blank"
               rel="noopener noreferrer"
@@ -170,6 +174,7 @@ export default async function PesananPage() {
         merekGroups={merekGroupsTampil()}
         appName={appName}
         waNumber={waNumber}
+        tplWaKonfirmasi={tplNotif["wa.konfirmasi_booking"]?.body}
       />
 
       {services.length === 0 && (

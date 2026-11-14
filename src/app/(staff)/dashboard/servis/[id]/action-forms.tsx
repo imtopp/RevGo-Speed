@@ -200,9 +200,11 @@ function EstimateForm({
 function RescheduleForm({
   service,
   appName,
+  tplWa,
 }: {
   service: ServiceInfo;
   appName: string;
+  tplWa?: string;
 }) {
   const { state, formAction } = useForm(changeSchedule);
   const [jadwal, setJadwal] = useState("");
@@ -241,6 +243,7 @@ function RescheduleForm({
               appName,
               code: service.code,
               jadwal: formatTanggalWIB(jadwal),
+              tpl: tplWa,
             }),
           )}
           target="_blank"
@@ -519,6 +522,7 @@ export function ActionForms({
   isMechanic,
   isAssignedMechanic,
   appName,
+  tplWaJadwal,
 }: {
   service: ServiceInfo;
   mechanics: Mechanic[];
@@ -528,6 +532,7 @@ export function ActionForms({
   isMechanic: boolean;
   isAssignedMechanic: boolean;
   appName: string;
+  tplWaJadwal?: string;
 }) {
   const canAdmin = !isMechanic;
 
@@ -547,7 +552,12 @@ export function ActionForms({
         );
         others = [
           <ApproveForm key="approve" service={service} />,
-          <RescheduleForm key="jadwal" service={service} appName={appName} />,
+          <RescheduleForm
+            key="jadwal"
+            service={service}
+            appName={appName}
+            tplWa={tplWaJadwal}
+          />,
           <CancelForm key="cancel" service={service} />,
         ];
       }

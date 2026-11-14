@@ -123,6 +123,48 @@ describe("payload", () => {
   });
 });
 
+describe("payload dengan override template (SystemSetting.notif_templates)", () => {
+  it("template admin dipakai — token tetap diisi datanya", () => {
+    const p = payloadBatal({
+      id: "s1",
+      code: "SV-1",
+      reason: "Customer batal",
+      tag: "batal:s1",
+      tpl: { title: "Dibatalkan", body: "{code} dibatalkan{alasan}" },
+    });
+    expect(p.title).toBe("Dibatalkan");
+    // {alasan} membawa pemisahnya sendiri: " — Customer batal"
+    expect(p.body).toBe("SV-1 dibatalkan — Customer batal");
+    expect(p.tag).toBe("batal:s1");
+    expect(p.url).toBe("/pesanan");
+  });
+
+  it("override sebagian (hanya body) — title tetap default", () => {
+    const p = payloadBookingBaru({
+      id: "s1",
+      code: "SV-1",
+      plate: "B 1 XY",
+      scheduledAt: new Date("2026-11-13T07:00:00Z"),
+      tag: "booking:s1",
+      tpl: { body: "Booking {code} ({plate})" },
+    });
+    expect(p.title).toBe("Booking baru masuk");
+    expect(p.body).toBe("Booking SV-1 (B 1 XY)");
+  });
+
+  it("stok: override memakai variabel nama/qty/unit/min_stok", () => {
+    const p = payloadStokMenipis({
+      name: "Oli",
+      qty: 1,
+      unit: "liter",
+      minStock: 5,
+      tag: "stok:p1:1",
+      tpl: { body: "{nama}: sisa {qty}{unit}!" },
+    });
+    expect(p.body).toBe("Oli: sisa 1liter!");
+  });
+});
+
 describe("penerima", () => {
   const staff = [
     { id: "own", role: "OWNER", branchId: null, isActive: true },

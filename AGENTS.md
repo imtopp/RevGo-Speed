@@ -196,6 +196,8 @@ NEXT_PUBLIC_VAPID_PUBLIC_KEY="..." # Web Push public key (boleh terbit)
 VAPID_PRIVATE_KEY="..."           # Web Push PRIVATE - hanya env Vercel,
                                   #   jangan commit/print/log (push mati
                                   #   senyap kalau kosong)
+TELEGRAM_BOT_TOKEN="..."          # opsional - token bot @BotFather; channel
+                                  #   cadangan staf (mati senyap kalau kosong)
 ```
 
 ## Web Push (notifikasi)
@@ -228,6 +230,30 @@ VAPID_PRIVATE_KEY="..."           # Web Push PRIVATE - hanya env Vercel,
   mewajibkan customer setting batre - push = bonus, sumber info = aplikasi.
 - Generate ulang pair (jarang): `node -e "console.log(JSON.stringify(require('web-push').generateVAPIDKeys()))"`
   lalu update env Vercel kedua project (production+preview) - lama otomatis mati.
+
+## Template Notifikasi & Telegram
+
+- **Template push & WA bisa diedit OWNER/SYS_ADMIN** di
+  `/dashboard/pengaturan/notifikasi`: 9 template (6 push + 3 WA) — default di
+  `TEMPLATE_DEFS` (`src/lib/notif-template.ts`, murni tanpa prisma), override
+  di SystemSetting key `notif_templates` (hanya field ≠ default yang
+  disimpan). Token `{var}` via `renderTemplate`; variabel opsional membawa
+  pemisahnya sendiri (`{alasan}` = " — x"; `{motor}/{layanan}/{jadwal}` =
+  baris ber-prefix `\n`) agar default tak pernah menghasilkan baris kosong.
+  Loader: `muatTemplateNotif()` (`notif-template-db.ts`) — dipanggil di dalam
+  `notify*` / caller WA server; caller client menerima override via **prop**
+  (`wa.ts` tetap pure). Test: `notif-template.test.ts`.
+- **Telegram = channel GRATIS cadangan staf** (booking baru & stok menipis
+  saja; event customer tetap push). Inti: `src/lib/telegram.ts` (config
+  JSON SystemSetting `telegram_config`: botUsername, webhookSecret, chats
+  userId→chatId, tokens satu-pakai; kirim `sendMessage` plain text + tombol
+  "Buka"). Webhook `POST /api/telegram/webhook` (verifikasi header
+  `X-Telegram-Bot-Api-Secret-Token`; `/start <token>` → ikat chatId).
+  Alur hubungkan: Pengaturan > Notifikasi → "Hubungkan" → tap link t.me →
+  Start. **Mati senyap tanpa env `TELEGRAM_BOT_TOKEN`** (buat via
+  @BotFather); webhook butuh `AUTH_URL` produksi. Kirim dibungkus
+  try/catch — tidak pernah menjatuhkan aksi bisnis; teks = template push
+  yang sama. Test: `telegram.test.ts` (bagian murni).
 
 ## Testing
 

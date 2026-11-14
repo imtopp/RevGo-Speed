@@ -167,3 +167,45 @@ describe("pesanJadwalBaru", () => {
     );
   });
 });
+
+describe("override template (tpl dari SystemSetting.notif_templates)", () => {
+  it("pesanPembatalan memakai tpl admin — token tetap terisi", () => {
+    expect(
+      pesanPembatalan({
+        appName: "TBRT",
+        code: "SV-01",
+        alasan: "Customer batal",
+        tpl: "Maaf {code} dibatalkan.{alasan} — {appName}",
+      }),
+    ).toBe("Maaf SV-01 dibatalkan.\nAlasan: Customer batal — TBRT");
+  });
+
+  it("pesanJadwalBaru memakai tpl admin", () => {
+    expect(
+      pesanJadwalBaru({
+        appName: "TBRT",
+        code: "SV-02",
+        jadwal: "14 Nov 2026, 10.00",
+        tpl: "{code} → {jadwal} ({appName})",
+      }),
+    ).toBe("SV-02 → 14 Nov 2026, 10.00 (TBRT)");
+  });
+
+  it("pesanKonfirmasiBooking memakai tpl admin; rincian kosong tetap tanpa baris hampa", () => {
+    expect(
+      pesanKonfirmasiBooking({
+        appName: "RevGo",
+        code: "SV-03",
+        kendaraan: "B 1 XY",
+        tpl: "Cek {code} {appName}.{motor}",
+      }),
+    ).toBe("Cek SV-03 RevGo.\nMotor: B 1 XY");
+    expect(
+      pesanKonfirmasiBooking({
+        appName: "RevGo",
+        code: "SV-03",
+        tpl: "Cek {code}.{motor}",
+      }),
+    ).toBe("Cek SV-03.");
+  });
+});

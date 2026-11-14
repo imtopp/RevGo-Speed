@@ -270,6 +270,7 @@ export function BookingSection({
   merekGroups,
   appName,
   waNumber,
+  tplWaKonfirmasi,
 }: {
   vehicles: Vehicle[];
   branches: Branch[];
@@ -278,6 +279,7 @@ export function BookingSection({
   merekGroups: MerekGroup[];
   appName: string;
   waNumber: string | null;
+  tplWaKonfirmasi?: string;
 }) {
   const [showAddVehicle, setShowAddVehicle] = useState(false);
   const [showBooking, setShowBooking] = useState(false);
@@ -345,6 +347,7 @@ export function BookingSection({
                     appName,
                     code: lastBooking.code,
                     ...lastBooking.rincian,
+                    tpl: tplWaKonfirmasi,
                   }),
                 )}
                 target="_blank"

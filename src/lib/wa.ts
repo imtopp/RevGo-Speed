@@ -9,6 +9,8 @@
  * Nomor non-seluler (darat `021…`, dsb.) dan format asing ditolak (null).
  */
 
+import { defaultTemplate, renderTemplate } from "@/lib/notif-template";
+
 /** Bentuk kanonik yang disimpan & dipakai wa.me: digit saja, prefix 62. */
 const WA_PATTERN = /^628[1-9]\d{7,12}$/;
 
@@ -60,42 +62,47 @@ export function formatWaLocal(nomor: string): string {
  * Pesan pratinjau WhatsApp pembatalan booking — kode + alasan (opsional)
  * supaya admin tinggal kirim ke customer setelah membatalkan.
  * Alasan kosong tidak menghasilkan baris kosong.
+ * `tpl` = override template dari SystemSetting (dibaca pemanggil server).
  */
 export function pesanPembatalan(opts: {
   appName: string;
   code: string;
   alasan?: string | null;
+  tpl?: string;
 }): string {
-  const baris = [
-    `Halo, booking ${opts.code} di ${opts.appName} dibatalkan oleh bengkel.`,
-  ];
-  if (opts.alasan) baris.push(`Alasan: ${opts.alasan}`);
-  baris.push(
-    "Mohon maaf atas ketidaknyamanannya — silakan booking ulang kapan saja.",
+  const vars = {
+    appName: opts.appName,
+    code: opts.code,
+    alasan: opts.alasan ? `\nAlasan: ${opts.alasan}` : "",
+  };
+  return renderTemplate(
+    opts.tpl ?? defaultTemplate("wa.pembatalan", "body"),
+    vars,
   );
-  return baris.join("\n");
 }
 
 /**
  * Pesan pratinjau WhatsApp perubahan jadwal — kode + jadwal baru
  * (sudah diformat pemanggil) supaya admin tinggal kirim ke customer.
+ * `tpl` = override template dari SystemSetting (dibaca pemanggil server).
  */
 export function pesanJadwalBaru(opts: {
   appName: string;
   code: string;
   jadwal: string;
+  tpl?: string;
 }): string {
-  return [
-    `Halo, jadwal kedatangan booking ${opts.code} di ${opts.appName} diubah.`,
-    `Jadwal baru: ${opts.jadwal}`,
-    "Mohon dikonfirmasi bila berkenan. Terima kasih.",
-  ].join("\n");
+  return renderTemplate(
+    opts.tpl ?? defaultTemplate("wa.jadwal_baru", "body"),
+    { appName: opts.appName, code: opts.code, jadwal: opts.jadwal },
+  );
 }
 
 /**
  * Pesan pratinjau WhatsApp konfirmasi booking — kode + rincian (motor,
  * layanan, jadwal) supaya customer tinggal kirim ke bengkel.
  * Rincian opsional yang kosong tidak menghasilkan baris kosong.
+ * `tpl` = override template dari SystemSetting (dibaca pemanggil server).
  */
 export function pesanKonfirmasiBooking(opts: {
   appName: string;
@@ -103,12 +110,17 @@ export function pesanKonfirmasiBooking(opts: {
   kendaraan?: string | null;
   layanan?: string | null;
   jadwal?: string | null;
+  tpl?: string;
 }): string {
-  const baris = [
-    `Halo ${opts.appName}, saya mau konfirmasi booking ${opts.code}.`,
-  ];
-  if (opts.kendaraan) baris.push(`Motor: ${opts.kendaraan}`);
-  if (opts.layanan) baris.push(`Layanan: ${opts.layanan}`);
-  if (opts.jadwal) baris.push(`Jadwal: ${opts.jadwal}`);
-  return baris.join("\n");
+  const vars = {
+    appName: opts.appName,
+    code: opts.code,
+    motor: opts.kendaraan ? `\nMotor: ${opts.kendaraan}` : "",
+    layanan: opts.layanan ? `\nLayanan: ${opts.layanan}` : "",
+    jadwal: opts.jadwal ? `\nJadwal: ${opts.jadwal}` : "",
+  };
+  return renderTemplate(
+    opts.tpl ?? defaultTemplate("wa.konfirmasi_booking", "body"),
+    vars,
+  );
 }

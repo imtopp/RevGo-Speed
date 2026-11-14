@@ -128,6 +128,15 @@ export default async function PengaturanPage() {
             </Link>
           )}
           <Link
+            href="/dashboard/pengaturan/notifikasi"
+            className="rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card active:opacity-90"
+          >
+            <p className="font-medium">Notifikasi</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Template push &amp; pesan WA
+            </p>
+          </Link>
+          <Link
             href="/dashboard/backup"
             className="rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card active:opacity-90"
           >
