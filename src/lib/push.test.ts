@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   dedupBatal,
   dedupBookingBaru,
+  dedupDpDiterima,
   dedupEstimasi,
   dedupJadwal,
   dedupSelesai,
@@ -10,6 +11,7 @@ import {
   penerimaStaffDari,
   payloadBatal,
   payloadBookingBaru,
+  payloadDpDiterima,
   payloadEstimasi,
   payloadJadwal,
   payloadSelesai,
@@ -24,6 +26,7 @@ describe("dedupKey anti-dobel", () => {
   it("per-event punya prefix berbeda (bentrok lintas event tidak saling menelan)", () => {
     expect(dedupBookingBaru("s1")).toBe("booking:s1");
     expect(dedupEstimasi("s1")).toBe("estimasi:s1");
+    expect(dedupDpDiterima("s1")).toBe("dp:s1");
     expect(dedupBatal("s1")).toBe("batal:s1");
     expect(dedupSelesai("s1")).toBe("selesai:s1");
     expect(dedupJadwal("s1", 123)).toBe("jadwal:s1:123");
@@ -106,6 +109,19 @@ describe("payload", () => {
     const selesai = payloadSelesai({ id: "s1", code: "SV-1", tag: "selesai:s1" });
     expect(selesai.title).toBe("Servis selesai");
     expect(selesai.url).toBe("/pesanan");
+  });
+
+  it("dp diterima → pesanan customer + nominal termuat", () => {
+    const p = payloadDpDiterima({
+      id: "s1",
+      code: "SV-1",
+      dp: 50000,
+      tag: "dp:s1",
+    });
+    expect(p.url).toBe("/pesanan");
+    expect(p.tag).toBe("dp:s1");
+    expect(p.body).toContain("SV-1");
+    expect(p.body).toContain("50.000");
   });
 
   it("stok menipis → halaman stok + sisa & batas", () => {

@@ -94,8 +94,16 @@ generated/                  # Prisma client output (gitignored)
 
 - **Role:** `OWNER`, `SYS_ADMIN`, `ADMIN`, `MECHANIC`, `CUSTOMER`
 - **ServiceStatus flow:**
-  `PENDING â†’ WAITING_APPROVAL â†’ CONFIRMED â†’ CHECKED_IN â†’ IN_PROGRESS â‡„ WAITING_PARTS â†’ DONE`
-  (`CANCELLED` dari PENDING/WAITING_APPROVAL/CONFIRMED/CHECKED_IN, wajib alasan)
+  `WAITING_DP → PENDING → CONFIRMED → CHECKED_IN → IN_PROGRESS ⇄ WAITING_PARTS → DONE`
+  (`WAITING_APPROVAL` = data legacy estimasi lama — selesaikan via `approveInPerson`;
+  `CANCELLED` dari WAITING_DP/PENDING/WAITING_APPROVAL/CONFIRMED/CHECKED_IN, wajib alasan)
+- **DP booking:** SystemSetting `dp_*` dibaca via `getDpConfig()` (`src/lib/dp.ts`);
+  `dp_nominal = 0` = DP nonaktif → booking langsung `PENDING`. Booking baru (APP & admin)
+  mulai `WAITING_DP`; `confirmDp` (OWNER/ADMIN) membuat Payment kind `DP` + Cashflow
+  **1 transaksi** (audit `DP_CONFIRM`) lalu `WAITING_DP → PENDING`. Estimasi informatif:
+  `submitEstimate` → `CONFIRMED` langsung (customer tidak approve/tolak).
+  Cancel dengan DP: ikut `dp_policy` seragam — `TANPA_REFUND` = DP hangus (wajib centang
+  konfirmasi), `REFUND_PENUH` = wajib void dulu lewat menu Kas.
 - **Scoping cabang:** Owner & SysAdmin lintas cabang (`branchId = null`); Admin & Mekanik terikat 1 cabang. Selalu filter query via `getStaffBranchId()`.
 - **Kantong kas:** `CashflowAccount` = `KAS` | `BANK`. Pembayaran `CASH` â†’ KAS; `QRIS`/`TRANSFER` â†’ BANK.
 - **HPP:** `ServicePart.cost` = campuran harga beli batch (alokasi FIFO `PartBatchUsage`) â€” hanya boleh berubah lewat `correctStockCost` (koreksi 4 langkah, terbatas unit dari batch terkait). Baca di laporan: `Î£ costÃ—qty` per servis DONE.
@@ -234,7 +242,7 @@ TELEGRAM_BOT_TOKEN="..."          # opsional - token bot @BotFather; channel
 ## Template Notifikasi & Telegram
 
 - **Template push & WA bisa diedit OWNER/SYS_ADMIN** di
-  `/dashboard/pengaturan/notifikasi`: 9 template (6 push + 3 WA) — default di
+  `/dashboard/pengaturan/notifikasi`: 11 template (7 push + 4 WA) — default di
   `TEMPLATE_DEFS` (`src/lib/notif-template.ts`, murni tanpa prisma), override
   di SystemSetting key `notif_templates` (hanya field ≠ default yang
   disimpan). Token `{var}` via `renderTemplate`; variabel opsional membawa

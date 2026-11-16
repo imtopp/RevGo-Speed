@@ -4,6 +4,7 @@ import {
   formatRupiah,
   formatTanggalPendek,
   periodeWIB,
+  totalTagihan,
 } from "@/lib/service-status";
 import Link from "next/link";
 import { BranchPicker } from "../stok/branch-picker";
@@ -51,6 +52,7 @@ export default async function LaporanPage({
         },
         include: {
           parts: { select: { price: true, quantity: true, cost: true } },
+          labors: { select: { price: true } },
           customer: { select: { name: true } },
           vehicle: { select: { plateNumber: true } },
         },
@@ -88,9 +90,9 @@ export default async function LaporanPage({
       )
     : payments;
 
-  // Laba per servis: revenue − HPP (snapshot cost part)
+  // Laba per servis: revenue (jasa + rincian jasa + part) − HPP (snapshot cost part)
   const rows = doneServices.map((s) => {
-    const revenue = s.laborCost + s.parts.reduce((sum, p) => sum + p.price * p.quantity, 0);
+    const revenue = totalTagihan(s.laborCost, s.parts, s.labors);
     const hpp = s.parts.reduce((sum, p) => sum + p.cost * p.quantity, 0);
     return { s, revenue, hpp, laba: revenue - hpp };
   });

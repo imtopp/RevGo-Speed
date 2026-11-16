@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { getStaffBranchId } from "@/lib/guard";
 import { logAudit } from "@/lib/audit";
-import { bolehBayar, PESAN_BAYAR_DITAHAN } from "@/lib/service-status";
+import { bolehBayar, PESAN_BAYAR_DITAHAN, totalTagihan } from "@/lib/service-status";
 import { revalidatePath } from "next/cache";
 import type { PaymentKind, PaymentMethod, CashflowType, CashflowAccount } from "@db/prisma/client";
 
@@ -31,14 +31,6 @@ function accountFromMethod(method: PaymentMethod): CashflowAccount {
   return method === "CASH" ? "KAS" : "BANK";
 }
 
-/** Total tagihan servis = biaya jasa + Σ(part.hargaJual × qty). */
-function totalTagihan(
-  laborCost: number,
-  parts: { price: number; quantity: number }[],
-): number {
-  return laborCost + parts.reduce((s, p) => s + p.price * p.quantity, 0);
-}
-
 // ─── Bayar Servis (DP / Pelunasan) ────────────────────────────────────
 
 export async function addPayment(
@@ -62,6 +54,7 @@ export async function addPayment(
     where: { id: serviceId },
     include: {
       parts: { select: { price: true, quantity: true } },
+      labors: { select: { price: true } },
       payments: { where: { voidedAt: null }, select: { amount: true } },
       customer: { select: { name: true } },
       branch: { select: { name: true } },
@@ -75,10 +68,10 @@ export async function addPayment(
     return { error: "Servis bukan di cabang Anda." };
   }
 
-  // Total tagihan = jasa + part; sebelum ada estimasi/apapun (total masih 0),
-  // plafon pembayaran (DP) memakai estimasi booking supaya DP di status awal
-  // tetap bisa diterima — bukan selalu "melebihi sisa (0)".
-  const total = totalTagihan(service.laborCost, service.parts);
+  // Total tagihan = jasa utama + rincian jasa + part; sebelum ada estimasi/apapun
+  // (total masih 0), plafon pembayaran (DP) memakai estimasi booking supaya DP
+  // di status awal tetap bisa diterima — bukan selalu "melebihi sisa (0)".
+  const total = totalTagihan(service.laborCost, service.parts, service.labors);
   const dasar = total > 0 ? total : Math.max(service.estimate, 0);
   if (dasar === 0) {
     return {
@@ -104,10 +97,13 @@ export async function addPayment(
     // ditambah/dihapus di tab lain selagi form terbuka (TOCTOU).
     const fresh = await tx.service.findUnique({
       where: { id: serviceId },
-      include: { parts: { select: { price: true, quantity: true } } },
+      include: {
+        parts: { select: { price: true, quantity: true } },
+        labors: { select: { price: true } },
+      },
     });
     if (!fresh) throw new Error("Servis tidak ditemukan.");
-    const totalNow = totalTagihan(fresh.laborCost, fresh.parts);
+    const totalNow = totalTagihan(fresh.laborCost, fresh.parts, fresh.labors);
     const dasarNow = totalNow > 0 ? totalNow : Math.max(fresh.estimate, 0);
     if (dasarNow === 0) {
       throw new Error("Belum ada estimasi/biaya — coba lagi setelah estimasi diisi.");
@@ -361,11 +357,12 @@ export async function refundKelebihan(
       where: { id: serviceId },
       include: {
         parts: { select: { price: true, quantity: true } },
+        labors: { select: { price: true } },
         payments: { where: { voidedAt: null }, select: { amount: true } },
       },
     });
     if (!fresh) throw new Error("Servis tidak ditemukan.");
-    const total = totalTagihan(fresh.laborCost, fresh.parts);
+    const total = totalTagihan(fresh.laborCost, fresh.parts, fresh.labors);
     // Plafon yang sama dengan addPayment: sebelum total terealisasi, batas
     // sah = estimasi booking (DP di status awal bukan "kelebihan").
     const dasar = total > 0 ? total : Math.max(fresh.estimate, 0);

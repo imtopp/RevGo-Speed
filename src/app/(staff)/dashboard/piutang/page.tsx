@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { requireStaffRole, getStaffBranchId } from "@/lib/guard";
-import { formatRupiah, STATUS_LABEL, bolehBayar, PESAN_BAYAR_DITAHAN } from "@/lib/service-status";
+import { formatRupiah, STATUS_LABEL, bolehBayar, PESAN_BAYAR_DITAHAN, totalTagihan } from "@/lib/service-status";
 import { formatWaLocal } from "@/lib/wa";
 import { PaymentForm } from "../kas/payment-form";
 import { BranchPicker } from "../stok/branch-picker";
@@ -30,6 +30,7 @@ export default async function PiutangPage({
       : { status: { not: "CANCELLED" } },
     include: {
       parts: { select: { price: true, quantity: true } },
+      labors: { select: { price: true } },
       payments: { where: { voidedAt: null }, select: { amount: true } },
       customer: { select: { name: true, phone: true } },
       vehicle: { select: { plateNumber: true } },
@@ -41,8 +42,7 @@ export default async function PiutangPage({
   // Filter sisa tagihan > 0
   const outstanding = services
     .map((s) => {
-      const total =
-        s.laborCost + s.parts.reduce((sum, p) => sum + p.price * p.quantity, 0);
+      const total = totalTagihan(s.laborCost, s.parts, s.labors);
       const paid = s.payments.reduce((sum, p) => sum + p.amount, 0);
       return { ...s, total, paid, remaining: total - paid };
     })

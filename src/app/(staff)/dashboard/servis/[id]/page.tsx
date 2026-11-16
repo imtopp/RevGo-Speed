@@ -8,14 +8,17 @@ import { BackLink } from "@/components/back-link";
 import {
   STATUS_LABEL,
   STATUS_COLOR,
+  STATUS_OVERDUE,
   NEXT_ACTION_LABEL,
   formatRupiah,
   formatTanggal,
   formatTanggalWIB,
   bolehBayar,
   PESAN_BAYAR_DITAHAN,
+  totalTagihan,
 } from "@/lib/service-status";
 import { ActionForms } from "./action-forms";
+import { AddLaborForm, RemoveLaborButton } from "./labor";
 import { VoidPaymentForm } from "./void-payment";
 import { RefundForm } from "./refund-form";
 import { RemovePartButton } from "./remove-part-button";
@@ -25,6 +28,7 @@ import { formatTanggalPendek } from "@/lib/service-status";
 import { getAppName } from "@/lib/branding";
 import { waLink, pesanPembatalan } from "@/lib/wa";
 import { muatTemplateNotif } from "@/lib/notif-template-db";
+import { getDpConfig, dpAktif, labelTerlambat } from "@/lib/dp";
 
 export const metadata = { title: "Detail Servis" };
 
@@ -49,6 +53,7 @@ export default async function ServisDetailPage({
       branch: true,
       catalog: true,
       parts: { include: { part: true } },
+      labors: { orderBy: { createdAt: "asc" } },
       payments: true,
     },
   });
@@ -56,6 +61,7 @@ export default async function ServisDetailPage({
 
   const appName = await getAppName();
   const tplNotif = await muatTemplateNotif();
+  const dpCfg = await getDpConfig();
   const waCustomer =
     service.customer?.phone ?? service.customerPhone ?? service.vehicle.owner?.phone ?? null;
 
@@ -74,6 +80,14 @@ export default async function ServisDetailPage({
     !isMechanic &&
     service.status !== "DONE" &&
     service.status !== "CANCELLED";
+  // Rincian jasa: lihat semua; tambah hanya OWNER/ADMIN & status siap dikerjakan
+  // (syarat identik dengan action addServiceLabor).
+  const bolehUbahJasa = bolehHapusPart;
+  const bolehTambahJasa =
+    bolehUbahJasa &&
+    ["CONFIRMED", "CHECKED_IN", "IN_PROGRESS", "WAITING_PARTS"].includes(
+      service.status,
+    );
 
   const mechanics = await prisma.user.findMany({
     where: { role: "MECHANIC", isActive: true, branchId: service.branchId },
@@ -116,11 +130,12 @@ export default async function ServisDetailPage({
     (sum, p) => sum + p.price * p.quantity,
     0,
   );
-  const totalTagihan = totalPartHarga + service.laborCost;
+  const totalJasaTambahan = service.labors.reduce((sum, l) => sum + l.price, 0);
+  const nilaiTagihan = totalTagihan(service.laborCost, service.parts, service.labors);
   const totalPaid = service.payments
     .filter((p) => !p.voidedAt)
     .reduce((sum, p) => sum + p.amount, 0);
-  const remaining = totalTagihan - totalPaid;
+  const remaining = nilaiTagihan - totalPaid;
 
   const timeline = [
     service.createdAt && { label: "Booking dibuat", at: service.createdAt },
@@ -133,6 +148,24 @@ export default async function ServisDetailPage({
     service.startedAt && { label: "Mulai kerja", at: service.startedAt },
     service.finishedAt && { label: "Selesai dikerjakan", at: service.finishedAt },
   ].filter(Boolean) as { label: string; at: Date; wib?: boolean }[];
+
+  // Render-time (server): label keterlambatan — dihitung sekali di badan
+  // fungsi agar lolos aturan purity (bukan di JSX).
+  const now = new Date();
+  const terlambat =
+    STATUS_OVERDUE.includes(service.status) &&
+    service.scheduledAt !== null &&
+    service.scheduledAt.getTime() < now.getTime();
+
+  // DP yang boleh hangus saat cancel (hanya bila policy TANPA_REFUND) —
+  // dipakai CancelForm untuk centang konfirmasi + dicek ulang di server.
+  const aktifBayar = service.payments.filter((p) => !p.voidedAt);
+  const dpHangusAmount =
+    aktifBayar.length > 0 &&
+    aktifBayar.every((p) => p.kind === "DP") &&
+    dpCfg.policy !== "REFUND_PENUH"
+      ? aktifBayar.reduce((s, p) => s + p.amount, 0)
+      : null;
 
   return (
     <div className="space-y-4">
@@ -168,6 +201,21 @@ export default async function ServisDetailPage({
             {STATUS_LABEL[service.status]}
           </span>
         </div>
+        {terlambat && service.scheduledAt && (
+          <p className="mt-1 text-xs font-medium text-warning">
+            {labelTerlambat(service.scheduledAt, now, dpCfg)}
+          </p>
+        )}
+        {service.status === "WAITING_DP" && service.dpClaimedAt && (
+          <p className="mt-1 text-xs text-muted-foreground">
+            Customer sudah klaim DP
+            {service.dpClaimedAt.toLocaleString("id-ID", {
+              dateStyle: "medium",
+              timeStyle: "short",
+            })}
+            .
+          </p>
+        )}
       </div>
 
       {/* Info dasar */}
@@ -230,6 +278,60 @@ export default async function ServisDetailPage({
         </ul>
       </div>
 
+      {/* Rincian jasa — jasa utama (estimasi) + item tambahan per baris */}
+      {(service.laborCost > 0 ||
+        service.labors.length > 0 ||
+        bolehTambahJasa) && (
+        <div className="rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-foreground">
+              Rincian Jasa
+            </h2>
+            <span className="text-sm text-muted-foreground">
+              {formatRupiah(service.laborCost + totalJasaTambahan)}
+            </span>
+          </div>
+          <ul className="mt-2 divide-y divide-slate-100">
+            <li className="flex items-center justify-between gap-2 py-2 text-sm">
+              <div className="min-w-0">
+                <p className="truncate">Jasa servis (utama)</p>
+                {service.catalog && (
+                  <p className="text-xs text-slate-400">
+                    {service.catalog.nama}
+                  </p>
+                )}
+              </div>
+              <span className="shrink-0 font-medium">
+                {formatRupiah(service.laborCost)}
+              </span>
+            </li>
+            {service.labors.map((l) => (
+              <li
+                key={l.id}
+                className="flex items-center justify-between gap-2 py-2 text-sm"
+              >
+                <div className="min-w-0">
+                  <p className="truncate">{l.name}</p>
+                  {l.note && (
+                    <p className="text-xs text-slate-400">{l.note}</p>
+                  )}
+                </div>
+                <div className="flex shrink-0 items-center gap-3">
+                  <span className="font-medium">{formatRupiah(l.price)}</span>
+                  {bolehUbahJasa && <RemoveLaborButton laborId={l.id} />}
+                </div>
+              </li>
+            ))}
+          </ul>
+          {service.labors.length === 0 && (
+            <p className="mt-2 text-sm text-muted-foreground">
+              Belum ada jasa tambahan.
+            </p>
+          )}
+          {bolehTambahJasa && <AddLaborForm serviceId={service.id} />}
+        </div>
+      )}
+
       {/* Part terpakai */}
       <div className="rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
         <div className="flex items-center justify-between">
@@ -268,9 +370,15 @@ export default async function ServisDetailPage({
             <span className="text-muted-foreground">Biaya jasa</span>
             <span>{formatRupiah(service.laborCost)}</span>
           </div>
+          {totalJasaTambahan > 0 && (
+            <div className="mt-1 flex justify-between">
+              <span className="text-muted-foreground">Rincian jasa</span>
+              <span>{formatRupiah(totalJasaTambahan)}</span>
+            </div>
+          )}
           <div className="mt-1 flex justify-between font-semibold">
             <span>Total tagihan</span>
-            <span>{formatRupiah(totalTagihan)}</span>
+            <span>{formatRupiah(nilaiTagihan)}</span>
           </div>
         </div>
       </div>
@@ -395,6 +503,7 @@ export default async function ServisDetailPage({
               diagnosis: service.diagnosis,
               finishedAt: service.finishedAt,
               customerWa: waCustomer,
+              dpHangusAmount,
             }}
             mechanics={mekanikTersedia}
             busyMechanics={busyMechanics}
@@ -404,6 +513,7 @@ export default async function ServisDetailPage({
             isAssignedMechanic={isAssignedMechanic}
             appName={appName}
             tplWaJadwal={tplNotif["wa.jadwal_baru"]?.body}
+            dpNominal={dpAktif(dpCfg) ? dpCfg.nominal : 0}
           />
           {/* Sticky action bar — mobile, zona jempol */}
           <div className="sticky bottom-[45px] z-30 md:hidden">

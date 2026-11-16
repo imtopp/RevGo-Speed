@@ -15,6 +15,7 @@ import {
   qcDone,
   cancelService,
   addServicePart,
+  confirmDp,
   type ServisState,
 } from "../actions";
 import { SubmitButton } from "@/components/submit-button";
@@ -40,6 +41,8 @@ type ServiceInfo = {
   diagnosis: string | null;
   finishedAt: Date | null;
   customerWa: string | null;
+  /** Jumlah DP aktif yang boleh hangus saat cancel (policy TANPA_REFUND). */
+  dpHangusAmount: number | null;
 };
 
 type Mechanic = { id: string; name: string };
@@ -476,6 +479,8 @@ function TungguQc() {
 
 function CancelForm({ service }: { service: ServiceInfo }) {
   const { state, formAction } = useForm(cancelService);
+  const dpHangus =
+    service.dpHangusAmount != null && service.dpHangusAmount > 0;
   return (
     <form onReset={(e) => e.preventDefault()} action={formAction} className="space-y-2 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
       <input type="hidden" name="id" value={service.id} />
@@ -484,6 +489,20 @@ function CancelForm({ service }: { service: ServiceInfo }) {
       <Field label="Alasan *">
         <input name="reason" required placeholder="Customer batal, dll" className={inputCls} />
       </Field>
+      {dpHangus && (
+        <label className="flex items-start gap-2 text-sm text-foreground">
+          <input
+            type="checkbox"
+            name="dpHangus"
+            value="1"
+            required
+            className="mt-1 h-4 w-4 shrink-0"
+          />
+          <span>
+            DP {formatRupiah(service.dpHangusAmount!)} ditahan (tidak direfund)
+          </span>
+        </label>
+      )}
       <SubmitButton className={btnDanger}>Batalkan Servis</SubmitButton>
     </form>
   );
@@ -513,6 +532,63 @@ function OtherActions({ children }: { children: React.ReactNode }) {
   );
 }
 
+// ── Konfirmasi DP (WAITING_DP → PENDING) ──────────────────────────────
+
+function ConfirmDpForm({
+  service,
+  dpNominal,
+}: {
+  service: ServiceInfo;
+  dpNominal: number;
+}) {
+  const { state, formAction } = useForm(confirmDp);
+  const [metode, setMetode] = useState("TRANSFER");
+  return (
+    <form
+      action={formAction}
+      className="space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card"
+    >
+      <div>
+        <h2 className="text-sm font-semibold text-foreground">
+          Konfirmasi DP Diterima
+        </h2>
+        <p className="text-xs text-muted-foreground">
+          {dpNominal > 0
+            ? `Nominal tetap ${formatRupiah(dpNominal)} dari pengaturan DP. Catat uang yang benar-benar diterima, lalu booking lanjut ke estimasi.`
+            : "DP tidak aktif (nominal 0) — matikan/konfigurasi ulang di Pengaturan."}
+        </p>
+      </div>
+      <input type="hidden" name="id" value={service.id} />
+      <Field label="Metode">
+        <select
+          name="method"
+          value={metode}
+          onChange={(e) => setMetode(e.target.value)}
+          className={inputCls}
+        >
+          <option value="TRANSFER">Transfer</option>
+          <option value="QRIS">QRIS</option>
+          <option value="CASH">Tunai</option>
+        </select>
+      </Field>
+      <Field label="Catatan (opsional)">
+        <input
+          name="note"
+          className={inputCls}
+          placeholder="mis. mutasi BCA sudah masuk"
+        />
+      </Field>
+      <Msg state={state} />
+      <SubmitButton
+        className={btnPrimary}
+        disabled={dpNominal <= 0}
+      >
+        Terima DP &amp; konfirmasi booking
+      </SubmitButton>
+    </form>
+  );
+}
+
 export function ActionForms({
   service,
   mechanics,
@@ -523,6 +599,7 @@ export function ActionForms({
   isAssignedMechanic,
   appName,
   tplWaJadwal,
+  dpNominal,
 }: {
   service: ServiceInfo;
   mechanics: Mechanic[];
@@ -533,6 +610,7 @@ export function ActionForms({
   isAssignedMechanic: boolean;
   appName: string;
   tplWaJadwal?: string;
+  dpNominal?: number;
 }) {
   const canAdmin = !isMechanic;
 
@@ -540,6 +618,22 @@ export function ActionForms({
   let others: React.ReactNode[] = [];
 
   switch (service.status) {
+    case "WAITING_DP":
+      if (canAdmin) {
+        primary = (
+          <ConfirmDpForm service={service} dpNominal={dpNominal ?? 0} />
+        );
+        others = [
+          <RescheduleForm
+            key="jadwal"
+            service={service}
+            appName={appName}
+            tplWa={tplWaJadwal}
+          />,
+          <CancelForm key="cancel" service={service} />,
+        ];
+      }
+      break;
     case "PENDING":
       if (canAdmin) {
         primary = (
@@ -612,7 +706,10 @@ export function ActionForms({
         primary = canAdmin ? <QcForm service={service} /> : <TungguQc />;
         others = [
           <DiagnosisForm key="dx" service={service} />,
-          <AddPartForm key="part" serviceId={service.id} parts={parts} />,
+          // §B: tambah part = OWNER/ADMIN saja — mekanik tidak memegang form.
+          canAdmin && (
+            <AddPartForm key="part" serviceId={service.id} parts={parts} />
+          ),
           canAdmin && (
             <ReassignMechanicForm
               key="mekanik"
@@ -629,7 +726,9 @@ export function ActionForms({
           ) : null;
         others = [
           <DiagnosisForm key="dx" service={service} />,
-          <AddPartForm key="part" serviceId={service.id} parts={parts} />,
+          canAdmin && (
+            <AddPartForm key="part" serviceId={service.id} parts={parts} />
+          ),
           canAdmin && (
             <ReassignMechanicForm
               key="mekanik"
@@ -647,7 +746,16 @@ export function ActionForms({
       primary = canAdmin ? (
         <ResumeForm service={service} />
       ) : (
-        <AddPartForm serviceId={service.id} parts={parts} />
+        // §B: mekanik tidak menambah part — hanya diberi tahu siapa yang mencatat.
+        <div className="space-y-1 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
+          <p className="text-sm font-semibold text-foreground">
+            Menunggu Admin menambah part
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Part dicatat oleh Owner/Admin — kabari admin bila part sudah siap
+            atau perlu diganti.
+          </p>
+        </div>
       );
       others = [
         <DiagnosisForm key="dx" service={service} />,

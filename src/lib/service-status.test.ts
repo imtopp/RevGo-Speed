@@ -4,8 +4,10 @@ import {
   STATUS_COLOR,
   NEXT_ACTION_LABEL,
   ACTIVE_STATUSES,
+  STATUS_OVERDUE,
   bolehBayar,
   PESAN_BAYAR_DITAHAN,
+  totalTagihan,
   formatRupiah,
   formatTanggal,
   formatTanggalPendek,
@@ -15,6 +17,7 @@ import {
 import type { ServiceStatus } from "@db/prisma/client";
 
 const ALL_STATUSES: ServiceStatus[] = [
+  "WAITING_DP",
   "PENDING",
   "WAITING_APPROVAL",
   "CONFIRMED",
@@ -45,15 +48,28 @@ describe("peta status servis", () => {
     }
   });
 
-  it("ACTIVE_STATUSES = 6 status terbuka, tanpa DONE/CANCELLED", () => {
-    expect(ACTIVE_STATUSES).toHaveLength(6);
+  it("ACTIVE_STATUSES = 7 status terbuka, tanpa DONE/CANCELLED", () => {
+    expect(ACTIVE_STATUSES).toHaveLength(7);
+    expect(ACTIVE_STATUSES).toContain("WAITING_DP");
     expect(ACTIVE_STATUSES).not.toContain("DONE");
     expect(ACTIVE_STATUSES).not.toContain("CANCELLED");
+  });
+
+  it("STATUS_OVERDUE = status belum check-in (badge Terlambat), tanpa unit dikerjakan/selesai", () => {
+    expect(STATUS_OVERDUE).toEqual([
+      "WAITING_DP",
+      "PENDING",
+      "WAITING_APPROVAL",
+      "CONFIRMED",
+    ]);
+    expect(STATUS_OVERDUE).not.toContain("CHECKED_IN");
+    expect(STATUS_OVERDUE).not.toContain("DONE");
   });
 });
 
 describe("bolehBayar (urutan kas: DP di awal, sisanya setelah selesai)", () => {
-  it("boleh saat booking/awal — PENDING, WAITING_APPROVAL, CONFIRMED", () => {
+  it("boleh saat booking/awal — WAITING_DP, PENDING, WAITING_APPROVAL, CONFIRMED", () => {
+    expect(bolehBayar("WAITING_DP")).toBe(true);
     expect(bolehBayar("PENDING")).toBe(true);
     expect(bolehBayar("WAITING_APPROVAL")).toBe(true);
     expect(bolehBayar("CONFIRMED")).toBe(true);
@@ -73,6 +89,37 @@ describe("bolehBayar (urutan kas: DP di awal, sisanya setelah selesai)", () => {
   it("pesan penahan menyebut DP di awal & pelunasan setelah SELESAI", () => {
     expect(PESAN_BAYAR_DITAHAN).toContain("DP");
     expect(PESAN_BAYAR_DITAHAN).toContain("SELESAI");
+  });
+});
+
+describe("totalTagihan (jasa utama + rincian jasa + part)", () => {
+  it("tanpa rincian & tanpa part = laborCost saja (kompatibel pemanggil lama)", () => {
+    expect(totalTagihan(150_000, [])).toBe(150_000);
+  });
+
+  it("menjumlahkan laborCost + Σ labors + Σ (price × qty)", () => {
+    expect(
+      totalTagihan(
+        100_000,
+        [
+          { price: 50_000, quantity: 2 },
+          { price: 10_000, quantity: 1 },
+        ],
+        [{ price: 25_000 }, { price: 15_000 }],
+      ),
+    ).toBe(100_000 + 110_000 + 40_000);
+  });
+
+  it("array labors kosong/null-ish = abaikan, hasil identik tanpa labors", () => {
+    expect(totalTagihan(100_000, [{ price: 5_000, quantity: 3 }], [])).toBe(
+      115_000,
+    );
+  });
+
+  it("selalu integer — tidak menghasilkan float dari pembulatan", () => {
+    const t = totalTagihan(0, [{ price: 33_333, quantity: 3 }], [{ price: 1 }]);
+    expect(Number.isInteger(t)).toBe(true);
+    expect(t).toBe(100_000);
   });
 });
 

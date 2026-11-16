@@ -27,6 +27,7 @@ import {
 } from "@/lib/notif-template";
 import { muatTemplateNotif } from "@/lib/notif-template-db";
 import { kirimTelegramStaf } from "@/lib/telegram";
+import { getDpConfig } from "@/lib/dp";
 
 export type PushPayload = {
   title: string;
@@ -69,6 +70,9 @@ async function claimDedup(dedupKey: string): Promise<boolean> {
 
 export function dedupBookingBaru(serviceId: string): string {
   return `booking:${serviceId}`;
+}
+export function dedupDpDiterima(serviceId: string): string {
+  return `dp:${serviceId}`;
 }
 export function dedupEstimasi(serviceId: string): string {
   return `estimasi:${serviceId}`;
@@ -114,6 +118,28 @@ export function payloadBookingBaru(d: {
     ),
     tag: d.tag,
     url: `/dashboard/servis/${d.id}`,
+  };
+}
+
+export function payloadDpDiterima(d: {
+  id: string;
+  code: string;
+  dp: number;
+  tag: string;
+  tpl?: TemplateInput;
+}): PushPayload {
+  const vars = { code: d.code, dp: formatRupiah(d.dp) };
+  return {
+    title: renderTemplate(
+      d.tpl?.title ?? defaultTemplate("push.dp_diterima", "title"),
+      vars,
+    ),
+    body: renderTemplate(
+      d.tpl?.body ?? defaultTemplate("push.dp_diterima", "body"),
+      vars,
+    ),
+    tag: d.tag,
+    url: "/pesanan",
   };
 }
 
@@ -403,6 +429,33 @@ export async function notifyEstimasi(serviceId: string): Promise<void> {
         estimate: svc.estimate,
         tag,
         tpl: tpl["push.estimasi"],
+      }),
+    );
+  } catch {
+    /* no-op */
+  }
+}
+
+export async function notifyDpDiterima(serviceId: string): Promise<void> {
+  try {
+    const tag = dedupDpDiterima(serviceId);
+    if (!(await claimDedup(tag))) return;
+    const svc = await prisma.service.findUnique({
+      where: { id: serviceId },
+      include: { vehicle: { select: { ownerId: true } } },
+    });
+    if (!svc) return;
+    const penerima = await penerimaCustomerService(svc);
+    const tpl = await muatTemplateNotif();
+    const cfg = await getDpConfig();
+    await kirimKe(
+      penerima,
+      payloadDpDiterima({
+        id: svc.id,
+        code: svc.code,
+        dp: cfg.nominal,
+        tag,
+        tpl: tpl["push.dp_diterima"],
       }),
     );
   } catch {

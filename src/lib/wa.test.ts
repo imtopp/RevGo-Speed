@@ -4,6 +4,7 @@ import {
   normalizeWa,
   pesanJadwalBaru,
   pesanKonfirmasiBooking,
+  pesanKonfirmasiDp,
   pesanPembatalan,
   waLink,
 } from "./wa";
@@ -121,6 +122,35 @@ describe("pesanKonfirmasiBooking", () => {
     ).toBe(
       "Halo TBRT, saya mau konfirmasi booking SV-BT26-0002.\nLayanan: Servis rem",
     );
+  });
+});
+
+describe("pesanKonfirmasiDp", () => {
+  it("gabungkan greeting, kode, nominal, dan nama pembayar", () => {
+    expect(
+      pesanKonfirmasiDp({
+        appName: "RevGo",
+        code: "SV-RV26-0001",
+        dp: "Rp50.000",
+        nama: "Budi",
+      }),
+    ).toBe(
+      "Halo RevGo, saya sudah bayar DP booking SV-RV26-0001 sebesar Rp50.000.\n" +
+        "Atas nama: Budi\n" +
+        "Mohon dicek. Terima kasih.",
+    );
+  });
+
+  it("memakai tpl admin dari SystemSetting", () => {
+    expect(
+      pesanKonfirmasiDp({
+        appName: "RevGo",
+        code: "SV-01",
+        dp: "Rp50.000",
+        nama: "Budi",
+        tpl: "DP {code} {dp} oleh {nama} ({appName})",
+      }),
+    ).toBe("DP SV-01 Rp50.000 oleh Budi (RevGo)");
   });
 });
 

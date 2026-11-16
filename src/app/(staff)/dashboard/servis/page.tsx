@@ -4,6 +4,7 @@ import Link from "next/link";
 import {
   STATUS_LABEL,
   STATUS_COLOR,
+  STATUS_OVERDUE,
   formatRupiah,
   formatTanggalPendek,
   ACTIVE_STATUSES,
@@ -12,12 +13,15 @@ import {
 import { BookingForm } from "./booking-form";
 import { PendingLink } from "@/components/pending-link";
 import { buildModelPerMerek, merekGroupsTampil } from "@/lib/vehicle";
+import { getDpConfig, labelTerlambat } from "@/lib/dp";
 import type { ServiceStatus } from "@db/prisma/client";
 
 export const metadata = { title: "Servis" };
 
 const FILTERS: { key: string; label: string }[] = [
   { key: "aktif", label: "Aktif" },
+  { key: "lewat", label: "Lewat Jadwal" },
+  { key: "WAITING_DP", label: "Menunggu DP" },
   { key: "PENDING", label: "Booking" },
   { key: "WAITING_APPROVAL", label: "Menunggu Setuju" },
   { key: "CONFIRMED", label: "Dikonfirmasi" },
@@ -44,14 +48,24 @@ export default async function ServisPage({
   const rentangTanggal = windowHariWIB(params.tanggal);
   const tanggal = rentangTanggal ? params.tanggal! : null;
 
+  // Render-time (server): dasar filter "Lewat Jadwal" & label overdue.
+  const now = new Date();
+
   const where = {
     ...(branchIdStaff ? { branchId: branchIdStaff } : {}),
-    ...(rentangTanggal ? { scheduledAt: rentangTanggal } : {}),
+    ...(rentangTanggal || filter === "lewat"
+      ? {
+          scheduledAt:
+            filter === "lewat" ? { ...rentangTanggal, lt: now } : rentangTanggal,
+        }
+      : {}),
     ...(filter === "semua"
       ? {}
       : filter === "aktif"
         ? { status: { in: ACTIVE_STATUSES } }
-        : { status: filter as ServiceStatus }),
+        : filter === "lewat"
+          ? { status: { in: STATUS_OVERDUE } }
+          : { status: filter as ServiceStatus }),
   };
 
   // Query string konsisten: tab/tombol tidak boleh melepas filter status,
@@ -88,6 +102,9 @@ export default async function ServisPage({
       orderBy: { model: "asc" },
     }),
   ]);
+
+  // Label keterlambatan (suffix kebijakan DP) — sudah dihitung `now` di atas.
+  const dpCfg = await getDpConfig();
 
   return (
     <div className="space-y-4">
@@ -219,6 +236,18 @@ export default async function ServisPage({
                 <p className="mt-1 text-xs text-slate-400">
                   {formatTanggalPendek(s.createdAt)}
                 </p>
+                {s.status === "WAITING_DP" && s.dpClaimedAt && (
+                  <p className="mt-1 text-xs font-medium text-success">
+                    Klaim DP ✓
+                  </p>
+                )}
+                {STATUS_OVERDUE.includes(s.status) &&
+                  s.scheduledAt &&
+                  s.scheduledAt.getTime() < now.getTime() && (
+                    <p className="mt-1 text-xs font-medium text-warning">
+                      {labelTerlambat(s.scheduledAt, now, dpCfg)}
+                    </p>
+                  )}
               </div>
             </div>
             {s.estimate > 0 && (

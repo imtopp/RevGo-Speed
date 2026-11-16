@@ -124,3 +124,26 @@ export function pesanKonfirmasiBooking(opts: {
     vars,
   );
 }
+
+/**
+ * Pesan pratinjau WhatsApp konfirmasi DP sudah dibayar — kode + nominal +
+ * nama pembayar supaya customer tinggal kirim ke bengkel.
+ * `tpl` = override template dari SystemSetting (dibaca pemanggil server).
+ */
+export function pesanKonfirmasiDp(opts: {
+  appName: string;
+  code: string;
+  dp: string;
+  nama: string;
+  tpl?: string;
+}): string {
+  return renderTemplate(
+    opts.tpl ?? defaultTemplate("wa.konfirmasi_dp", "body"),
+    {
+      appName: opts.appName,
+      code: opts.code,
+      dp: opts.dp,
+      nama: opts.nama,
+    },
+  );
+}

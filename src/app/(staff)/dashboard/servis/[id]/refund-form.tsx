@@ -37,7 +37,7 @@ export function RefundForm({
         onClick={() => setOpen(true)}
         className="w-full rounded-lg border border-slate-300 bg-surface px-4 py-2.5 text-sm font-medium text-foreground active:opacity-90"
       >
-        Kembalikan kelebihan {formatRupiah(kelebihan)}…
+        Kelebihan bayar {formatRupiah(kelebihan)} — kembalikan sekarang…
       </button>
     );
   }

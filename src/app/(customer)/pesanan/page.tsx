@@ -7,10 +7,13 @@ import {
   formatRupiah,
   formatTanggalPendek,
   formatTanggalWIB,
+  totalTagihan,
 } from "@/lib/service-status";
-import { BookingSection, RespondForm } from "./booking-section";
+import { BookingSection } from "./booking-section";
+import { DpInfoCard } from "./dp-card";
 import { buildModelPerMerek, merekGroupsTampil } from "@/lib/vehicle";
 import { getBranding } from "@/lib/branding";
+import { getDpConfig, dpAktif } from "@/lib/dp";
 import { pushEnabled } from "@/lib/push";
 import { PushOptInCard } from "@/components/push-opt-in-card";
 import { waLink, pesanKonfirmasiBooking } from "@/lib/wa";
@@ -20,8 +23,9 @@ import type { ServiceStatus } from "@db/prisma/client";
 export const metadata = { title: "Pesanan Saya" };
 
 const NEXT_STEP: Record<ServiceStatus, string> = {
+  WAITING_DP: "Booking diterima — bayar DP dulu agar jadwal dikunci.",
   PENDING: "Menunggu bengkel memberi estimasi.",
-  WAITING_APPROVAL: "Estimasi sudah dikirim — tinjau di bawah, lalu setujui.",
+  WAITING_APPROVAL: "Estimasi sudah dikirim — menunggu konfirmasi bengkel.",
   CONFIRMED: "Booking dikonfirmasi — antar unit sesuai jadwal.",
   CHECKED_IN: "Unit sudah diterima — menunggu pemeriksaan & pengerjaan.",
   IN_PROGRESS: "Servis sedang dikerjakan oleh mekanik.",
@@ -30,11 +34,69 @@ const NEXT_STEP: Record<ServiceStatus, string> = {
   CANCELLED: "Servis dibatalkan.",
 };
 
+type PartRincian = {
+  price: number;
+  quantity: number;
+  part?: { name: string } | null;
+};
+type JasaRincian = { name: string; price: number };
+
+/** Blok rincian biaya customer: jasa utama + jasa tambahan + part + total. */
+function RincianBiaya({
+  laborCost,
+  parts,
+  labors,
+}: {
+  laborCost: number;
+  parts: PartRincian[];
+  labors: JasaRincian[];
+}) {
+  const total = totalTagihan(laborCost, parts, labors);
+  if (total <= 0) return null;
+  return (
+    <div className="mt-3 rounded-lg bg-slate-50 p-3 text-sm">
+      <p className="font-medium text-foreground">Rincian biaya</p>
+      <div className="mt-1 space-y-0.5">
+        <div className="flex justify-between gap-2">
+          <span className="text-muted-foreground">Jasa servis</span>
+          <span className="shrink-0">{formatRupiah(laborCost)}</span>
+        </div>
+        {labors.map((l) => (
+          <div key={l.name + l.price} className="flex justify-between gap-2">
+            <span className="min-w-0 truncate text-muted-foreground">
+              {l.name}
+            </span>
+            <span className="shrink-0">{formatRupiah(l.price)}</span>
+          </div>
+        ))}
+        {parts.map((p) => (
+          <div
+            key={(p.part?.name ?? "part") + p.price + p.quantity}
+            className="flex justify-between gap-2"
+          >
+            <span className="min-w-0 truncate text-muted-foreground">
+              Part{p.part?.name ? ` · ${p.part.name}` : ""} × {p.quantity}
+            </span>
+            <span className="shrink-0">
+              {formatRupiah(p.price * p.quantity)}
+            </span>
+          </div>
+        ))}
+        <div className="mt-1 flex justify-between gap-2 border-t border-slate-200 pt-1 font-semibold">
+          <span>Total</span>
+          <span className="shrink-0">{formatRupiah(total)}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default async function PesananPage() {
   const session = await auth();
   if (!session?.user || session.user.role !== "CUSTOMER") redirect("/login");
 
   const { appName, waNumber } = await getBranding();
+  const dpCfg = await getDpConfig();
 
   const [services, vehicles, branches, catalog, modelRows, tplNotif] =
     await Promise.all([
@@ -52,7 +114,14 @@ export default async function PesananPage() {
         vehicle: true,
         branch: { select: { name: true } },
         payments: true,
-        parts: { select: { price: true, quantity: true } },
+        parts: {
+          select: {
+            price: true,
+            quantity: true,
+            part: { select: { name: true } },
+          },
+        },
+        labors: { select: { name: true, price: true } },
       },
     }),
     prisma.vehicle.findMany({
@@ -133,10 +202,23 @@ export default async function PesananPage() {
             </p>
           )}
 
-          {active.status === "WAITING_APPROVAL" && (
-            <div className="mt-3">
-              <RespondForm id={active.id} />
-            </div>
+          <RincianBiaya
+            laborCost={active.laborCost}
+            parts={active.parts}
+            labors={active.labors}
+          />
+
+          {active.status === "WAITING_DP" && dpAktif(dpCfg) && (
+            <DpInfoCard
+              id={active.id}
+              dp={dpCfg}
+              appName={appName}
+              waNumber={waNumber}
+              code={active.code}
+              customerName={session.user.name ?? ""}
+              claimed={!!active.dpClaimedAt}
+              tplWaDp={tplNotif["wa.konfirmasi_dp"]?.body}
+            />
           )}
 
           {waNumber && (
@@ -173,6 +255,8 @@ export default async function PesananPage() {
         appName={appName}
         waNumber={waNumber}
         tplWaKonfirmasi={tplNotif["wa.konfirmasi_booking"]?.body}
+        customerName={session.user.name ?? ""}
+        tplWaDp={tplNotif["wa.konfirmasi_dp"]?.body}
       />
 
       {services.length === 0 && (
@@ -188,10 +272,8 @@ export default async function PesananPage() {
           const totalDibayar = s.payments
             .filter((p) => !p.voidedAt)
             .reduce((sum, p) => sum + p.amount, 0);
-          const totalTagihan =
-            s.laborCost +
-            s.parts.reduce((sum, p) => sum + p.price * p.quantity, 0);
-          const sisa = totalTagihan - totalDibayar;
+          const total = totalTagihan(s.laborCost, s.parts, s.labors);
+          const sisa = total - totalDibayar;
           return (
             <div
               key={s.id}
@@ -233,14 +315,11 @@ export default async function PesananPage() {
                 </p>
               )}
 
-              {s.status === "WAITING_APPROVAL" && (
-                <div className="mt-3">
-                  <p className="text-sm font-medium text-amber-700">
-                    Estimasi menunggu persetujuanmu:
-                  </p>
-                  <RespondForm id={s.id} />
-                </div>
-              )}
+              <RincianBiaya
+                laborCost={s.laborCost}
+                parts={s.parts}
+                labors={s.labors}
+              />
 
               {s.status === "DONE" && (sisa > 0 || totalDibayar > 0) && (
                 <p className="mt-2 text-sm">

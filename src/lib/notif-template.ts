@@ -1,7 +1,7 @@
 /**
  * Template notifikasi yang bisa diedit OWNER/SYS_ADMIN di
- * /dashboard/pengaturan/notifikasi — berlaku untuk push (6 event) dan
- * pesan pratinjau WhatsApp (3 template).
+ * /dashboard/pengaturan/notifikasi — berlaku untuk push (7 event) dan
+ * pesan pratinjau WhatsApp (4 template).
  *
  * - Default tersimpan di `TEMPLATE_DEFS`; override admin di SystemSetting
  *   `notif_templates` (JSON) — kosong = pakai default.
@@ -57,20 +57,34 @@ export const TEMPLATE_DEFS: TemplateDef[] = [
     ],
   },
   {
+    id: "push.dp_diterima",
+    grup: "Push",
+    label: "DP diterima",
+    fields: [
+      { name: "title", label: "Judul", default: "DP diterima", variabel: [] },
+      {
+        name: "body",
+        label: "Isi",
+        default: "{code} · DP {dp} diterima — menunggu estimasi",
+        variabel: ["code", "dp"],
+      },
+    ],
+  },
+  {
     id: "push.estimasi",
     grup: "Push",
-    label: "Estimasi menunggu persetujuan",
+    label: "Estimasi tersedia",
     fields: [
       {
         name: "title",
         label: "Judul",
-        default: "Estimasi menunggu persetujuan",
+        default: "Estimasi tersedia",
         variabel: [],
       },
       {
         name: "body",
         label: "Isi",
-        default: "{code} · estimasi {estimasi} — buka Pesanan untuk menyetujui",
+        default: "{code} · estimasi {estimasi} — booking sudah dikonfirmasi",
         variabel: ["code", "estimasi"],
       },
     ],
@@ -175,6 +189,23 @@ export const TEMPLATE_DEFS: TemplateDef[] = [
         variabel: ["appName", "code", "motor", "layanan", "jadwal"],
         catatan:
           "{motor}/{layanan}/{jadwal} = baris lengkap diawali baris baru (kosong bila tidak ada)",
+      },
+    ],
+  },
+  {
+    id: "wa.konfirmasi_dp",
+    grup: "WhatsApp",
+    label: "Konfirmasi DP sudah dibayar (customer → bengkel)",
+    fields: [
+      {
+        name: "body",
+        label: "Pesan",
+        default:
+          "Halo {appName}, saya sudah bayar DP booking {code} sebesar {dp}." +
+          "\nAtas nama: {nama}" +
+          "\nMohon dicek. Terima kasih.",
+        variabel: ["appName", "code", "dp", "nama"],
+        catatan: "{nama} = nama pelanggan yang membayar",
       },
     ],
   },

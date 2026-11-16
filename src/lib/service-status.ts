@@ -1,6 +1,7 @@
 import type { ServiceStatus } from "@db/prisma/client";
 
 export const STATUS_LABEL: Record<ServiceStatus, string> = {
+  WAITING_DP: "Menunggu DP",
   PENDING: "Booking Masuk",
   WAITING_APPROVAL: "Menunggu Persetujuan",
   CONFIRMED: "Dikonfirmasi",
@@ -12,6 +13,7 @@ export const STATUS_LABEL: Record<ServiceStatus, string> = {
 };
 
 export const STATUS_COLOR: Record<ServiceStatus, string> = {
+  WAITING_DP: "bg-yellow-100 text-yellow-800",
   PENDING: "bg-slate-100 text-foreground",
   WAITING_APPROVAL: "bg-amber-100 text-amber-800",
   CONFIRMED: "bg-blue-100 text-blue-800",
@@ -24,6 +26,7 @@ export const STATUS_COLOR: Record<ServiceStatus, string> = {
 
 /** Nama aksi berikutnya per status — dipakai sticky bar & panel aksi. */
 export const NEXT_ACTION_LABEL: Record<ServiceStatus, string> = {
+  WAITING_DP: "Terima DP",
   PENDING: "Beri estimasi & jadwal",
   WAITING_APPROVAL: "Setujui estimasi",
   CONFIRMED: "Terima unit masuk",
@@ -36,6 +39,7 @@ export const NEXT_ACTION_LABEL: Record<ServiceStatus, string> = {
 
 /** Status yang masih terbuka (aktif dikerjakan / menunggu aksi). */
 export const ACTIVE_STATUSES: ServiceStatus[] = [
+  "WAITING_DP",
   "PENDING",
   "WAITING_APPROVAL",
   "CONFIRMED",
@@ -46,6 +50,18 @@ export const ACTIVE_STATUSES: ServiceStatus[] = [
 
 /** Status yang menerima pembayaran: saat booking/awal (DP) atau setelah SELESAI. */
 const STATUS_BAYAR_AWAL: ServiceStatus[] = [
+  "WAITING_DP",
+  "PENDING",
+  "WAITING_APPROVAL",
+  "CONFIRMED",
+];
+
+/**
+ * Status "belum check-in" yang menampilkan badge overdue
+ * ("Terlambat X hr Y jam") di papan & detail servis — render-time.
+ */
+export const STATUS_OVERDUE: ServiceStatus[] = [
+  "WAITING_DP",
   "PENDING",
   "WAITING_APPROVAL",
   "CONFIRMED",
@@ -62,6 +78,29 @@ export function bolehBayar(status: ServiceStatus): boolean {
 /** Pesan untuk status yang menahan pembayaran (unit sedang dikerjakan). */
 export const PESAN_BAYAR_DITAHAN =
   "Pembayaran ditahan — DP saat booking, pelunasan setelah servis SELESAI (QC lolos).";
+
+/** Item part ringkas untuk hitung total (harga jual × jumlah). */
+export type PartRingkas = { price: number; quantity: number };
+/** Item rincian jasa ringkas untuk hitung total (harga per baris). */
+export type JasaRingkas = { price: number };
+
+/**
+ * Total tagihan servis = jasa utama (`laborCost`) + Σ rincian jasa + Σ part.
+ * Satu-satunya sumber hitungan total — dipakai bayar, piutang, omzet,
+ * laporan, cetak, dan customer. `labors` opsional agar pemanggil lama
+ * (tanpa relasi) tetap kompatibel.
+ */
+export function totalTagihan(
+  laborCost: number,
+  parts: PartRingkas[],
+  labors: JasaRingkas[] = [],
+): number {
+  return (
+    laborCost +
+    labors.reduce((s, l) => s + l.price, 0) +
+    parts.reduce((s, p) => s + p.price * p.quantity, 0)
+  );
+}
 
 export function formatRupiah(n: number): string {
   return new Intl.NumberFormat("id-ID", {

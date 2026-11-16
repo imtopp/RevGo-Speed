@@ -28,3 +28,25 @@ export async function processLogoImage(
     .webp({ quality })
     .toBuffer();
 }
+
+/**
+ * Olah gambar QRIS menjadi WebP siap simpan — TANPA trim margin:
+ * kode QR butuh quiet zone (margin putih) agar bisa discan; trim seperti
+ * logo justru merusak keterbacaan. Hanya auto-orient + resize maks 1024px
+ * (fit inside, rasio dipertahankan) + konversi WebP.
+ */
+export async function processQrisImage(
+  input: Buffer,
+  quality: number,
+): Promise<Buffer> {
+  return sharp(input)
+    .rotate()
+    .resize({
+      width: 1024,
+      height: 1024,
+      fit: "inside",
+      withoutEnlargement: true,
+    })
+    .webp({ quality })
+    .toBuffer();
+}

@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { requireStaffRole, getStaffBranchId } from "@/lib/guard";
-import { periodeWIB } from "@/lib/service-status";
+import { periodeWIB, totalTagihan } from "@/lib/service-status";
 import { OPNAME_NOTE_PREFIX, opnameDeltaValue } from "@/lib/opname";
 import { totalPenjualan } from "@/lib/sale";
 
@@ -35,6 +35,7 @@ export async function GET(request: Request) {
       },
       include: {
         parts: { select: { price: true, quantity: true, cost: true } },
+        labors: { select: { price: true } },
         customer: { select: { name: true } },
         vehicle: { select: { plateNumber: true } },
         branch: { select: { name: true } },
@@ -66,7 +67,7 @@ export async function GET(request: Request) {
   ];
   let totRev = 0, totHpp = 0;
   for (const s of doneServices) {
-    const revenue = s.laborCost + s.parts.reduce((x, p) => x + p.price * p.quantity, 0);
+    const revenue = totalTagihan(s.laborCost, s.parts, s.labors);
     const hpp = s.parts.reduce((x, p) => x + p.cost * p.quantity, 0);
     totRev += revenue; totHpp += hpp;
     servisRows.push([

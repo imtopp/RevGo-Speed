@@ -17,17 +17,19 @@ import {
 } from "@/lib/availability";
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
-import { formatRupiah, formatTanggalWIB } from "@/lib/service-status";
+import { formatRupiah, formatTanggalWIB, totalTagihan } from "@/lib/service-status";
 import {
   notifyBatal,
   notifyBookingBaru,
+  notifyDpDiterima,
   notifyEstimasi,
   notifyJadwalDiubah,
   notifySelesai,
   notifyStokMenipis,
 } from "@/lib/push";
+import { getDpConfig, dpAktif } from "@/lib/dp";
 import { normalizeWa, formatWaLocal } from "@/lib/wa";
-import type { Prisma, ServiceStatus } from "@db/prisma/client";
+import type { Prisma, ServiceStatus, PaymentMethod } from "@db/prisma/client";
 
 export type ServisState = { error?: string; success?: string };
 
@@ -125,6 +127,11 @@ export async function createBooking(
   const catalog = catalogId
     ? await prisma.serviceCatalog.findFirst({ where: { id: catalogId, aktif: true } })
     : null;
+
+  // §C4: booking baru berstatus WAITING_DP selama DP aktif (nominal > 0) —
+  // konfirmasi DP oleh admin mengubahnya ke PENDING (siap estimasi).
+  const dpCfg = await getDpConfig();
+  const menungguDp = dpAktif(dpCfg);
 
   let durasiMenit = catalog?.estimasiMenit ?? DURASI_DEFAULT_MENIT;
   if (durasiRaw) {
@@ -261,7 +268,7 @@ export async function createBooking(
         customerId: vehicle.ownerId,
         customerName: vehicle.owner?.name ?? vehicle.ownerName,
         customerPhone: customerWa,
-        status: "PENDING",
+        status: menungguDp ? "WAITING_DP" : "PENDING",
         complaint: complaint || catalog?.nama || null,
         estimate: catalog?.hargaDasar ?? 0,
         scheduledAt: new Date(jadwalEpoch),
@@ -296,6 +303,7 @@ export async function createBooking(
       (reservasi
         ? `Reservasi ${hasil.code} dibuat untuk ${plateNumber}.`
         : `Booking ${hasil.code} dibuat untuk ${plateNumber} (walk-in).`) +
+      (menungguDp ? " Menunggu pembayaran DP." : "") +
       hasil.peringatan +
       (hasil.passwordSementara
         ? ` Akun customer baru dibuat — password sementara: ${hasil.passwordSementara} (beritahu customer, sarankan diganti).`
@@ -418,10 +426,12 @@ export async function submitEstimate(
   }
 
   try {
+    // §C9: estimasi informatif — customer tidak perlu approve; simpan →
+    // langsung CONFIRMED (booking jalan tanpa langkah approval).
     await transition(
       id,
       ["PENDING"],
-      "WAITING_APPROVAL",
+      "CONFIRMED",
       {
         estimate,
         laborCost,
@@ -436,7 +446,107 @@ export async function submitEstimate(
   after(() => notifyEstimasi(id));
   revalidatePath("/dashboard/servis");
   revalidatePath(`/dashboard/servis/${id}`);
-  return { success: "Estimasi dikirim — menunggu persetujuan pelanggan." };
+  return { success: "Estimasi dikirim — booking sudah dikonfirmasi." };
+}
+
+// ─── Konfirmasi DP (WAITING_DP → PENDING) ─────────────────────────────
+
+export async function confirmDp(
+  _prev: ServisState,
+  formData: FormData,
+): Promise<ServisState> {
+  const session = await requireStaffRole(["OWNER", "ADMIN"]);
+  const id = String(formData.get("id") ?? "").trim();
+  const method = String(formData.get("method") ?? "").trim();
+  const note = String(formData.get("note") ?? "").trim();
+  if (!["TRANSFER", "QRIS", "CASH"].includes(method)) {
+    return { error: "Metode pembayaran tidak valid." };
+  }
+
+  const service = await prisma.service.findUnique({
+    where: { id },
+    include: { customer: { select: { name: true } } },
+  });
+  if (!service) return { error: "Servis tidak ditemukan." };
+  if (service.status !== "WAITING_DP") {
+    return { error: "Servis tidak dalam tahap Menunggu DP." };
+  }
+  const aksesError = await cekCabangServis(service.branchId);
+  if (aksesError) return { error: aksesError };
+
+  const cfg = await getDpConfig();
+  if (!dpAktif(cfg)) return { error: "DP tidak aktif (nominal 0) — gunakan konfirmasi booking biasa." };
+  const amount = cfg.nominal;
+  const account = method === "CASH" ? "KAS" : "BANK";
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      // Kunci baris servis — serialisasi cek status antar request.
+      await tx.$queryRaw`SELECT id FROM "Service" WHERE id = ${id} FOR UPDATE`;
+      const fresh = await tx.service.findUnique({
+        where: { id },
+        select: { status: true },
+      });
+      if (!fresh) throw new Error("Servis tidak ditemukan.");
+      if (fresh.status !== "WAITING_DP") {
+        throw new Error("Servis tidak lagi dalam tahap Menunggu DP.");
+      }
+
+      // DP sudah pernah dicatat (mis. lewat menu Kas) → jangan dobel;
+      // cukup transisi statusnya saja.
+      const existingDp = await tx.payment.findFirst({
+        where: { serviceId: id, kind: "DP", voidedAt: null },
+        select: { id: true },
+      });
+      if (!existingDp) {
+        await tx.payment.create({
+          data: {
+            serviceId: id,
+            amount,
+            kind: "DP",
+            method: method as PaymentMethod,
+            note: note || null,
+            receivedById: session.user.id,
+          },
+        });
+        await tx.cashflow.create({
+          data: {
+            type: "INCOME",
+            category: "DP Servis",
+            amount,
+            account,
+            branchId: service.branchId,
+            description: `${service.code} · ${service.customerName ?? service.customer?.name ?? "Tanpa nama"}`,
+            createdBy: session.user.id,
+          },
+        });
+        await logAudit(tx, session.user, {
+          action: "DP_CONFIRM",
+          entityType: "Service",
+          entityId: id,
+          branchId: service.branchId,
+          summary: `${service.code}: DP ${amount.toLocaleString("id-ID")} (${method}) diterima — WAITING_DP → PENDING`,
+          after: {
+            amount,
+            kind: "DP",
+            method,
+            account,
+            status: "PENDING",
+          },
+        });
+      }
+
+      await tx.service.update({ where: { id }, data: { status: "PENDING" } });
+    });
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Gagal konfirmasi DP." };
+  }
+
+  after(() => notifyDpDiterima(id));
+  revalidatePath("/dashboard/servis");
+  revalidatePath(`/dashboard/servis/${id}`);
+  revalidatePath("/pesanan");
+  return { success: `DP diterima — ${service.code} lanjut ke tahap Booking.` };
 }
 
 /** Mekanik harus aktif, role MECHANIC, se-cabang, dan bebas (tidak tabrakan jadwal). */
@@ -781,21 +891,48 @@ export async function cancelService(
   const id = String(formData.get("id") ?? "").trim();
   const reason = String(formData.get("reason") ?? "").trim();
   if (!reason) return { error: "Alasan pembatalan wajib diisi." };
-  // Pembatalan tanpa membatalkan DP membuat kas tetap memuat uang dari servis
-  // yang batal (kas fiktif) — wajib void dulu lewat menu Kas, baru batalkan.
-  const bayar = await prisma.payment.aggregate({
-    where: { serviceId: id, voidedAt: null },
-    _sum: { amount: true },
-    _count: true,
+
+  const service = await prisma.service.findUnique({
+    where: { id },
+    select: { status: true, scheduledAt: true },
   });
-  if (bayar._count > 0) {
-    return {
-      error: `Ada pembayaran aktif total Rp${(bayar._sum.amount ?? 0).toLocaleString("id-ID")} — batalkan (void) dulu pembayarannya lewat menu Kas sebelum membatalkan servis.`,
-    };
+  if (!service) return { error: "Servis tidak ditemukan." };
+
+  // Aturan DP seragam ikut `dp_policy` (tidak ada override no-show):
+  // - TANPA_REFUND (default): pembayaran aktif kind=DP saja → boleh cancel
+  //   tanpa void, DP tetap income (hangus) — wajib centang konfirmasi.
+  // - REFUND_PENUH: masih ada pembayaran aktif → ditolak, wajib void
+  //   (refund) dulu lewat menu Kas.
+  // - Selalu blokir bila ada pembayaran non-DP aktif (mis. PELUNASAN).
+  const bayar = await prisma.payment.findMany({
+    where: { serviceId: id, voidedAt: null },
+    select: { amount: true, kind: true },
+  });
+  let dpHangus = 0;
+  if (bayar.length > 0) {
+    const hanyaDp = bayar.every((p) => p.kind === "DP");
+    if (hanyaDp) {
+      const cfg = await getDpConfig();
+      if (cfg.policy !== "REFUND_PENUH") {
+        dpHangus = bayar.reduce((s, p) => s + p.amount, 0);
+      }
+    }
+    if (dpHangus === 0) {
+      const totalBayar = bayar.reduce((s, p) => s + p.amount, 0);
+      return {
+        error: `Ada pembayaran aktif total Rp${totalBayar.toLocaleString("id-ID")} — batalkan (void) dulu pembayarannya lewat menu Kas sebelum membatalkan servis.`,
+      };
+    }
+    if (String(formData.get("dpHangus") ?? "") !== "1") {
+      return {
+        error: `Centang konfirmasi "DP Rp${dpHangus.toLocaleString("id-ID")} ditahan (tidak direfund)" sebelum membatalkan servis.`,
+      };
+    }
   }
+
   await transition(
     id,
-    ["PENDING", "WAITING_APPROVAL", "CONFIRMED", "CHECKED_IN"],
+    ["WAITING_DP", "PENDING", "WAITING_APPROVAL", "CONFIRMED", "CHECKED_IN"],
     "CANCELLED",
     { cancelReason: reason },
   );
@@ -803,7 +940,12 @@ export async function cancelService(
   revalidatePath("/dashboard/servis");
   revalidatePath(`/dashboard/servis/${id}`);
   revalidatePath("/pesanan");
-  return { success: "Servis dibatalkan." };
+  return {
+    success:
+      dpHangus > 0
+        ? `Servis dibatalkan. DP Rp${dpHangus.toLocaleString("id-ID")} tetap diterima bengkel (hangus).`
+        : "Servis dibatalkan.",
+  };
 }
 
 // ─── Part Terpakai ────────────────────────────────────────────────────
@@ -812,7 +954,9 @@ export async function addServicePart(
   _prev: ServisState,
   formData: FormData,
 ): Promise<ServisState> {
-  await requireStaffRole(["OWNER", "ADMIN", "MECHANIC"]);
+  // Hanya OWNER/ADMIN (§B): mekanik tidak menambah part sendirian —
+  // perencanaan & akurasi jasa/part di tangan pengelola.
+  await requireStaffRole(["OWNER", "ADMIN"]);
   const serviceId = String(formData.get("serviceId") ?? "").trim();
   const partId = String(formData.get("partId") ?? "").trim();
   const quantity = Number(formData.get("quantity") ?? 0);
@@ -1000,6 +1144,130 @@ export async function removeServicePart(
 
   revalidatePath(`/dashboard/servis/${sp.serviceId}`);
   return { success: "Item dikembalikan ke stok." };
+}
+
+// ─── Rincian jasa (per baris) ─────────────────────────────────────────
+// Jasa murni: tanpa stok, tanpa qty — hanya nama + harga. Total ikut
+// `totalTagihan()` (jasa utama + rincian + part). OWNER/ADMIN saja.
+
+export async function addServiceLabor(
+  _prev: ServisState,
+  formData: FormData,
+): Promise<ServisState> {
+  const session = await requireStaffRole(["OWNER", "ADMIN"]);
+  const serviceId = String(formData.get("serviceId") ?? "").trim();
+  const name = String(formData.get("name") ?? "").trim();
+  const price = Number(formData.get("price") ?? 0);
+  const note = String(formData.get("note") ?? "").trim();
+
+  if (!serviceId) return { error: "Servis tidak valid." };
+  if (!name) return { error: "Nama jasa wajib diisi." };
+  if (name.length > 200) return { error: "Nama jasa maksimal 200 karakter." };
+  if (note.length > 500) return { error: "Catatan maksimal 500 karakter." };
+  if (!Number.isInteger(price) || price < 0 || price > 2_000_000_000) {
+    return { error: "Harga tidak valid — isi bilangan bulat rupiah (0–2 miliar)." };
+  }
+
+  const service = await prisma.service.findUnique({
+    where: { id: serviceId },
+    select: { id: true, code: true, branchId: true, status: true },
+  });
+  if (!service) return { error: "Servis tidak ditemukan." };
+  // Rincian jasa hanya masuk akal saat unit sudah disepakati dikerjakan —
+  // bukan saat booking/estimasi masih menunggu (laborCost estimasi beda haluan).
+  const bolehJasa: ServiceStatus[] = [
+    "CONFIRMED",
+    "CHECKED_IN",
+    "IN_PROGRESS",
+    "WAITING_PARTS",
+  ];
+  if (!bolehJasa.includes(service.status)) {
+    return { error: "Rincian jasa bisa ditambah setelah booking dikonfirmasi." };
+  }
+  const aksesError = await cekCabangServis(service.branchId);
+  if (aksesError) return { error: aksesError };
+
+  await prisma.$transaction(async (tx) => {
+    const labor = await tx.serviceLabor.create({
+      data: { serviceId, name, price, note: note || null },
+    });
+    await logAudit(tx, session.user, {
+      action: "SERVICE_LABOR_ADD",
+      entityType: "ServiceLabor",
+      entityId: labor.id,
+      branchId: service.branchId,
+      summary: `${service.code} · +jasa ${name} @${price.toLocaleString("id-ID")}`,
+      after: { name, price, note: note || null },
+    });
+  });
+
+  revalidatePath(`/dashboard/servis/${serviceId}`);
+  return { success: `Jasa "${name}" ditambahkan.` };
+}
+
+export async function removeServiceLabor(
+  _prev: ServisState,
+  formData: FormData,
+): Promise<ServisState> {
+  const session = await requireStaffRole(["OWNER", "ADMIN"]);
+  const id = String(formData.get("id") ?? "").trim();
+  if (!id) return { error: "Item tidak valid." };
+
+  const labor = await prisma.serviceLabor.findUnique({
+    where: { id },
+    include: {
+      service: {
+        select: {
+          id: true,
+          code: true,
+          branchId: true,
+          status: true,
+          laborCost: true,
+          parts: { select: { price: true, quantity: true } },
+          payments: { where: { voidedAt: null }, select: { amount: true } },
+        },
+      },
+    },
+  });
+  if (!labor) return { error: "Jasa tidak ditemukan." };
+  if (labor.service.status === "DONE" || labor.service.status === "CANCELLED") {
+    return { error: "Tidak bisa ubah jasa servis yang sudah selesai/dibatalkan." };
+  }
+  const aksesError = await cekCabangServis(labor.service.branchId);
+  if (aksesError) return { error: aksesError };
+
+  // Hapus tak boleh membuat total jatuh di bawah yang sudah dibayar —
+  // tagihan tak boleh negatif / piutang tak terkejar.
+  const laborsLain = await prisma.serviceLabor.findMany({
+    where: { serviceId: labor.serviceId, id: { not: id } },
+    select: { price: true },
+  });
+  const totalSesudah = totalTagihan(
+    labor.service.laborCost,
+    labor.service.parts,
+    laborsLain,
+  );
+  const sudahDibayar = labor.service.payments.reduce((s, p) => s + p.amount, 0);
+  if (totalSesudah < sudahDibayar) {
+    return {
+      error: `Tidak bisa hapus — total sesudah dihapus (${totalSesudah.toLocaleString("id-ID")}) kurang dari yang sudah dibayar (${sudahDibayar.toLocaleString("id-ID")}).`,
+    };
+  }
+
+  await prisma.$transaction(async (tx) => {
+    await tx.serviceLabor.delete({ where: { id } });
+    await logAudit(tx, session.user, {
+      action: "SERVICE_LABOR_REMOVE",
+      entityType: "ServiceLabor",
+      entityId: id,
+      branchId: labor.service.branchId,
+      summary: `${labor.service.code} · −jasa ${labor.name}`,
+      before: { name: labor.name, price: labor.price },
+    });
+  });
+
+  revalidatePath(`/dashboard/servis/${labor.serviceId}`);
+  return { success: `Jasa "${labor.name}" dihapus.` };
 }
 
 /**

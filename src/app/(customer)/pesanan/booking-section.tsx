@@ -13,12 +13,13 @@ import {
   customerAddVehicle,
   customerUpdateVehicle,
   customerDeleteVehicle,
-  customerRespondEstimate,
   type CustomerState,
 } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
 import { SlotPicker } from "@/components/slot-picker";
 import { waLink, pesanKonfirmasiBooking } from "@/lib/wa";
+import { DpInfoCard } from "./dp-card";
+import type { DpConfig } from "@/lib/dp";
 
 type Vehicle = { id: string; plateNumber: string; brand: string; model: string };
 type Branch = { id: string; name: string };
@@ -74,34 +75,6 @@ function MerekSelect({
       ))}
       <option value={MEREK_LAINNYA}>{MEREK_LAINNYA}</option>
     </select>
-  );
-}
-
-export function RespondForm({ id }: { id: string }) {
-  const [state, action] = useActionState<CustomerState, FormData>(
-    customerRespondEstimate,
-    {},
-  );
-  return (
-    <div className="mt-2 space-y-2">
-      <Msg state={state} />
-      <div className="flex gap-2">
-        <form onReset={(e) => e.preventDefault()} action={action} className="flex-1">
-          <input type="hidden" name="id" value={id} />
-          <input type="hidden" name="decision" value="approve" />
-          <SubmitButton className="w-full rounded-lg bg-success py-2 text-sm font-medium text-white active:opacity-90 disabled:opacity-60">
-            Setujui
-          </SubmitButton>
-        </form>
-        <form onReset={(e) => e.preventDefault()} action={action} className="flex-1">
-          <input type="hidden" name="id" value={id} />
-          <input type="hidden" name="decision" value="reject" />
-          <SubmitButton className="w-full rounded-lg bg-surface py-2 text-sm font-medium text-danger ring-1 ring-red-200 active:opacity-90 disabled:opacity-60">
-            Tolak
-          </SubmitButton>
-        </form>
-      </div>
-    </div>
   );
 }
 
@@ -271,6 +244,8 @@ export function BookingSection({
   appName,
   waNumber,
   tplWaKonfirmasi,
+  customerName,
+  tplWaDp,
 }: {
   vehicles: Vehicle[];
   branches: Branch[];
@@ -280,23 +255,27 @@ export function BookingSection({
   appName: string;
   waNumber: string | null;
   tplWaKonfirmasi?: string;
+  customerName: string;
+  tplWaDp?: string;
 }) {
   const [showAddVehicle, setShowAddVehicle] = useState(false);
   const [showBooking, setShowBooking] = useState(false);
   const [flash, setFlash] = useState<string | null>(null);
   // Panel sukses booking — menempel sampai ditutup (bukan flash 6 detik),
-  // berisi kode booking + rincian + tombol konfirmasi WhatsApp.
+  // berisi kode booking + info DP (bila aktif) + tombol konfirmasi WhatsApp.
   const [lastBooking, setLastBooking] = useState<{
+    id: string;
     code: string;
     rincian?: CustomerState["rincian"];
+    dp?: DpConfig;
   } | null>(null);
   const [branchId, setBranchId] = useState(branches[0]?.id ?? "");
   const [jadwal, setJadwal] = useState("");
 
   const runBooking = async (prev: CustomerState, fd: FormData) => {
     const r = await customerBooking(prev, fd);
-    if (r.success && r.code) {
-      setLastBooking({ code: r.code, rincian: r.rincian });
+    if (r.success && r.code && r.id) {
+      setLastBooking({ id: r.id, code: r.code, rincian: r.rincian, dp: r.dp });
       setShowBooking(false);
       setJadwal("");
     }
@@ -336,27 +315,44 @@ export function BookingSection({
         <div className="space-y-2 rounded-xl border border-emerald-200 bg-emerald-50 p-4 shadow-card">
           <p className="text-sm font-medium text-emerald-800">
             Booking <span className="font-mono">{lastBooking.code}</span>{" "}
-            terkirim. Menunggu konfirmasi bengkel.
+            {lastBooking.dp
+              ? "terkirim — selesaikan pembayaran DP di bawah."
+              : "terkirim. Menunggu konfirmasi bengkel."}
           </p>
-          <div className="flex flex-wrap items-center gap-2">
-            {waNumber && (
-              <a
-                href={waLink(
-                  waNumber,
-                  pesanKonfirmasiBooking({
-                    appName,
-                    code: lastBooking.code,
-                    ...lastBooking.rincian,
-                    tpl: tplWaKonfirmasi,
-                  }),
-                )}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="rounded-lg bg-success px-3 py-2 text-sm font-medium text-white active:opacity-90"
-              >
-                Konfirmasi via WhatsApp &rarr;
-              </a>
-            )}
+          {lastBooking.dp ? (
+            <DpInfoCard
+              id={lastBooking.id}
+              dp={lastBooking.dp}
+              appName={appName}
+              waNumber={waNumber}
+              code={lastBooking.code}
+              customerName={customerName}
+              claimed={false}
+              tplWaDp={tplWaDp}
+            />
+          ) : (
+            <div className="flex flex-wrap items-center gap-2">
+              {waNumber && (
+                <a
+                  href={waLink(
+                    waNumber,
+                    pesanKonfirmasiBooking({
+                      appName,
+                      code: lastBooking.code,
+                      ...lastBooking.rincian,
+                      tpl: tplWaKonfirmasi,
+                    }),
+                  )}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="rounded-lg bg-success px-3 py-2 text-sm font-medium text-white active:opacity-90"
+                >
+                  Konfirmasi via WhatsApp &rarr;
+                </a>
+              )}
+            </div>
+          )}
+          <div>
             <button
               type="button"
               onClick={() => setLastBooking(null)}

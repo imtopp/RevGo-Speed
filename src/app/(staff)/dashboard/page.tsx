@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { getStaffBranchId } from "@/lib/guard";
 import { redirect } from "next/navigation";
-import { formatRupiah } from "@/lib/service-status";
+import { formatRupiah, totalTagihan } from "@/lib/service-status";
 import { pushEnabled } from "@/lib/push";
 import { PushOptInCard } from "@/components/push-opt-in-card";
 import {
@@ -35,7 +35,7 @@ export default async function DashboardHome() {
         where: { ...branchWhere, status: { in: ["CHECKED_IN", "IN_PROGRESS", "WAITING_PARTS"] } },
       }),
       prisma.service.count({
-        where: { ...branchWhere, status: { in: ["PENDING", "WAITING_APPROVAL"] } },
+        where: { ...branchWhere, status: { in: ["WAITING_DP", "PENDING", "WAITING_APPROVAL"] } },
       }),
       isOperational
         ? prisma.cashflow.aggregate({
@@ -49,6 +49,7 @@ export default async function DashboardHome() {
             where: { ...branchWhere, status: { not: "CANCELLED" } },
             include: {
               parts: { select: { price: true, quantity: true } },
+              labors: { select: { price: true } },
               payments: { where: { voidedAt: null }, select: { amount: true } },
             },
           })
@@ -62,7 +63,7 @@ export default async function DashboardHome() {
     ]);
 
   const piutangTotal = openServices.reduce((sum, s) => {
-    const total = s.laborCost + s.parts.reduce((x, p) => x + p.price * p.quantity, 0);
+    const total = totalTagihan(s.laborCost, s.parts, s.labors);
     const paid = s.payments.reduce((x, p) => x + p.amount, 0);
     return sum + Math.max(0, total - paid);
   }, 0);

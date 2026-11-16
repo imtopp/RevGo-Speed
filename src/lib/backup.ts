@@ -41,6 +41,7 @@ export const BACKUP_TABLES: BackupTableDef[] = [
   { model: "StockMovement", delegate: "stockMovement", key: "stockMovements" },
   { model: "Service", delegate: "service", key: "services" },
   { model: "ServicePart", delegate: "servicePart", key: "serviceParts" },
+  { model: "ServiceLabor", delegate: "serviceLabor", key: "serviceLabors" },
   { model: "PartSale", delegate: "partSale", key: "partSales" },
   { model: "PartSaleItem", delegate: "partSaleItem", key: "partSaleItems" },
   { model: "Payment", delegate: "payment", key: "payments" },

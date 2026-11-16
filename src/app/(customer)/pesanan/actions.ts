@@ -7,6 +7,7 @@ import { cekSlotTersedia, kunciSlot } from "@/lib/booking";
 import { DURASI_DEFAULT_MENIT, parseJadwal, pesanDitolak } from "@/lib/availability";
 import { normalizeWa } from "@/lib/wa";
 import { formatTanggalWIB } from "@/lib/service-status";
+import { getDpConfig, dpAktif, type DpConfig } from "@/lib/dp";
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import { notifyBookingBaru } from "@/lib/push";
@@ -16,11 +17,15 @@ export type CustomerState = {
   error?: string;
   success?: string;
   code?: string;
+  /** service.id — dipakai form klaim DP di panel sukses booking. */
+  id?: string;
   rincian?: {
     kendaraan: string;
     layanan: string | null;
     jadwal: string | null;
   };
+  /** Info DP — hanya saat booking lahir dengan status WAITING_DP. */
+  dp?: DpConfig;
 };
 
 async function requireCustomer() {
@@ -106,6 +111,11 @@ export async function customerBooking(
   }
   const durasiMenit = catalog?.estimasiMenit ?? DURASI_DEFAULT_MENIT;
 
+  // Alur DP: semua booking (APP) mulai WAITING_DP bila DP aktif;
+  // dp_nominal = 0 → DP nonaktif, langsung PENDING (§C3).
+  const dpCfg = await getDpConfig();
+  const menungguDp = dpAktif(dpCfg);
+
   const hasil = await prisma.$transaction(async (tx) => {
     // Kode dihitung di DALAM transaksi setelah advisory lock (anti race
     // count+1 antar booking paralel → bentrok unique code).
@@ -129,7 +139,7 @@ export async function customerBooking(
         customerId: session.user.id,
         customerName: session.user.name,
         customerPhone: phoneSnapshot,
-        status: "PENDING",
+        status: menungguDp ? "WAITING_DP" : "PENDING",
         complaint: complaint || catalog?.nama || null,
         estimate: catalog?.hargaDasar ?? 0,
         scheduledAt: new Date(epoch),
@@ -145,8 +155,12 @@ export async function customerBooking(
   after(() => notifyBookingBaru(hasil.id));
   revalidatePath("/pesanan");
   return {
-    success: `Booking ${hasil.code} terkirim. Menunggu konfirmasi bengkel.`,
+    success: menungguDp
+      ? `Booking ${hasil.code} terkirim — bayar DP dulu agar jadwal dikunci.`
+      : `Booking ${hasil.code} terkirim. Menunggu konfirmasi bengkel.`,
     code: hasil.code,
+    id: hasil.id,
+    ...(menungguDp ? { dp: dpCfg } : {}),
     rincian: {
       kendaraan: `${vehicle.plateNumber} · ${vehicle.brand} ${vehicle.model}`,
       layanan: complaint || catalog?.nama || null,
@@ -310,17 +324,21 @@ export async function customerDeleteVehicle(
   return { success: `Kendaraan ${vehicle.plateNumber} dihapus.` };
 }
 
-export async function customerRespondEstimate(
+/**
+ * Klaim "Sudah Bayar DP" — set `dpClaimedAt` (idempoten) supaya staf melihat
+ * tanda klaim di papan servis; pengiriman pesan WA konfirmasi dilakukan
+ * customer lewat tombol yang sama (buka waLink saat ditekan).
+ */
+export async function customerClaimDp(
   _prev: CustomerState,
   formData: FormData,
 ): Promise<CustomerState> {
   const session = await requireCustomer();
   const id = String(formData.get("id") ?? "").trim();
-  const decision = String(formData.get("decision") ?? "");
 
   const service = await prisma.service.findFirst({
-    // Syarat ganda: milik akun ini, ATAU booking walk-in pada kendaraan
-    // yang sudah diadopsi (customerId null tapi vehicle.ownerId = saya).
+    // Syarat ganda sama dengan query Pesanan: milik akun ini, ATAU booking
+    // walk-in pada kendaraan yang sudah diadopsi.
     where: {
       id,
       OR: [
@@ -328,34 +346,22 @@ export async function customerRespondEstimate(
         { vehicle: { ownerId: session.user.id } },
       ],
     },
+    select: { id: true, status: true, dpClaimedAt: true },
   });
   if (!service) return { error: "Pesanan tidak ditemukan." };
-  if (service.status !== "WAITING_APPROVAL") {
-    return { error: "Pesanan tidak dalam tahap menunggu persetujuan." };
+  if (service.status !== "WAITING_DP") {
+    return { error: "Pesanan tidak dalam tahap Menunggu DP." };
   }
 
-  if (decision === "approve") {
+  if (!service.dpClaimedAt) {
     await prisma.service.update({
-      where: { id },
-      data: { status: "CONFIRMED" },
+      where: { id: service.id },
+      data: { dpClaimedAt: new Date() },
     });
-  } else if (decision === "reject") {
-    await prisma.service.update({
-      where: { id },
-      data: {
-        status: "CANCELLED",
-        cancelReason: "Ditolak pelanggan (estimasi disetujui)",
-      },
-    });
-  } else {
-    return { error: "Keputusan tidak valid." };
+    revalidatePath("/pesanan");
   }
-
-  revalidatePath("/pesanan");
   return {
     success:
-      decision === "approve"
-        ? "Estimasi disetujui. Sampai jumpa di bengkel!"
-        : "Estimasi ditolak. Servis dibatalkan.",
+      "Terima kasih — konfirmasi pembayaran sudah ditandai. Menunggu verifikasi bengkel.",
   };
 }

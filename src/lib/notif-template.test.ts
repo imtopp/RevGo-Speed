@@ -32,8 +32,16 @@ describe("TEMPLATE_DEFS", () => {
     expect(defaultTemplate("push.booking_baru", "body")).toBe(
       "{code} · {plate} · {jadwal}",
     );
+    expect(defaultTemplate("push.estimasi", "title")).toBe("Estimasi tersedia");
     expect(defaultTemplate("push.estimasi", "body")).toBe(
-      "{code} · estimasi {estimasi} — buka Pesanan untuk menyetujui",
+      "{code} · estimasi {estimasi} — booking sudah dikonfirmasi",
+    );
+    expect(defaultTemplate("push.dp_diterima", "title")).toBe("DP diterima");
+    expect(defaultTemplate("push.dp_diterima", "body")).toBe(
+      "{code} · DP {dp} diterima — menunggu estimasi",
+    );
+    expect(defaultTemplate("wa.konfirmasi_dp", "body")).toContain(
+      "sudah bayar DP booking {code}",
     );
     expect(defaultTemplate("push.jadwal", "body")).toBe("{code} → {jadwal}");
     expect(defaultTemplate("push.batal", "body")).toBe("{code}{alasan}");

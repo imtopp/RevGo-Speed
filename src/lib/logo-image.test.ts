@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import sharp from "sharp";
-import { processLogoImage } from "./logo-image";
+import { processLogoImage, processQrisImage } from "./logo-image";
 
 /** Kanvas transparan berisi persegi padat di tengah (logo ber-margin). */
 async function paddedRect(
@@ -85,6 +85,43 @@ describe("processLogoImage", () => {
   it("input rusak → reject", async () => {
     await expect(
       processLogoImage(Buffer.from("bukan-gambar"), 80),
+    ).rejects.toThrow();
+  });
+});
+
+describe("processQrisImage", () => {
+  it("MEMPERTAHANKAN margin (quiet zone QR) — rasio kanvas utuh, tidak di-trim", async () => {
+    // Kanvas 160×100 berisi kotak 50×40 di tengah — sama dengan kasus logo,
+    // tapi hasilnya harus tetap 160/100 = 1.6 (margin dipertahankan).
+    const input = await paddedRect(160, 100, 50, 40);
+    const out = await processQrisImage(input, 80);
+    const m = await sharp(out).metadata();
+    expect(m.format).toBe("webp");
+    expect(await ratio(out)).toBeCloseTo(1.6, 1);
+    expect(m.width).toBe(160);
+    expect(m.height).toBe(100);
+  });
+
+  it("membatasi maks 1024px tanpa memotong rasio", async () => {
+    const input = await sharp({
+      create: {
+        width: 2048,
+        height: 1024,
+        channels: 4,
+        background: { r: 255, g: 255, b: 255, alpha: 1 },
+      },
+    })
+      .png()
+      .toBuffer();
+    const out = await processQrisImage(input, 80);
+    const m = await sharp(out).metadata();
+    expect(m.width).toBe(1024);
+    expect(await ratio(out)).toBeCloseTo(2, 2);
+  });
+
+  it("input rusak → reject", async () => {
+    await expect(
+      processQrisImage(Buffer.from("bukan-gambar"), 80),
     ).rejects.toThrow();
   });
 });

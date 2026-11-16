@@ -16,6 +16,7 @@ enum Role {
 }
 
 enum ServiceStatus {
+  WAITING_DP
   PENDING
   WAITING_APPROVAL
   CONFIRMED
@@ -254,6 +255,8 @@ model Service {
   scheduledAt  DateTime?
   /// Durasi efektif saat booking dibuat (override admin / estimasi katalog) — bahan blokir slot.
   estimasiMenit Int?
+  /// Customer mengklik "Sudah Bayar? Konfirmasi WA" — tanda klaim DP masuk.
+  dpClaimedAt  DateTime?
   checkedInAt  DateTime?
   startedAt    DateTime?
   finishedAt   DateTime?
@@ -261,7 +264,23 @@ model Service {
   updatedAt    DateTime        @updatedAt
 
   parts    ServicePart[]
+  labors   ServiceLabor[]
   payments Payment[]
+}
+
+/// Rincian jasa tambahan per baris (di luar jasa utama `Service.laborCost`).
+/// Price = rupiah integer; tanpa qty/stok (jasa murni).
+model ServiceLabor {
+  id        String   @id @default(cuid())
+  serviceId String
+  service   Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  /// Snapshot nama jasa, mis. "Ganti kampas rem".
+  name      String
+  price     Int
+  note      String?
+  createdAt DateTime @default(now())
+
+  @@index([serviceId])
 }
 
 model ServicePart {

@@ -10,7 +10,7 @@ import {
   summarizeLogoValue,
   validateLogoFileMeta,
 } from "@/lib/logo";
-import { processLogoImage } from "@/lib/logo-image";
+import { processLogoImage, processQrisImage } from "@/lib/logo-image";
 import { normalizeWa } from "@/lib/wa";
 import { revalidatePath } from "next/cache";
 
@@ -27,6 +27,15 @@ const ALLOWED_SETTING_KEYS = new Set([
   "booking_lead_minutes",
   "booking_horizon_days",
   "booking_buffer_minutes",
+  // DP Booking (§C1)
+  "dp_nominal",
+  "dp_transfer_enabled",
+  "dp_bank",
+  "dp_account_number",
+  "dp_account_name",
+  "dp_qris_enabled",
+  "dp_qris_image",
+  "dp_no_show_days",
 ]);
 
 /** Rentang valid config booking (sinkron dengan parseBookingConfig). */
@@ -34,7 +43,12 @@ const SETTING_NUMERIK: Record<string, { min: number; max: number; label: string 
   booking_lead_minutes: { min: 0, max: 10080, label: "Lead time booking" },
   booking_horizon_days: { min: 1, max: 90, label: "Horizon booking" },
   booking_buffer_minutes: { min: 0, max: 120, label: "Buffer antar jadwal" },
+  dp_nominal: { min: 0, max: 2_000_000_000, label: "Nominal DP" },
+  dp_no_show_days: { min: 0, max: 90, label: "Batas no-show" },
 };
+
+/** Key sakelar on/off — hanya boleh "true" atau "false". */
+const SETTING_BOOLEAN = new Set(["dp_transfer_enabled", "dp_qris_enabled"]);
 
 async function requireOwnerOrSysAdminAction() {
   const session = await auth();
@@ -60,6 +74,18 @@ export async function updateSetting(
   // Logo: https://, path relatif /, atau data URL image — sejalan branding.ts.
   if (key === "logo_url" && value && !isSafeLogoValue(value)) {
     return { error: "Logo harus URL https://, path gambar (/), atau data URL image yang valid." };
+  }
+  // Gambar QRIS: aturan sama dengan logo (URL https / path / data URL image).
+  if (key === "dp_qris_image" && value && !isSafeLogoValue(value)) {
+    return { error: "Gambar QRIS harus URL https://, path gambar (/), atau data URL image yang valid." };
+  }
+  // Sakelar on/off: hanya "true"/"false" (kosong = nonaktif).
+  if (SETTING_BOOLEAN.has(key) && value && value !== "true" && value !== "false") {
+    return { error: 'Nilai harus "true" (aktif) atau "false" (nonaktif).' };
+  }
+  // Kebijakan refund DP: hanya dua nilai yang dikenal kode (fallback TANPA_REFUND).
+  if (key === "dp_policy" && value && !["TANPA_REFUND", "REFUND_PENUH"].includes(value)) {
+    return { error: 'Kebijakan refund DP harus "TANPA_REFUND" atau "REFUND_PENUH".' };
   }
   // No. WA Bengkel: kosong = bersihkan; terisi = wajib nomor seluler valid,
   // disimpan ternormalisasi (628…) — sejalan getBranding().waNumber.
@@ -158,6 +184,59 @@ export async function uploadLogo(
   revalidatePath("/", "layout");
   revalidatePath("/dashboard/pengaturan");
   return { success: "Logo berhasil diproses & disimpan (margin dirapikan, maks 512px, WebP)." };
+}
+
+/**
+ * Upload gambar QRIS: file → auto-orient + resize maks 1024px + WebP
+ * TANPA trim margin (quiet zone QR wajib utuh), disimpan sebagai data URL
+ * di SystemSetting.dp_qris_image (ikut backup otomatis).
+ */
+export async function uploadQris(
+  _prev: SettingState,
+  formData: FormData,
+): Promise<SettingState> {
+  const session = await requireOwnerOrSysAdminAction();
+
+  const file = formData.get("qris");
+  if (!(file instanceof File)) return { error: "Pilih file gambar QRIS dulu." };
+  const metaError = validateLogoFileMeta({ type: file.type, size: file.size });
+  if (metaError) return { error: metaError };
+
+  const input = Buffer.from(await file.arrayBuffer());
+
+  let output: Buffer;
+  try {
+    output = await processQrisImage(input, 85);
+    if (output.length > 250_000) output = await processQrisImage(input, 62);
+  } catch {
+    return { error: "File QRIS tidak bisa diproses. Pastikan gambar tidak rusak." };
+  }
+
+  const dataUrl = `data:image/webp;base64,${output.toString("base64")}`;
+  if (dataUrl.length > LOGO_MAX_DATA_URL_CHARS) {
+    return { error: "Hasil proses QRIS terlalu besar. Coba gambar lebih kecil." };
+  }
+
+  const prev = await prisma.systemSetting.findUnique({ where: { key: "dp_qris_image" } });
+
+  await prisma.$transaction(async (tx) => {
+    await tx.systemSetting.upsert({
+      where: { key: "dp_qris_image" },
+      update: { value: dataUrl, updatedBy: session.user.id },
+      create: { key: "dp_qris_image", value: dataUrl, updatedBy: session.user.id },
+    });
+    await logAudit(tx, session.user, {
+      action: "SETTING_UPDATE",
+      entityType: "SystemSetting",
+      entityId: "dp_qris_image",
+      summary: `Gambar QRIS diunggah (tanpa trim margin, maks 1024px WebP)`,
+      before: prev ? { value: summarizeLogoValue(prev.value) } : undefined,
+      after: { value: summarizeLogoValue(dataUrl) },
+    });
+  });
+
+  revalidatePath("/dashboard/pengaturan");
+  return { success: "Gambar QRIS tersimpan (margin QR dipertahankan, maks 1024px)." };
 }
 
 function bacaHariAktif(formData: FormData): string | null {

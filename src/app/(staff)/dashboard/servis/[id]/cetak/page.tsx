@@ -3,7 +3,7 @@ import { requireStaffRole, getStaffBranchId } from "@/lib/guard";
 import { getAppName } from "@/lib/branding";
 import { notFound } from "next/navigation";
 import { BackLink } from "@/components/back-link";
-import { formatRupiah, formatTanggal } from "@/lib/service-status";
+import { formatRupiah, formatTanggal, totalTagihan } from "@/lib/service-status";
 import { formatWaLocal } from "@/lib/wa";
 import { PrintButton } from "./print-button";
 
@@ -25,6 +25,7 @@ export default async function CetakNotaPage({
       customer: { select: { name: true, phone: true } },
       vehicle: { select: { plateNumber: true, brand: true, model: true } },
       parts: { include: { part: { select: { name: true, unit: true } } } },
+      labors: { orderBy: { createdAt: "asc" } },
       payments: { where: { voidedAt: null }, orderBy: { paidAt: "asc" } },
     },
   });
@@ -33,10 +34,9 @@ export default async function CetakNotaPage({
   const branchIdStaff = await getStaffBranchId();
   if (branchIdStaff && service.branchId !== branchIdStaff) notFound();
 
-  const totalPart = service.parts.reduce((s, p) => s + p.price * p.quantity, 0);
-  const totalTagihan = totalPart + service.laborCost;
+  const nilaiTagihan = totalTagihan(service.laborCost, service.parts, service.labors);
   const totalPaid = service.payments.reduce((s, p) => s + p.amount, 0);
-  const sisa = totalTagihan - totalPaid;
+  const sisa = nilaiTagihan - totalPaid;
 
   return (
     <div className="print-area mx-auto max-w-sm">
@@ -101,6 +101,14 @@ export default async function CetakNotaPage({
                 <td className="py-0.5 text-right">{formatRupiah(service.laborCost)}</td>
                 <td className="py-0.5 text-right">{formatRupiah(service.laborCost)}</td>
               </tr>
+              {service.labors.map((l) => (
+                <tr key={l.id}>
+                  <td className="py-0.5">{l.name}</td>
+                  <td className="py-0.5 text-right">1</td>
+                  <td className="py-0.5 text-right">{formatRupiah(l.price)}</td>
+                  <td className="py-0.5 text-right">{formatRupiah(l.price)}</td>
+                </tr>
+              ))}
               {service.parts.map((p) => (
                 <tr key={p.id}>
                   <td className="py-0.5">{p.part.name}</td>
@@ -116,7 +124,7 @@ export default async function CetakNotaPage({
         <div className="mt-3 border-t border-dashed border-slate-300 pt-3 text-xs">
           <div className="flex justify-between font-semibold">
             <span>TOTAL</span>
-            <span>{formatRupiah(totalTagihan)}</span>
+            <span>{formatRupiah(nilaiTagihan)}</span>
           </div>
           <div className="mt-1 flex justify-between">
             <span className="text-muted-foreground">Dibayar</span>
