@@ -216,7 +216,6 @@ export default async function PesananPage() {
               waNumber={waNumber}
               code={active.code}
               customerName={session.user.name ?? ""}
-              claimed={!!active.dpClaimedAt}
               tplWaDp={tplNotif["wa.konfirmasi_dp"]?.body}
             />
           )}

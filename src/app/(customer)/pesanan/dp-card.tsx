@@ -23,7 +23,6 @@ export function DpInfoCard({
   waNumber,
   code,
   customerName,
-  claimed,
   tplWaDp,
   id,
 }: {
@@ -32,8 +31,6 @@ export function DpInfoCard({
   waNumber: string | null;
   code: string;
   customerName: string;
-  /** dpClaimedAt sudah terisi — tombol klaim diganti status. */
-  claimed: boolean;
   /** Override template wa.konfirmasi_dp dari SystemSetting. */
   tplWaDp?: string;
   /** service.id — untuk form klaim. */
@@ -115,13 +112,8 @@ export function DpInfoCard({
         </a>
       )}
 
-      {claimed ? (
-        <p className="rounded-md bg-white p-2 text-xs font-medium text-success ring-1 ring-amber-100">
-          Konfirmasi pembayaran sudah ditandai — menunggu verifikasi bengkel.
-        </p>
-      ) : (
-        <ClaimDpButton id={id} waHref={waHref} />
-      )}
+      {/* Klaim idempoten — tombol selalu tampil, tekan lagi = buka WA lagi. */}
+      <ClaimDpButton id={id} waHref={waHref} />
     </div>
   );
 }

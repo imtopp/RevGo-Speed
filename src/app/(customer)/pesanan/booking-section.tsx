@@ -327,7 +327,6 @@ export function BookingSection({
               waNumber={waNumber}
               code={lastBooking.code}
               customerName={customerName}
-              claimed={false}
               tplWaDp={tplWaDp}
             />
           ) : (
