@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { requireOwnerOrSysAdmin } from "@/lib/guard";
 import { SettingForm } from "./setting-form";
 import { LogoUploader } from "./logo-uploader";
-import { QrisUploader } from "./qris-uploader";
+import { DpSettings } from "./dp-settings";
 import { BranchManager } from "./branch-manager";
 import { Fragment } from "react";
 import Link from "next/link";
@@ -15,11 +15,6 @@ const SETTING_FIELDS = [
     key: "wa_bengkel",
     label: "No. WA Bengkel",
     placeholder: "0812xxxxxxxx — aktif WhatsApp (tombol chat customer)",
-  },
-  {
-    key: "dp_policy",
-    label: "Kebijakan Refund DP",
-    placeholder: "TANPA_REFUND atau REFUND_PENUH",
   },
   {
     key: "service_code_prefix",
@@ -43,41 +38,6 @@ const BOOKING_FIELDS = [
     key: "booking_buffer_minutes",
     label: "Buffer Antar Jadwal (menit)",
     placeholder: "15 — jeda persiapan antar unit",
-  },
-];
-
-/** Konfigurasi alur DP booking (§C1) — OWNER/SYS_ADMIN. */
-const DP_FIELDS = [
-  {
-    key: "dp_nominal",
-    label: "Nominal DP (Rp)",
-    placeholder: "50000 — 0 = DP nonaktif (booking langsung tanpa tahap DP)",
-  },
-  {
-    key: "dp_transfer_enabled",
-    label: "Bayar via Transfer Bank",
-    placeholder: "true / false",
-  },
-  { key: "dp_bank", label: "Nama Bank", placeholder: "BCA" },
-  {
-    key: "dp_account_number",
-    label: "No. Rekening",
-    placeholder: "1234567890",
-  },
-  {
-    key: "dp_account_name",
-    label: "Atas Nama Rekening",
-    placeholder: "Bengkel Jaya",
-  },
-  {
-    key: "dp_qris_enabled",
-    label: "Bayar via QRIS",
-    placeholder: "true / false",
-  },
-  {
-    key: "dp_no_show_days",
-    label: "Batas No-Show (hari)",
-    placeholder: "7 — lewat ini DP hangus & boleh dibatalkan",
   },
 ];
 
@@ -137,22 +97,25 @@ export default async function PengaturanPage() {
 
       <section className="space-y-3">
         <h2 className="text-sm font-semibold text-foreground">DP Booking</h2>
-        <div className="space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
+        <div className="space-y-4 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
           <p className="text-xs text-muted-foreground">
             Booking customer &amp; staf dimulai dari status Menunggu DP.
             Nominal 0 = DP nonaktif (langsung ke tahap estimasi). Kebijakan
-            refund saat batal diatur di kolom{" "}
-            <span className="font-medium">Kebijakan Refund DP</span> bagian
-            Umum — berlaku seragam termasuk no-show.
+            refund berlaku seragam termasuk no-show.
           </p>
-          {DP_FIELDS.map((field) => (
-            <SettingForm
-              key={field.key}
-              field={field}
-              initialValue={settingMap.get(field.key) ?? ""}
-            />
-          ))}
-          <QrisUploader value={settingMap.get("dp_qris_image") ?? ""} />
+          <DpSettings
+            initial={{
+              dp_nominal: settingMap.get("dp_nominal") ?? "50000",
+              dp_transfer_enabled: settingMap.get("dp_transfer_enabled") ?? "",
+              dp_bank: settingMap.get("dp_bank") ?? "",
+              dp_account_number: settingMap.get("dp_account_number") ?? "",
+              dp_account_name: settingMap.get("dp_account_name") ?? "",
+              dp_qris_enabled: settingMap.get("dp_qris_enabled") ?? "",
+              dp_qris_image: settingMap.get("dp_qris_image") ?? "",
+              dp_no_show_days: settingMap.get("dp_no_show_days") ?? "7",
+              dp_policy: settingMap.get("dp_policy") ?? "",
+            }}
+          />
         </div>
       </section>
 

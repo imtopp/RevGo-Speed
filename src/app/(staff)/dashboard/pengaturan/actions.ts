@@ -130,6 +130,92 @@ export async function updateSetting(
 }
 
 /**
+ * Simpan seluruh bagian DP Booking sekaligus (satu form): nominal, sakelar
+ * transfer + detail rekening, sakelar QRIS, batas no-show, dan kebijakan
+ * refund. Hanya key yang nilainya berubah yang di-upsert + audit.
+ * Detail rekening hanya ditulis saat transfer aktif — saat nonaktif data
+ * lama dipertahankan agar tidak hilang bila sakelar dinyalakan lagi.
+ */
+export async function updateDpSettings(
+  _prev: SettingState,
+  formData: FormData,
+): Promise<SettingState> {
+  const session = await requireOwnerOrSysAdminAction();
+
+  const baca = (k: string) => String(formData.get(k) ?? "").trim();
+  const transferAktif = baca("dp_transfer_enabled") === "true";
+  const qrisAktif = baca("dp_qris_enabled") === "true";
+
+  const nominal = Number(baca("dp_nominal"));
+  if (!Number.isInteger(nominal) || nominal < 0 || nominal > 2_000_000_000) {
+    return { error: "Nominal DP harus bilangan bulat 0–2.000.000.000 (0 = nonaktif)." };
+  }
+  const noShow = Number(baca("dp_no_show_days"));
+  if (!Number.isInteger(noShow) || noShow < 0 || noShow > 90) {
+    return { error: "Batas No-Show harus bilangan bulat 0–90 hari." };
+  }
+  const policy = baca("dp_policy");
+  if (!["TANPA_REFUND", "REFUND_PENUH"].includes(policy)) {
+    return { error: "Kebijakan refund DP tidak valid." };
+  }
+  const bank = baca("dp_bank");
+  const noRek = baca("dp_account_number");
+  const atasNama = baca("dp_account_name");
+  if (bank.length > 60 || noRek.length > 40 || atasNama.length > 80) {
+    return {
+      error: "Data rekening terlalu panjang (maks: bank 60, no. rekening 40, atas nama 80).",
+    };
+  }
+
+  const values = new Map<string, string>([
+    ["dp_nominal", String(nominal)],
+    ["dp_transfer_enabled", transferAktif ? "true" : "false"],
+    ["dp_qris_enabled", qrisAktif ? "true" : "false"],
+    ["dp_no_show_days", String(noShow)],
+    ["dp_policy", policy],
+  ]);
+  if (transferAktif) {
+    values.set("dp_bank", bank);
+    values.set("dp_account_number", noRek);
+    values.set("dp_account_name", atasNama);
+  }
+
+  const keys = [...values.keys()];
+  const prevRows = await prisma.systemSetting.findMany({
+    where: { key: { in: keys } },
+  });
+  const prevMap = new Map(prevRows.map((r) => [r.key, r.value]));
+  const berubah = keys.filter((k) => prevMap.get(k) !== values.get(k));
+  if (berubah.length === 0) {
+    return { success: "Tidak ada perubahan pada pengaturan DP." };
+  }
+
+  await prisma.$transaction(async (tx) => {
+    for (const key of berubah) {
+      const value = values.get(key)!;
+      await tx.systemSetting.upsert({
+        where: { key },
+        update: { value, updatedBy: session.user.id },
+        create: { key, value, updatedBy: session.user.id },
+      });
+      await logAudit(tx, session.user, {
+        action: "SETTING_UPDATE",
+        entityType: "SystemSetting",
+        entityId: key,
+        summary: `Pengaturan "${key}" diubah`,
+        before: prevMap.has(key) ? { value: prevMap.get(key) } : undefined,
+        after: { value },
+      });
+    }
+  });
+
+  revalidatePath("/dashboard/pengaturan");
+  return {
+    success: `Pengaturan DP Booking tersimpan (${berubah.length} kolom berubah).`,
+  };
+}
+
+/**
  * Upload logo aplikasi: file → auto-orient, rapikan margin tepi, resize maks
  * 512px, konversi WebP, lalu simpan sebagai data URL di SystemSetting.logo_url
  * (ikut backup otomatis).
