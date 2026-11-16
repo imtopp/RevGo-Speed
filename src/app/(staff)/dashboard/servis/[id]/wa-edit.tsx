@@ -37,9 +37,10 @@ export function WaEdit({
               href={waLink(current)}
               target="_blank"
               rel="noopener noreferrer"
-              className="font-medium hover:text-primary hover:underline underline-offset-2"
+              className="inline-flex items-center gap-2 rounded-lg bg-success px-3 py-1.5 text-sm font-medium text-white active:opacity-90"
             >
               {formatWaLocal(current)}
+              <span className="text-xs opacity-90">Chat WhatsApp &rarr;</span>
             </a>
           ) : (
             <span>—</span>

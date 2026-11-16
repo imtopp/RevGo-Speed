@@ -112,6 +112,8 @@ export default async function PengaturanPage() {
               dp_account_name: settingMap.get("dp_account_name") ?? "",
               dp_qris_enabled: settingMap.get("dp_qris_enabled") ?? "",
               dp_qris_image: settingMap.get("dp_qris_image") ?? "",
+              // Default aktif — selaras parseDpConfig (key belum ada = tunai jalan).
+              dp_cash_enabled: settingMap.get("dp_cash_enabled") ?? "true",
               dp_no_show_days: settingMap.get("dp_no_show_days") ?? "7",
               dp_policy: settingMap.get("dp_policy") ?? "",
             }}

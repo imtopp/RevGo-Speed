@@ -476,6 +476,15 @@ export async function confirmDp(
 
   const cfg = await getDpConfig();
   if (!dpAktif(cfg)) return { error: "DP tidak aktif (nominal 0) — gunakan konfirmasi booking biasa." };
+  // Metode wajib yang sedang aktif di Pengaturan DP (dropdown disaring
+  // di client; ini penjaga server kalau ada yang maksa submit).
+  const metodeAktif =
+    (method === "TRANSFER" && cfg.transferEnabled) ||
+    (method === "QRIS" && cfg.qrisEnabled) ||
+    (method === "CASH" && cfg.cashEnabled);
+  if (!metodeAktif) {
+    return { error: "Metode pembayaran tersebut tidak aktif di Pengaturan DP." };
+  }
   const amount = cfg.nominal;
   const account = method === "CASH" ? "KAS" : "BANK";
 
@@ -1268,6 +1277,71 @@ export async function removeServiceLabor(
 
   revalidatePath(`/dashboard/servis/${labor.serviceId}`);
   return { success: `Jasa "${labor.name}" dihapus.` };
+}
+
+/**
+ * Ubah jasa utama (`laborCost`) setelah estimasi — OWNER/ADMIN, selain
+ * PENDING (paketnya form Estimasi) & DONE/CANCELLED. Total tagihan ikut
+ * berubah; tak boleh turun di bawah yang sudah dibayar (invariant yang
+ * sama dengan hapus rincian jasa).
+ */
+export async function updateServiceLaborCost(
+  _prev: ServisState,
+  formData: FormData,
+): Promise<ServisState> {
+  const session = await requireStaffRole(["OWNER", "ADMIN"]);
+  const id = String(formData.get("id") ?? "").trim();
+  const laborCost = Number(formData.get("laborCost") ?? 0);
+  if (!Number.isInteger(laborCost) || laborCost < 0 || laborCost > 2_000_000_000) {
+    return { error: "Biaya jasa tidak valid — isi bilangan bulat rupiah (0–2 miliar)." };
+  }
+
+  const service = await prisma.service.findUnique({
+    where: { id },
+    select: {
+      id: true,
+      code: true,
+      branchId: true,
+      status: true,
+      laborCost: true,
+      parts: { select: { price: true, quantity: true } },
+      payments: { where: { voidedAt: null }, select: { amount: true } },
+    },
+  });
+  if (!service) return { error: "Servis tidak ditemukan." };
+  if (["PENDING", "DONE", "CANCELLED"].includes(service.status)) {
+    return { error: "Biaya jasa tidak bisa diubah pada tahap ini." };
+  }
+  const aksesError = await cekCabangServis(service.branchId);
+  if (aksesError) return { error: aksesError };
+
+  const labors = await prisma.serviceLabor.findMany({
+    where: { serviceId: id },
+    select: { price: true },
+  });
+  const totalSesudah = totalTagihan(laborCost, service.parts, labors);
+  const sudahDibayar = service.payments.reduce((s, p) => s + p.amount, 0);
+  if (totalSesudah < sudahDibayar) {
+    return {
+      error: `Tidak bisa menurunkan jasa — total sesudah diubah (${totalSesudah.toLocaleString("id-ID")}) kurang dari yang sudah dibayar (${sudahDibayar.toLocaleString("id-ID")}).`,
+    };
+  }
+
+  await prisma.$transaction(async (tx) => {
+    await tx.service.update({ where: { id }, data: { laborCost } });
+    await logAudit(tx, session.user, {
+      action: "SERVICE_LABOR_COST_UPDATE",
+      entityType: "Service",
+      entityId: id,
+      branchId: service.branchId,
+      summary: `${service.code} · jasa utama ${service.laborCost.toLocaleString("id-ID")} → ${laborCost.toLocaleString("id-ID")}`,
+      before: { laborCost: service.laborCost },
+      after: { laborCost },
+    });
+  });
+
+  revalidatePath(`/dashboard/servis/${id}`);
+  return { success: "Biaya jasa diperbarui." };
 }
 
 /**

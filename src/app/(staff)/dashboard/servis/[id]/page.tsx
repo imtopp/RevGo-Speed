@@ -18,7 +18,7 @@ import {
   totalTagihan,
 } from "@/lib/service-status";
 import { ActionForms } from "./action-forms";
-import { AddLaborForm, RemoveLaborButton } from "./labor";
+import { AddLaborForm, RemoveLaborButton, EditLaborCostButton } from "./labor";
 import { VoidPaymentForm } from "./void-payment";
 import { RefundForm } from "./refund-form";
 import { RemovePartButton } from "./remove-part-button";
@@ -88,6 +88,10 @@ export default async function ServisDetailPage({
     ["CONFIRMED", "CHECKED_IN", "IN_PROGRESS", "WAITING_PARTS"].includes(
       service.status,
     );
+  // Jasa utama (laborCost): selain PENDING — di tahap itu nilai diisi lewat
+  // form Estimasi — dan selain DONE/CANCELLED (ikut bolehUbahJasa).
+  const bolehUbahJasaUtama =
+    bolehUbahJasa && service.status !== "PENDING";
 
   const mechanics = await prisma.user.findMany({
     where: { role: "MECHANIC", isActive: true, branchId: service.branchId },
@@ -301,9 +305,17 @@ export default async function ServisDetailPage({
                   </p>
                 )}
               </div>
-              <span className="shrink-0 font-medium">
-                {formatRupiah(service.laborCost)}
-              </span>
+              <div className="flex shrink-0 items-center gap-3">
+                <span className="font-medium">
+                  {formatRupiah(service.laborCost)}
+                </span>
+                {bolehUbahJasaUtama && (
+                  <EditLaborCostButton
+                    serviceId={service.id}
+                    value={service.laborCost}
+                  />
+                )}
+              </div>
             </li>
             {service.labors.map((l) => (
               <li
@@ -514,6 +526,11 @@ export default async function ServisDetailPage({
             appName={appName}
             tplWaJadwal={tplNotif["wa.jadwal_baru"]?.body}
             dpNominal={dpAktif(dpCfg) ? dpCfg.nominal : 0}
+            dpMetode={{
+              transfer: dpCfg.transferEnabled,
+              qris: dpCfg.qrisEnabled,
+              cash: dpCfg.cashEnabled,
+            }}
           />
           {/* Sticky action bar — mobile, zona jempol */}
           <div className="sticky bottom-[45px] z-30 md:hidden">

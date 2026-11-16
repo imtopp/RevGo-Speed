@@ -59,6 +59,20 @@ describe("parseDpConfig", () => {
       parseDpConfig([{ key: "dp_policy", value: "SEPARUH" }]).policy,
     ).toBe("TANPA_REFUND");
   });
+
+  it("sakelar tunai: default aktif (key belum ada), bisa dimatikan", () => {
+    expect(parseDpConfig([]).cashEnabled).toBe(true);
+    expect(
+      parseDpConfig([{ key: "dp_cash_enabled", value: "false" }]).cashEnabled,
+    ).toBe(false);
+    expect(
+      parseDpConfig([{ key: "dp_cash_enabled", value: "true" }]).cashEnabled,
+    ).toBe(true);
+    // Nilai ngawur → jatuh ke default aktif (sekalian selaras default lain).
+    expect(
+      parseDpConfig([{ key: "dp_cash_enabled", value: "yes" }]).cashEnabled,
+    ).toBe(true);
+  });
 });
 
 describe("labelTerlambat", () => {

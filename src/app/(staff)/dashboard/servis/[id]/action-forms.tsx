@@ -534,15 +534,26 @@ function OtherActions({ children }: { children: React.ReactNode }) {
 
 // ── Konfirmasi DP (WAITING_DP → PENDING) ──────────────────────────────
 
+type DpMetode = { transfer: boolean; qris: boolean; cash: boolean };
+
 function ConfirmDpForm({
   service,
   dpNominal,
+  dpMetode,
 }: {
   service: ServiceInfo;
   dpNominal: number;
+  dpMetode: DpMetode;
 }) {
   const { state, formAction } = useForm(confirmDp);
-  const [metode, setMetode] = useState("TRANSFER");
+  // Opsi dropdown = metode yang aktif di Pengaturan DP saja.
+  const opsi: { value: string; label: string }[] = [
+    ...(dpMetode.transfer ? [{ value: "TRANSFER", label: "Transfer" }] : []),
+    ...(dpMetode.qris ? [{ value: "QRIS", label: "QRIS" }] : []),
+    ...(dpMetode.cash ? [{ value: "CASH", label: "Tunai" }] : []),
+  ];
+  const [metode, setMetode] = useState(opsi[0]?.value ?? "");
+  const adaMetode = opsi.length > 0;
   return (
     <form
       action={formAction}
@@ -559,18 +570,27 @@ function ConfirmDpForm({
         </p>
       </div>
       <input type="hidden" name="id" value={service.id} />
-      <Field label="Metode">
-        <select
-          name="method"
-          value={metode}
-          onChange={(e) => setMetode(e.target.value)}
-          className={inputCls}
-        >
-          <option value="TRANSFER">Transfer</option>
-          <option value="QRIS">QRIS</option>
-          <option value="CASH">Tunai</option>
-        </select>
-      </Field>
+      {adaMetode ? (
+        <Field label="Metode">
+          <select
+            name="method"
+            value={metode}
+            onChange={(e) => setMetode(e.target.value)}
+            className={inputCls}
+          >
+            {opsi.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+        </Field>
+      ) : (
+        <p className="rounded-lg bg-background p-3 text-xs text-muted-foreground ring-1 ring-slate-200">
+          Belum ada metode bayar aktif — aktifkan minimal satu (Tunai /
+          Transfer / QRIS) di Pengaturan → DP Booking.
+        </p>
+      )}
       <Field label="Catatan (opsional)">
         <input
           name="note"
@@ -581,7 +601,7 @@ function ConfirmDpForm({
       <Msg state={state} />
       <SubmitButton
         className={btnPrimary}
-        disabled={dpNominal <= 0}
+        disabled={dpNominal <= 0 || !adaMetode}
       >
         Terima DP &amp; konfirmasi booking
       </SubmitButton>
@@ -600,6 +620,7 @@ export function ActionForms({
   appName,
   tplWaJadwal,
   dpNominal,
+  dpMetode,
 }: {
   service: ServiceInfo;
   mechanics: Mechanic[];
@@ -611,6 +632,8 @@ export function ActionForms({
   appName: string;
   tplWaJadwal?: string;
   dpNominal?: number;
+  /** Sakelar metode DP di Pengaturan — menyaring dropdown Konfirmasi DP. */
+  dpMetode?: DpMetode;
 }) {
   const canAdmin = !isMechanic;
 
@@ -621,7 +644,11 @@ export function ActionForms({
     case "WAITING_DP":
       if (canAdmin) {
         primary = (
-          <ConfirmDpForm service={service} dpNominal={dpNominal ?? 0} />
+          <ConfirmDpForm
+            service={service}
+            dpNominal={dpNominal ?? 0}
+            dpMetode={dpMetode ?? { transfer: true, qris: true, cash: true }}
+          />
         );
         others = [
           <RescheduleForm

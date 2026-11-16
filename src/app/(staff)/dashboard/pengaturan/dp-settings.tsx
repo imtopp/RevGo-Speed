@@ -216,6 +216,24 @@ export function DpSettings({ initial }: { initial: Record<string, string> }) {
         </div>
       )}
 
+      <div className="flex items-center gap-2">
+        <input
+          id="dp_cash_enabled"
+          type="checkbox"
+          name="dp_cash_enabled"
+          value="true"
+          defaultChecked={initial.dp_cash_enabled !== "false"}
+          className={checkCls}
+        />
+        <input type="hidden" name="dp_cash_enabled" value="false" />
+        <label
+          htmlFor="dp_cash_enabled"
+          className="text-sm font-medium text-foreground"
+        >
+          Bayar Tunai (Cash)
+        </label>
+      </div>
+
       <SubmitButton
         pendingText="Menyimpan..."
         className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white active:opacity-90 disabled:opacity-60"

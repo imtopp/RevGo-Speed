@@ -35,6 +35,7 @@ const ALLOWED_SETTING_KEYS = new Set([
   "dp_account_name",
   "dp_qris_enabled",
   "dp_qris_image",
+  "dp_cash_enabled",
   "dp_no_show_days",
 ]);
 
@@ -48,7 +49,11 @@ const SETTING_NUMERIK: Record<string, { min: number; max: number; label: string 
 };
 
 /** Key sakelar on/off — hanya boleh "true" atau "false". */
-const SETTING_BOOLEAN = new Set(["dp_transfer_enabled", "dp_qris_enabled"]);
+const SETTING_BOOLEAN = new Set([
+  "dp_transfer_enabled",
+  "dp_qris_enabled",
+  "dp_cash_enabled",
+]);
 
 async function requireOwnerOrSysAdminAction() {
   const session = await auth();
@@ -200,6 +205,9 @@ export async function updateDpSettings(
     ["dp_nominal", String(nominal)],
     ["dp_transfer_enabled", transferAktif ? "true" : "false"],
     ["dp_qris_enabled", qrisAktif ? "true" : "false"],
+    // Default aktif (key belum ada = tunai jalan) — checkbox menyimpan
+    // eksplisit "true"/"false" begitu form disimpan.
+    ["dp_cash_enabled", baca("dp_cash_enabled") === "true" ? "true" : "false"],
     ["dp_no_show_days", String(noShow)],
     ["dp_policy", policy],
   ]);

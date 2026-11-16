@@ -4,6 +4,7 @@ import { useActionState, useState } from "react";
 import {
   addServiceLabor,
   removeServiceLabor,
+  updateServiceLaborCost,
   type ServisState,
 } from "../actions";
 import { SubmitButton } from "@/components/submit-button";
@@ -114,6 +115,75 @@ export function RemoveLaborButton({ laborId }: { laborId: string }) {
         <p className="max-w-[16rem] text-right text-xs text-danger">
           {state.error}
         </p>
+      )}
+    </form>
+  );
+}
+
+/**
+ * Ubah jasa utama (`laborCost`) inline — OWNER/ADMIN, selain PENDING
+ * (form Estimasi) / DONE / CANCELLED (dicek di action). Pola render-
+ * adjustment sama dengan WaEdit: sukses → form tertutup saat render.
+ * Error tetap tampil selama form terbuka.
+ */
+export function EditLaborCostButton({
+  serviceId,
+  value,
+}: {
+  serviceId: string;
+  value: number;
+}) {
+  const [state, formAction] = useActionState<ServisState, FormData>(
+    updateServiceLaborCost,
+    {},
+  );
+  const [open, setOpen] = useState(false);
+  const [stateSebelumnya, setStateSebelumnya] = useState(state);
+  if (state !== stateSebelumnya) {
+    setStateSebelumnya(state);
+    if (state.success) setOpen(false);
+  }
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="text-xs font-medium text-primary underline underline-offset-2"
+      >
+        Ubah
+      </button>
+    );
+  }
+
+  return (
+    <form
+      onReset={(e) => e.preventDefault()}
+      action={formAction}
+      className="flex flex-wrap items-center justify-end gap-2"
+    >
+      <input type="hidden" name="id" value={serviceId} />
+      <NumberInput
+        name="laborCost"
+        defaultValue={value}
+        required
+        className="w-32 rounded-lg border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-slate-900"
+      />
+      <SubmitButton
+        pendingText="Menyimpan..."
+        className="rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-white active:opacity-90 disabled:opacity-60"
+      >
+        Simpan
+      </SubmitButton>
+      <button
+        type="button"
+        onClick={() => setOpen(false)}
+        className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-foreground active:opacity-90"
+      >
+        Batal
+      </button>
+      {state.error && (
+        <p className="w-full text-right text-xs text-danger">{state.error}</p>
       )}
     </form>
   );

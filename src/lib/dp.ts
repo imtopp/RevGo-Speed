@@ -23,6 +23,12 @@ export type DpConfig = {
   qrisEnabled: boolean;
   /** Data URL / URL gambar QRIS (kosong = belum ada). */
   qrisImage: string;
+  /**
+   * Tunai di konter — default AKTIF (key belum ada = tetap seperti lama);
+   * dicentang/nonaktif di Pengaturan → opsi "Tunai" hilang dari dropdown
+   * Konfirmasi DP.
+   */
+  cashEnabled: boolean;
   /** Pekan setelah jadwal lewat → suffix label overdue muncul. */
   noShowDays: number;
   policy: DpPolicy;
@@ -36,6 +42,7 @@ export const DP_CONFIG_DEFAULT: DpConfig = {
   accountName: "",
   qrisEnabled: false,
   qrisImage: "",
+  cashEnabled: true,
   noShowDays: 7,
   policy: "TANPA_REFUND",
 };
@@ -48,6 +55,7 @@ export const DP_SETTING_KEYS = [
   "dp_account_name",
   "dp_qris_enabled",
   "dp_qris_image",
+  "dp_cash_enabled",
   "dp_no_show_days",
   "dp_policy",
 ] as const;
@@ -78,6 +86,9 @@ export function parseDpConfig(
     accountName: ambilTeks("dp_account_name"),
     qrisEnabled: map.get("dp_qris_enabled") === "true",
     qrisImage: ambilTeks("dp_qris_image"),
+    // Default aktif: hanya "false" eksplisit yang mematikan (key belum
+    // pernah disimpan = tunai tetap tersedia, kompatibel data lama).
+    cashEnabled: map.get("dp_cash_enabled") !== "false",
     noShowDays: ambilAngka(
       "dp_no_show_days",
       DP_CONFIG_DEFAULT.noShowDays,
