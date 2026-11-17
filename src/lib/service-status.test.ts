@@ -8,6 +8,7 @@ import {
   bolehBayar,
   PESAN_BAYAR_DITAHAN,
   totalTagihan,
+  labelMetodeBayar,
   formatRupiah,
   formatTanggal,
   formatTanggalPendek,
@@ -120,6 +121,19 @@ describe("totalTagihan (jasa utama + rincian jasa + part)", () => {
     const t = totalTagihan(0, [{ price: 33_333, quantity: 3 }], [{ price: 1 }]);
     expect(Number.isInteger(t)).toBe(true);
     expect(t).toBe(100_000);
+  });
+});
+
+describe("labelMetodeBayar", () => {
+  it("enum dikenal → teks ramah", () => {
+    expect(labelMetodeBayar("CASH")).toBe("Tunai");
+    expect(labelMetodeBayar("TRANSFER")).toBe("Transfer");
+    expect(labelMetodeBayar("QRIS")).toBe("QRIS");
+  });
+
+  it("nilai tak dikenal tampil apa adanya (info jangan hilang)", () => {
+    expect(labelMetodeBayar("DEBIT")).toBe("DEBIT");
+    expect(labelMetodeBayar("")).toBe("");
   });
 });
 

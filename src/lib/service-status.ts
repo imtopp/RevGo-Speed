@@ -111,6 +111,18 @@ export function formatRupiah(n: number): string {
   }).format(n);
 }
 
+/** Label metode pembayaran untuk tampilan (enum → teks ramah). */
+export const PAYMENT_METHOD_LABEL: Record<string, string> = {
+  CASH: "Tunai",
+  TRANSFER: "Transfer",
+  QRIS: "QRIS",
+};
+
+/** "CASH" → "Tunai"; nilai tak dikenal tampil apa adanya (jangan hilangkan info). */
+export function labelMetodeBayar(method: string): string {
+  return PAYMENT_METHOD_LABEL[method] ?? method;
+}
+
 export function formatTanggal(d: Date | string | null): string {
   if (!d) return "—";
   const date = typeof d === "string" ? new Date(d) : d;

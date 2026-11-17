@@ -167,11 +167,11 @@ function EstimateForm({
           ))}
         </select>
         {pilih ? (
-          <p className="mt-1 text-xs text-slate-400">
+          <p className="mt-1 text-xs text-muted-foreground">
             Harga katalog: {formatRupiah(pilih.hargaDasar)} · ± {pilih.estimasiMenit} menit pengerjaan
           </p>
         ) : (
-          <p className="mt-1 text-xs text-slate-400">
+          <p className="mt-1 text-xs text-muted-foreground">
             Pilih jenis jasa untuk mengisi biaya otomatis.
           </p>
         )}
@@ -221,7 +221,7 @@ function RescheduleForm({
       </p>
       <Msg state={state} />
       {service.scheduledAt && (
-        <p className="text-xs text-slate-400">
+        <p className="text-xs text-muted-foreground">
           Jadwal saat ini: {formatTanggalWIB(service.scheduledAt)}
         </p>
       )}
@@ -274,7 +274,7 @@ function ReassignMechanicForm({
     <form onReset={(e) => e.preventDefault()} action={formAction} className="space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
       <input type="hidden" name="id" value={service.id} />
       <p className="text-sm font-semibold text-foreground">Ganti Mekanik</p>
-      <p className="text-xs text-slate-400">
+      <p className="text-xs text-muted-foreground">
         Mekanik saat ini: {service.mechanicName ?? "Belum ditentukan"}
         {service.scheduledAt ? ` · jadwal ${formatTanggalWIB(service.scheduledAt)}` : ""}
       </p>
@@ -443,7 +443,7 @@ function FinishForm({ service }: { service: ServiceInfo }) {
       <SubmitButton className={btnPrimary}>
         Tandai Selesai Dikerjakan
       </SubmitButton>
-      <p className="text-xs text-slate-400">
+      <p className="text-xs text-muted-foreground">
         Menunggu verifikasi (QC) admin sebelum SELESAI.
       </p>
     </form>

@@ -16,6 +16,7 @@ import {
   bolehBayar,
   PESAN_BAYAR_DITAHAN,
   totalTagihan,
+  labelMetodeBayar,
 } from "@/lib/service-status";
 import { ActionForms } from "./action-forms";
 import { AddLaborForm, RemoveLaborButton, EditLaborCostButton } from "./labor";
@@ -174,23 +175,25 @@ export default async function ServisDetailPage({
   return (
     <div className="space-y-4">
       <div>
-        <BackLink
-          href="/dashboard/servis"
-          className="text-sm text-muted-foreground underline underline-offset-2"
-        >
-          ← Kembali ke daftar
-        </BackLink>
-        {!isMechanic && (
-          <Link
-            href={`/dashboard/servis/${service.id}/cetak`}
-            className="ml-3 text-sm font-medium text-foreground underline underline-offset-2"
+        <div className="flex items-center gap-3">
+          <BackLink
+            href="/dashboard/servis"
+            className="text-sm text-muted-foreground underline underline-offset-2"
           >
-            🖨 Cetak Nota
-          </Link>
-        )}
+            ← Kembali ke daftar
+          </BackLink>
+          {!isMechanic && (
+            <Link
+              href={`/dashboard/servis/${service.id}/cetak`}
+              className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-foreground active:opacity-90"
+            >
+              Cetak Nota
+            </Link>
+          )}
+        </div>
         <div className="mt-2 flex items-start justify-between gap-2">
           <div>
-            <p className="font-mono text-sm text-slate-400">{service.code}</p>
+            <p className="font-mono text-sm text-muted-foreground">{service.code}</p>
             <h1 className="text-xl font-bold tracking-tight">
               {service.vehicle.plateNumber}
             </h1>
@@ -212,7 +215,7 @@ export default async function ServisDetailPage({
         )}
         {service.status === "WAITING_DP" && service.dpClaimedAt && (
           <p className="mt-1 text-xs text-muted-foreground">
-            Customer sudah klaim DP
+            Customer sudah klaim DP{" "}
             {service.dpClaimedAt.toLocaleString("id-ID", {
               dateStyle: "medium",
               timeStyle: "short",
@@ -225,6 +228,18 @@ export default async function ServisDetailPage({
       {/* Info dasar */}
       <div className="rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
         <dl className="grid grid-cols-2 gap-3 text-sm">
+          {/* Keluhan & diagnosis di atas — informasi utama yang dicari
+              mekanik; sisanya (data administratif) menyusul. */}
+          <div className="col-span-2">
+            <dt className="text-muted-foreground">Keluhan</dt>
+            <dd>{service.complaint ?? "—"}</dd>
+          </div>
+          {service.diagnosis && (
+            <div className="col-span-2">
+              <dt className="text-muted-foreground">Diagnosis / Catatan</dt>
+              <dd>{service.diagnosis}</dd>
+            </div>
+          )}
           <div>
             <dt className="text-muted-foreground">Cabang</dt>
             <dd className="font-medium">{service.branch.name}</dd>
@@ -245,19 +260,9 @@ export default async function ServisDetailPage({
           </div>
           <WaEdit
             serviceId={service.id}
-            current={service.customerPhone}
+            current={waCustomer}
             canEdit={!isMechanic}
           />
-          <div className="col-span-2">
-            <dt className="text-muted-foreground">Keluhan</dt>
-            <dd>{service.complaint ?? "—"}</dd>
-          </div>
-          {service.diagnosis && (
-            <div className="col-span-2">
-              <dt className="text-muted-foreground">Diagnosis / Catatan</dt>
-              <dd>{service.diagnosis}</dd>
-            </div>
-          )}
           {service.cancelReason && (
             <div className="col-span-2">
               <dt className="text-muted-foreground">Alasan Batal</dt>
@@ -267,20 +272,23 @@ export default async function ServisDetailPage({
         </dl>
       </div>
 
-      {/* Timeline */}
-      <div className="rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
-        <h2 className="text-sm font-semibold text-foreground">Riwayat</h2>
-        <ul className="mt-2 space-y-1.5">
-          {timeline.map((t) => (
-            <li key={t.label} className="flex justify-between text-sm">
-              <span className="text-muted-foreground">{t.label}</span>
-              <span className="text-slate-400">
-                {t.wib ? formatTanggalWIB(t.at) : formatTanggal(t.at)}
-              </span>
-            </li>
-          ))}
-        </ul>
-      </div>
+      {/* Riwayat — hanya bila ≥2 event; "Booking dibuat" saja belum memberi
+          info tambahan di atas status + jadwal yang sudah tampil di header. */}
+      {timeline.length >= 2 && (
+        <div className="rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
+          <h2 className="text-sm font-semibold text-foreground">Riwayat</h2>
+          <ul className="mt-2 space-y-1.5">
+            {timeline.map((t) => (
+              <li key={t.label} className="flex justify-between text-sm">
+                <span className="text-muted-foreground">{t.label}</span>
+                <span className="text-muted-foreground">
+                  {t.wib ? formatTanggalWIB(t.at) : formatTanggal(t.at)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {/* Rincian jasa — jasa utama (estimasi) + item tambahan per baris */}
       {(service.laborCost > 0 ||
@@ -300,7 +308,7 @@ export default async function ServisDetailPage({
               <div className="min-w-0">
                 <p className="truncate">Jasa servis (utama)</p>
                 {service.catalog && (
-                  <p className="text-xs text-slate-400">
+                  <p className="text-xs text-muted-foreground">
                     {service.catalog.nama}
                   </p>
                 )}
@@ -325,7 +333,7 @@ export default async function ServisDetailPage({
                 <div className="min-w-0">
                   <p className="truncate">{l.name}</p>
                   {l.note && (
-                    <p className="text-xs text-slate-400">{l.note}</p>
+                    <p className="text-xs text-muted-foreground">{l.note}</p>
                   )}
                 </div>
                 <div className="flex shrink-0 items-center gap-3">
@@ -363,7 +371,7 @@ export default async function ServisDetailPage({
               >
                 <div className="min-w-0">
                   <p className="truncate">{sp.part.name}</p>
-                  <p className="text-xs text-slate-400">
+                  <p className="text-xs text-muted-foreground">
                     {sp.quantity} {sp.part.unit} × {formatRupiah(sp.price)}
                   </p>
                 </div>
@@ -377,84 +385,42 @@ export default async function ServisDetailPage({
             ))}
           </ul>
         )}
-        <div className="mt-3 border-t border-slate-100 pt-3 text-sm">
+      </div>
+
+      {/* Tagihan & pembayaran — 1 kartu: ringkasan (jasa + part = total),
+          riwayat pembayaran, lalu sudah bayar & sisa. */}
+      <div className="rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
+        <h2 className="text-sm font-semibold text-foreground">
+          Tagihan &amp; Pembayaran
+        </h2>
+        {/* Blok persamaan — total & sisa berdampingan supaya rantai hitung
+            terbaca utuh; riwayat pembayaran jadi detail di bawah. */}
+        <div className="mt-2 space-y-1 text-sm">
           <div className="flex justify-between">
             <span className="text-muted-foreground">Biaya jasa</span>
-            <span>{formatRupiah(service.laborCost)}</span>
+            <span>{formatRupiah(service.laborCost + totalJasaTambahan)}</span>
           </div>
-          {totalJasaTambahan > 0 && (
-            <div className="mt-1 flex justify-between">
-              <span className="text-muted-foreground">Rincian jasa</span>
-              <span>{formatRupiah(totalJasaTambahan)}</span>
-            </div>
-          )}
-          <div className="mt-1 flex justify-between font-semibold">
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Biaya part</span>
+            <span>{formatRupiah(totalPartHarga)}</span>
+          </div>
+          <div className="flex justify-between font-semibold">
             <span>Total tagihan</span>
             <span>{formatRupiah(nilaiTagihan)}</span>
           </div>
         </div>
-      </div>
-
-      {/* Pembayaran */}
-      <div className="rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
-        <h2 className="text-sm font-semibold text-foreground">Pembayaran</h2>
-        {service.payments.length === 0 ? (
-          <p className="mt-2 text-sm text-muted-foreground">Belum ada pembayaran.</p>
-        ) : (
-          <ul className="mt-2 divide-y divide-slate-100">
-            {service.payments.map((p) => (
-              <li
-                key={p.id}
-                className="flex items-center justify-between gap-3 py-2 text-sm"
-              >
-                <div className={p.voidedAt ? "opacity-60" : ""}>
-                  <p>
-                    {p.kind === "DP"
-                      ? "DP"
-                      : p.kind === "REFUND"
-                        ? "Kembali"
-                        : "Bayar"}{" "}
-                    · {p.method}
-                    {p.voidedAt && (
-                      <span className="ml-2 rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-medium text-danger">
-                        DIBATALKAN
-                      </span>
-                    )}
-                  </p>
-                  <p className="text-xs text-slate-400">
-                    {formatTanggalPendek(p.paidAt)}
-                    {p.note ? ` · ${p.note}` : ""}
-                    {p.voidedAt ? ` · ${p.voidReason}` : ""}
-                  </p>
-                </div>
-                <div className="flex shrink-0 flex-col items-end gap-1">
-                  <span
-                    className={`font-medium ${
-                      p.voidedAt
-                        ? "text-slate-400 line-through"
-                        : p.kind === "REFUND"
-                          ? "text-danger"
-                          : ""
-                    }`}
-                  >
-                    {formatRupiah(p.amount)}
-                  </span>
-                  {isOwner && !p.voidedAt && p.kind !== "REFUND" && (
-                    <VoidPaymentForm paymentId={p.id} />
-                  )}
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-        <div className="mt-3 border-t border-slate-100 pt-3 text-sm">
+        <div className="mt-3 space-y-1 text-sm">
           <div className="flex justify-between">
             <span className="text-muted-foreground">Sudah dibayar</span>
             <span>{formatRupiah(totalPaid)}</span>
           </div>
           <div
-            className={`mt-1 flex justify-between font-semibold ${
-              remaining > 0 ? "text-danger" : "text-success"
+            className={`flex justify-between font-semibold ${
+              remaining > 0
+                ? "text-danger"
+                : remaining < 0
+                  ? "text-warning"
+                  : "text-success"
             }`}
           >
             <span>
@@ -468,6 +434,59 @@ export default async function ServisDetailPage({
               {remaining !== 0 ? formatRupiah(Math.abs(remaining)) : "LUNAS"}
             </span>
           </div>
+        </div>
+        <div className="mt-3 border-t border-slate-100 pt-3">
+          {service.payments.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              Belum ada pembayaran.
+            </p>
+          ) : (
+            <ul className="divide-y divide-slate-100">
+              {service.payments.map((p) => (
+                <li
+                  key={p.id}
+                  className="flex items-center justify-between gap-3 py-2 text-sm"
+                >
+                  <div className={p.voidedAt ? "opacity-60" : ""}>
+                    <p>
+                      {p.kind === "DP"
+                        ? "DP"
+                        : p.kind === "REFUND"
+                          ? "Kembali"
+                          : "Bayar"}{" "}
+                      · {labelMetodeBayar(p.method)}
+                      {p.voidedAt && (
+                        <span className="ml-2 rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-medium text-danger">
+                          DIBATALKAN
+                        </span>
+                      )}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {formatTanggalPendek(p.paidAt)}
+                      {p.note ? ` · ${p.note}` : ""}
+                      {p.voidedAt ? ` · ${p.voidReason}` : ""}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 flex-col items-end gap-1">
+                    <span
+                      className={`font-medium ${
+                        p.voidedAt
+                          ? "text-muted-foreground line-through"
+                          : p.kind === "REFUND"
+                            ? "text-danger"
+                            : ""
+                      }`}
+                    >
+                      {formatRupiah(p.amount)}
+                    </span>
+                    {isOwner && !p.voidedAt && p.kind !== "REFUND" && (
+                      <VoidPaymentForm paymentId={p.id} />
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       </div>
 
@@ -558,7 +577,7 @@ export default async function ServisDetailPage({
                 : "Servis selesai dan tagihan sudah lunas."
               : `Servis sudah ${STATUS_LABEL[service.status].toLowerCase()}.`}
           </p>
-          {service.status === "CANCELLED" && waCustomer && (
+          {service.status === "CANCELLED" && !isMechanic && waCustomer && (
             <a
               href={waLink(
                 waCustomer,

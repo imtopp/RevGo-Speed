@@ -17,20 +17,35 @@ const btnSecondary =
 
 /**
  * Form tambah 1 baris rincian jasa (nama + harga) — OWNER/ADMIN, status
- * CONFIRMED..WAITING_PARTS (dicek di action). Sukses → remount form supaya
- * isian lama tidak terkirim ulang saat tap kedua.
+ * CONFIRMED..WAITING_PARTS (dicek di action). Mulai tertutup ("+ Tambah
+ * Jasa") supaya kartu tidak selalu panjang; sukses → remount form (isian
+ * bersih) tapi tetap terbuka agar bisa tambah beberapa baris beruntun.
  */
 export function AddLaborForm({ serviceId }: { serviceId: string }) {
   const [state, formAction] = useActionState<ServisState, FormData>(
     addServiceLabor,
     {},
   );
+  const [open, setOpen] = useState(false);
   const [formKey, setFormKey] = useState(0);
   const [stateSebelumnya, setStateSebelumnya] = useState(state);
   if (state !== stateSebelumnya) {
     setStateSebelumnya(state);
     if (state.success) setFormKey((k) => k + 1);
   }
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="mt-3 w-full rounded-lg border border-slate-300 py-2.5 text-sm font-medium text-foreground active:opacity-90"
+      >
+        + Tambah Jasa
+      </button>
+    );
+  }
+
   return (
     <form
       key={formKey}
@@ -39,7 +54,16 @@ export function AddLaborForm({ serviceId }: { serviceId: string }) {
       className="mt-3 space-y-3 border-t border-slate-100 pt-3"
     >
       <input type="hidden" name="serviceId" value={serviceId} />
-      <p className="text-sm font-semibold text-foreground">Tambah Jasa</p>
+      <div className="flex items-center justify-between">
+        <p className="text-sm font-semibold text-foreground">Tambah Jasa</p>
+        <button
+          type="button"
+          onClick={() => setOpen(false)}
+          className="text-xs font-medium text-primary underline underline-offset-2"
+        >
+          Tutup
+        </button>
+      </div>
       {state.error && (
         <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-danger">
           {state.error}
