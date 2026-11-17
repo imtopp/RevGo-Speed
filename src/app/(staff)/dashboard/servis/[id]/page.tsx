@@ -30,7 +30,7 @@ import { formatTanggalPendek } from "@/lib/service-status";
 import { getAppName } from "@/lib/branding";
 import { waLink, pesanPembatalan } from "@/lib/wa";
 import { muatTemplateNotif } from "@/lib/notif-template-db";
-import { getDpConfig, dpAktif, labelTerlambat } from "@/lib/dp";
+import { getDpConfig, dpAktif, labelTerlambatDetail } from "@/lib/dp";
 
 export const metadata = { title: "Detail Servis" };
 
@@ -167,6 +167,9 @@ export default async function ServisDetailPage({
     STATUS_OVERDUE.includes(service.status) &&
     service.scheduledAt !== null &&
     service.scheduledAt.getTime() < now.getTime();
+  const labelOverdue = terlambat
+    ? labelTerlambatDetail(service.scheduledAt, now, dpCfg)
+    : null;
 
   // Bahan ringkasan dampak cancel (CancelForm): pembayaran aktif + part
   // terpakai + kebijakan DP — rencana void/hangus dihitung ulang di server.
@@ -219,9 +222,18 @@ export default async function ServisDetailPage({
             {STATUS_LABEL[service.status]}
           </span>
         </div>
-        {terlambat && service.scheduledAt && (
-          <p className="mt-1 text-xs font-medium text-warning">
-            {labelTerlambat(service.scheduledAt, now, dpCfg)}
+        {labelOverdue && (
+          <p className="mt-2 flex items-start gap-1.5 rounded-lg bg-warning/10 px-2.5 py-1.5 text-xs text-warning">
+            <span
+              aria-hidden="true"
+              className="mt-1.5 size-1.5 shrink-0 rounded-full bg-warning"
+            />
+            <span className="min-w-0">
+              <span className="font-semibold">{labelOverdue.waktu}</span>
+              {labelOverdue.kebijakan && (
+                <span> — {labelOverdue.kebijakan}</span>
+              )}
+            </span>
           </p>
         )}
         {service.status === "WAITING_DP" && service.dpClaimedAt && (

@@ -13,7 +13,7 @@ import {
 import { BookingForm } from "./booking-form";
 import { PendingLink } from "@/components/pending-link";
 import { buildModelPerMerek, merekGroupsTampil } from "@/lib/vehicle";
-import { getDpConfig, labelTerlambat } from "@/lib/dp";
+import { getDpConfig, labelTerlambatDetail } from "@/lib/dp";
 import type { ServiceStatus } from "@db/prisma/client";
 
 export const metadata = { title: "Servis" };
@@ -205,58 +205,71 @@ export default async function ServisPage({
             </p>
           </div>
         )}
-        {services.map((s) => (
-          <Link
-            key={s.id}
-            href={`/dashboard/servis/${s.id}`}
-            className="block rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card active:opacity-90"
-          >
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0">
-                <p className="font-mono text-xs text-muted-foreground">{s.code}</p>
-                <p className="font-medium">
-                  {s.vehicle.plateNumber} · {s.vehicle.brand} {s.vehicle.model}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  {s.customerName ?? s.customer?.name ?? "—"}
-                  {s.mechanic ? ` · ${s.mechanic.name}` : ""}
-                </p>
-                {s.catalog?.nama && (
-                  <p className="text-sm font-medium text-foreground">
-                    {s.catalog.nama}
+        {services.map((s) => {
+          const overdue =
+            STATUS_OVERDUE.includes(s.status) &&
+            s.scheduledAt &&
+            s.scheduledAt.getTime() < now.getTime()
+              ? labelTerlambatDetail(s.scheduledAt, now, dpCfg)
+              : null;
+          return (
+            <Link
+              key={s.id}
+              href={`/dashboard/servis/${s.id}`}
+              className="block rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card active:opacity-90"
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="font-mono text-xs text-muted-foreground">{s.code}</p>
+                  <p className="font-medium">
+                    {s.vehicle.plateNumber} · {s.vehicle.brand} {s.vehicle.model}
                   </p>
-                )}
-              </div>
-              <div className="shrink-0 text-right">
-                <span
-                  className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_COLOR[s.status]}`}
-                >
-                  {STATUS_LABEL[s.status]}
-                </span>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {formatTanggalPendek(s.createdAt)}
-                </p>
-                {s.status === "WAITING_DP" && s.dpClaimedAt && (
-                  <p className="mt-1 text-xs font-medium text-success">
-                    Klaim DP ✓
+                  <p className="text-sm text-muted-foreground">
+                    {s.customerName ?? s.customer?.name ?? "—"}
+                    {s.mechanic ? ` · ${s.mechanic.name}` : ""}
                   </p>
-                )}
-                {STATUS_OVERDUE.includes(s.status) &&
-                  s.scheduledAt &&
-                  s.scheduledAt.getTime() < now.getTime() && (
-                    <p className="mt-1 text-xs font-medium text-warning">
-                      {labelTerlambat(s.scheduledAt, now, dpCfg)}
+                  {s.catalog?.nama && (
+                    <p className="text-sm font-medium text-foreground">
+                      {s.catalog.nama}
                     </p>
                   )}
+                </div>
+                <div className="shrink-0 text-right">
+                  <span
+                    className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_COLOR[s.status]}`}
+                  >
+                    {STATUS_LABEL[s.status]}
+                  </span>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {formatTanggalPendek(s.createdAt)}
+                  </p>
+                  {s.status === "WAITING_DP" && s.dpClaimedAt && (
+                    <p className="mt-1 text-xs font-medium text-success">
+                      Klaim DP ✓
+                    </p>
+                  )}
+                </div>
               </div>
-            </div>
-            {s.estimate > 0 && (
-              <p className="mt-2 text-sm font-medium text-foreground">
-                Est. {formatRupiah(s.estimate)}
-              </p>
-            )}
-          </Link>
-        ))}
+              {overdue && (
+                <p className="mt-2 flex items-start gap-1.5 rounded-lg bg-warning/10 px-2.5 py-1.5 text-xs text-warning">
+                  <span
+                    aria-hidden="true"
+                    className="mt-1.5 size-1.5 shrink-0 rounded-full bg-warning"
+                  />
+                  <span className="min-w-0">
+                    <span className="font-semibold">{overdue.waktu}</span>
+                    {overdue.kebijakan && <span> — {overdue.kebijakan}</span>}
+                  </span>
+                </p>
+              )}
+              {s.estimate > 0 && (
+                <p className="mt-2 text-sm font-medium text-foreground">
+                  Est. {formatRupiah(s.estimate)}
+                </p>
+              )}
+            </Link>
+          );
+        })}
       </div>
     </div>
   );

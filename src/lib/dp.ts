@@ -115,6 +115,43 @@ export async function getDpConfig(db: Db = prisma): Promise<DpConfig> {
 }
 
 /**
+ * Bagian label overdue: `waktu` = durasi keterlambatan, `kebijakan` = suffix
+ * setelah `noShowDays` (null sebelumnya). UI memakai ini agar durasi & suffix
+ * bisa diberi gaya terpisah tanpa memecah kolom kartu.
+ */
+export type LabelTerlambat = {
+  waktu: string;
+  kebijakan: string | null;
+};
+
+export function labelTerlambatDetail(
+  scheduledAt: Date | null,
+  now: Date,
+  cfg: DpConfig,
+): LabelTerlambat | null {
+  if (!scheduledAt) return null;
+  const lewat = now.getTime() - scheduledAt.getTime();
+  if (lewat <= 0) return null;
+
+  const totalMenit = Math.floor(lewat / 60_000);
+  const hr = Math.floor(totalMenit / (60 * 24));
+  const jam = Math.floor((totalMenit % (60 * 24)) / 60);
+  const menit = totalMenit % 60;
+  let waktu: string;
+  if (hr > 0) waktu = `Terlambat ${hr} hr ${jam} jam`;
+  else if (jam > 0) waktu = `Terlambat ${jam} jam`;
+  else waktu = `Terlambat ${menit} menit`;
+
+  const kebijakan =
+    lewat >= cfg.noShowDays * 86_400_000
+      ? cfg.policy === "REFUND_PENUH"
+        ? "jika dibatalkan, DP direfund"
+        : "boleh dibatalkan, DP hangus"
+      : null;
+  return { waktu, kebijakan };
+}
+
+/**
  * Badge "Terlambat X hr Y jam" (+ suffix kebijakan setelah `noShowDays`) —
  * render-time, tanpa kolom baru. `null` bila belum lewat / tanpa jadwal.
  * Status difilter pemanggil (WAITING_DP/PENDING/WAITING_APPROVAL/CONFIRMED).
@@ -124,24 +161,7 @@ export function labelTerlambat(
   now: Date,
   cfg: DpConfig,
 ): string | null {
-  if (!scheduledAt) return null;
-  const lewat = now.getTime() - scheduledAt.getTime();
-  if (lewat <= 0) return null;
-
-  const totalMenit = Math.floor(lewat / 60_000);
-  const hr = Math.floor(totalMenit / (60 * 24));
-  const jam = Math.floor((totalMenit % (60 * 24)) / 60);
-  const menit = totalMenit % 60;
-  let teks: string;
-  if (hr > 0) teks = `Terlambat ${hr} hr ${jam} jam`;
-  else if (jam > 0) teks = `Terlambat ${jam} jam`;
-  else teks = `Terlambat ${menit} menit`;
-
-  if (lewat >= cfg.noShowDays * 86_400_000) {
-    teks +=
-      cfg.policy === "REFUND_PENUH"
-        ? " · jika dibatalkan, DP direfund"
-        : " · boleh dibatalkan, DP hangus";
-  }
-  return teks;
+  const d = labelTerlambatDetail(scheduledAt, now, cfg);
+  if (!d) return null;
+  return d.kebijakan ? `${d.waktu} · ${d.kebijakan}` : d.waktu;
 }

@@ -4,6 +4,7 @@ import {
   dpAktif,
   getDpConfig,
   labelTerlambat,
+  labelTerlambatDetail,
   parseDpConfig,
   type DpConfig,
 } from "./dp";
@@ -120,6 +121,48 @@ describe("labelTerlambat", () => {
     const t = new Date(now.getTime() - 60 * 60_000);
     expect(labelTerlambat(t, now, { ...cfg, noShowDays: 0 })).toBe(
       "Terlambat 1 jam · boleh dibatalkan, DP hangus",
+    );
+  });
+});
+
+describe("labelTerlambatDetail", () => {
+  const now = new Date("2026-11-16T12:00:00Z");
+  const cfg: DpConfig = { ...DP_CONFIG_DEFAULT, noShowDays: 7 };
+
+  it("belum lewat / tanpa jadwal → null", () => {
+    expect(labelTerlambatDetail(null, now, cfg)).toBeNull();
+    expect(
+      labelTerlambatDetail(new Date("2026-11-16T13:00:00Z"), now, cfg),
+    ).toBeNull();
+  });
+
+  it("lewat < noShowDays → kebijakan null", () => {
+    const t = new Date(now.getTime() - (2 * 24 + 3) * 3_600_000);
+    expect(labelTerlambatDetail(t, now, cfg)).toEqual({
+      waktu: "Terlambat 2 hr 3 jam",
+      kebijakan: null,
+    });
+  });
+
+  it("lewat ≥ noShowDays → kebijakan ikut policy", () => {
+    const t = new Date(now.getTime() - (8 * 24 + 2) * 3_600_000);
+    expect(labelTerlambatDetail(t, now, cfg)).toEqual({
+      waktu: "Terlambat 8 hr 2 jam",
+      kebijakan: "boleh dibatalkan, DP hangus",
+    });
+    expect(
+      labelTerlambatDetail(t, now, { ...cfg, policy: "REFUND_PENUH" }),
+    ).toEqual({
+      waktu: "Terlambat 8 hr 2 jam",
+      kebijakan: "jika dibatalkan, DP direfund",
+    });
+  });
+
+  it("komposisi labelTerlambatDetail = labelTerlambat", () => {
+    const t = new Date(now.getTime() - (8 * 24 + 2) * 3_600_000);
+    const d = labelTerlambatDetail(t, now, cfg)!;
+    expect(labelTerlambat(t, now, cfg)).toBe(
+      d.kebijakan ? `${d.waktu} · ${d.kebijakan}` : d.waktu,
     );
   });
 });
