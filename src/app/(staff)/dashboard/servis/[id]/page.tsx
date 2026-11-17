@@ -168,15 +168,20 @@ export default async function ServisDetailPage({
     service.scheduledAt !== null &&
     service.scheduledAt.getTime() < now.getTime();
 
-  // DP yang boleh hangus saat cancel (hanya bila policy TANPA_REFUND) —
-  // dipakai CancelForm untuk centang konfirmasi + dicek ulang di server.
+  // Bahan ringkasan dampak cancel (CancelForm): pembayaran aktif + part
+  // terpakai + kebijakan DP — rencana void/hangus dihitung ulang di server.
   const aktifBayar = service.payments.filter((p) => !p.voidedAt);
-  const dpHangusAmount =
-    aktifBayar.length > 0 &&
-    aktifBayar.every((p) => p.kind === "DP") &&
-    dpCfg.policy !== "REFUND_PENUH"
-      ? aktifBayar.reduce((s, p) => s + p.amount, 0)
-      : null;
+  const bayarAktif = aktifBayar.map((p) => ({
+    id: p.id,
+    kind: p.kind as string,
+    method: p.method as string,
+    amount: p.amount,
+  }));
+  const partTerpakai = service.parts.map((sp) => ({
+    name: sp.part.name,
+    unit: sp.part.unit,
+    quantity: sp.quantity,
+  }));
 
   return (
     <div className="space-y-4">
@@ -428,26 +433,34 @@ export default async function ServisDetailPage({
             <span className="text-muted-foreground">Sudah dibayar</span>
             <span>{formatRupiah(totalPaid)}</span>
           </div>
-          <div
-            className={`flex justify-between font-semibold ${
-              remaining > 0
-                ? "text-danger"
-                : remaining < 0
-                  ? "text-warning"
-                  : "text-success"
-            }`}
-          >
-            <span>
-              {remaining > 0
-                ? "Sisa tagihan"
-                : remaining < 0
-                  ? "Kelebihan bayar"
-                  : "Status"}
-            </span>
-            <span>
-              {remaining !== 0 ? formatRupiah(Math.abs(remaining)) : "LUNAS"}
-            </span>
-          </div>
+          {service.status === "CANCELLED" ? (
+            /* Servis batal: void sudah dijalankan (DP hangus tetap tercatat
+               di "Sudah dibayar"), tapi tidak ada tagihan yang menuntut. */
+            <p className="text-sm text-muted-foreground">
+              Servis dibatalkan — tagihan tidak berlaku.
+            </p>
+          ) : (
+            <div
+              className={`flex justify-between font-semibold ${
+                remaining > 0
+                  ? "text-danger"
+                  : remaining < 0
+                    ? "text-warning"
+                    : "text-success"
+              }`}
+            >
+              <span>
+                {remaining > 0
+                  ? "Sisa tagihan"
+                  : remaining < 0
+                    ? "Kelebihan bayar"
+                    : "Status"}
+              </span>
+              <span>
+                {remaining !== 0 ? formatRupiah(Math.abs(remaining)) : "LUNAS"}
+              </span>
+            </div>
+          )}
         </div>
         <div className="mt-3 border-t border-slate-100 pt-3">
           {service.payments.length === 0 ? (
@@ -511,8 +524,9 @@ export default async function ServisDetailPage({
       </div>
 
       {/* Kelebihan bayar (DP > biaya akhir) — Owner kembalikan 1 klik,
-          peran lain hanya diberi tahu. */}
-      {remaining < 0 && (
+          peran lain hanya diberi tahu. Tidak tampil utk servis batal
+          (sisa DP hangus bukan kelebihan yang harus direfund). */}
+      {remaining < 0 && service.status !== "CANCELLED" && (
         isOwner ? (
           <RefundForm serviceId={service.id} kelebihan={-remaining} />
         ) : (
@@ -535,8 +549,8 @@ export default async function ServisDetailPage({
         )
       )}
 
-      {/* Aksi contextual */}
-      {canAct && service.status !== "DONE" && service.status !== "CANCELLED" && (
+      {/* Aksi contextual — DONE ikut tampil (CancelForm OWNER/ADMIN). */}
+      {canAct && service.status !== "CANCELLED" && (
         <>
           <ActionForms
             service={{
@@ -555,7 +569,9 @@ export default async function ServisDetailPage({
               diagnosis: service.diagnosis,
               finishedAt: service.finishedAt,
               customerWa: waCustomer,
-              dpHangusAmount,
+              bayarAktif,
+              partTerpakai,
+              dpPolicy: dpCfg.policy,
             }}
             mechanics={mekanikTersedia}
             busyMechanics={busyMechanics}

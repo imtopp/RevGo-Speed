@@ -82,6 +82,23 @@ export const PESAN_BAYAR_DITAHAN =
 /** Status yang menerima aksi QC (lolos/tolak) — `finishedAt` terisi. */
 export const QC_DARI_STATUS: ServiceStatus[] = ["IN_PROGRESS", "WAITING_PARTS"];
 
+/**
+ * Semua status dari mana servis boleh dibatalkan — semua status aktif
+ * (dari booking sampai selesai/DC) selain CANCELLED itu sendiri.
+ * Cancel otomatis: void pembayaran (kecuali DP hangus per policy) +
+ * kembalikan stok part + hapus jejak ServicePart (pola removeServicePart).
+ */
+export const STATUS_BOLEH_BATAL: ServiceStatus[] = [
+  "WAITING_DP",
+  "PENDING",
+  "WAITING_APPROVAL",
+  "CONFIRMED",
+  "CHECKED_IN",
+  "IN_PROGRESS",
+  "WAITING_PARTS",
+  "DONE",
+];
+
 /** Alasan QC tolak wajib non-kosong setelah trim (server; client pakai required). */
 export function alasanQcTolakValid(alasan: string | null | undefined): boolean {
   return (alasan ?? "").trim().length > 0;

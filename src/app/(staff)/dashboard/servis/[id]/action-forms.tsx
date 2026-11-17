@@ -23,7 +23,12 @@ import { SubmitButton } from "@/components/submit-button";
 import { SlotPicker } from "@/components/slot-picker";
 import { PartPicker } from "@/components/part-picker";
 import { NumberInput } from "@/components/number-input";
-import { formatRupiah, formatTanggalWIB } from "@/lib/service-status";
+import { formatRupiah, formatTanggalWIB, labelMetodeBayar } from "@/lib/service-status";
+import {
+  KATA_BATALKAN,
+  konfirmasiBatal,
+  rencanaPembatalan,
+} from "@/lib/cancel-plan";
 import { waLink, pesanJadwalBaru } from "@/lib/wa";
 import type { ServiceStatus } from "@db/prisma/client";
 
@@ -43,8 +48,12 @@ type ServiceInfo = {
   diagnosis: string | null;
   finishedAt: Date | null;
   customerWa: string | null;
-  /** Jumlah DP aktif yang boleh hangus saat cancel (policy TANPA_REFUND). */
-  dpHangusAmount: number | null;
+  /** Pembayaran aktif (voidedAt null) — bahan ringkasan dampak cancel. */
+  bayarAktif: { id: string; kind: string; method: string; amount: number }[];
+  /** Part terpakai — akan dikembalikan ke stok bila servis dibatalkan. */
+  partTerpakai: { name: string; unit: string; quantity: number }[];
+  /** Kebijakan DP — menentukan DP di-void (REFUND_PENUH) atau hangus. */
+  dpPolicy: "TANPA_REFUND" | "REFUND_PENUH";
 };
 
 type Mechanic = { id: string; name: string };
@@ -584,17 +593,79 @@ function TungguQc() {
 
 function CancelForm({ service }: { service: ServiceInfo }) {
   const { state, formAction } = useForm(cancelService);
-  const dpHangus =
-    service.dpHangusAmount != null && service.dpHangusAmount > 0;
+  const [kata, setKata] = useState("");
+  const plan = rencanaPembatalan(service.bayarAktif, service.dpPolicy);
+  const siap = konfirmasiBatal(kata);
+  const labelJenis = (kind: string) =>
+    kind === "DP" ? "DP" : kind === "REFUND" ? "Kembali" : "Bayar";
   return (
     <form onReset={(e) => e.preventDefault()} action={formAction} className="space-y-2 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
       <input type="hidden" name="id" value={service.id} />
       <p className="text-sm font-semibold text-danger">Batalkan Servis</p>
+      {/* Lapis 1 — ringkasan dampak: user melihat dulu apa yang terjadi
+          (void, retur stok, DP hangus) sebelum mengisi alasan. */}
+      <div className="space-y-1 rounded-lg bg-red-50/70 p-3 text-xs ring-1 ring-red-100">
+        <p className="font-semibold text-danger">Yang terjadi saat dibatalkan:</p>
+        {plan.terblokirRefund && (
+          <p className="text-danger">
+            Ada baris refund aktif — pembatalan akan ditolak; urus dulu lewat
+            menu Kas.
+          </p>
+        )}
+        {plan.voids.length > 0 && (
+          <ul className="space-y-0.5">
+            {plan.voids.map((p) => (
+              <li key={p.id} className="flex justify-between gap-2">
+                <span className="text-muted-foreground">
+                  {labelJenis(p.kind)} · {labelMetodeBayar(p.method)}
+                </span>
+                <span className="text-danger">
+                  {formatRupiah(p.amount)} dikembalikan
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+        {plan.totalHangus > 0 && (
+          <p>
+            DP {formatRupiah(plan.totalHangus)} ditahan bengkel (hangus, tidak
+            direfund).
+          </p>
+        )}
+        {service.partTerpakai.length > 0 && (
+          <ul className="space-y-0.5">
+            {service.partTerpakai.map((sp, i) => (
+              <li key={i} className="text-muted-foreground">
+                {sp.quantity}× {sp.name} ({sp.unit}) kembali ke stok
+              </li>
+            ))}
+          </ul>
+        )}
+        {plan.voids.length === 0 &&
+          plan.totalHangus === 0 &&
+          service.partTerpakai.length === 0 && (
+            <p className="text-muted-foreground">
+              Tidak ada pembayaran/part — pembatalan bersih.
+            </p>
+          )}
+      </div>
       <Msg state={state} />
       <Field label="Alasan *">
         <input name="reason" required placeholder="Customer batal, dll" className={inputCls} />
       </Field>
-      {dpHangus && (
+      {/* Lapis 3 — ketik kata konfirmasi; tombol aktif hanya bila persis. */}
+      <Field label={`Ketik ${KATA_BATALKAN} untuk konfirmasi *`}>
+        <input
+          name="konfirmasi"
+          value={kata}
+          onChange={(e) => setKata(e.target.value)}
+          autoComplete="off"
+          autoCapitalize="characters"
+          placeholder={KATA_BATALKAN}
+          className={inputCls}
+        />
+      </Field>
+      {plan.perluCentangHangus && (
         <label className="flex items-start gap-2 text-sm text-foreground">
           <input
             type="checkbox"
@@ -604,11 +675,16 @@ function CancelForm({ service }: { service: ServiceInfo }) {
             className="mt-1 h-4 w-4 shrink-0"
           />
           <span>
-            DP {formatRupiah(service.dpHangusAmount!)} ditahan (tidak direfund)
+            DP {formatRupiah(plan.totalHangus)} ditahan (tidak direfund)
           </span>
         </label>
       )}
-      <SubmitButton className={btnDanger}>Batalkan Servis</SubmitButton>
+      <SubmitButton
+        className={btnDanger}
+        disabled={!siap || plan.terblokirRefund}
+      >
+        Batalkan Servis
+      </SubmitButton>
     </form>
   );
 }
@@ -846,6 +922,7 @@ export function ActionForms({
               busyMechanics={busyMechanics}
             />
           ),
+          canAdmin && <CancelForm key="cancel" service={service} />,
         ].filter(Boolean);
       } else {
         primary =
@@ -863,6 +940,7 @@ export function ActionForms({
             />
           ),
           canAdmin && <WaitingPartsForm key="wp" service={service} />,
+          canAdmin && <CancelForm key="cancel" service={service} />,
         ].filter(Boolean);
       }
       break;
@@ -895,7 +973,13 @@ export function ActionForms({
         // QC hanya setelah pekerjaan ditandai selesai — urutan tetap.
         canAdmin &&
           service.finishedAt != null && <QcForm key="qc" service={service} />,
+        canAdmin && <CancelForm key="cancel" service={service} />,
       ].filter(Boolean);
+      break;
+    case "DONE":
+      // SELESAI (QC lolos) masih bisa dibatalkan OWNER/ADMIN — otomatis
+      // void pembayaran + kembalikan stok (cancelService).
+      others = canAdmin ? [<CancelForm key="cancel" service={service} />] : [];
       break;
     default:
       break;

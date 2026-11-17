@@ -96,7 +96,12 @@ generated/                  # Prisma client output (gitignored)
 - **ServiceStatus flow:**
   `WAITING_DP → PENDING → CONFIRMED → CHECKED_IN → IN_PROGRESS ⇄ WAITING_PARTS → DONE`
   (`WAITING_APPROVAL` = data legacy estimasi lama — selesaikan via `approveInPerson`;
-  `CANCELLED` dari WAITING_DP/PENDING/WAITING_APPROVAL/CONFIRMED/CHECKED_IN, wajib alasan)
+  `CANCELLED` dari semua status aktif (termasuk `IN_PROGRESS`/`WAITING_PARTS`/`DONE`) —
+  wajib alasan + centang DP hangus (bila policy `TANPA_REFUND`) + ketik `BATALKAN`;
+  dalam 1 transaksi: void semua pembayaran aktif (1 baris kas reversal per baris;
+  DP hangus = Payment & kas INCOME disentuh 0 — tetap tercatat) + kembalikan stok
+  part per `ServicePart` (pola `removeServicePart`: IN retur + buka alokasi FIFO);
+  ditolak bila ada baris `REFUND` aktif — `src/lib/cancel-plan.ts` (murni, diuji))
 - **DP booking:** SystemSetting `dp_*` dibaca via `getDpConfig()` (`src/lib/dp.ts`);
   `dp_nominal = 0` = DP nonaktif → booking langsung `PENDING`. Booking baru (APP & admin)
   mulai `WAITING_DP`; `confirmDp` (OWNER/ADMIN) membuat Payment kind `DP` + Cashflow

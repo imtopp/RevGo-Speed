@@ -8,6 +8,7 @@ import {
   bolehBayar,
   PESAN_BAYAR_DITAHAN,
   QC_DARI_STATUS,
+  STATUS_BOLEH_BATAL,
   alasanQcTolakValid,
   totalTagihan,
   labelMetodeBayar,
@@ -108,6 +109,19 @@ describe("QC (lolos/tolak)", () => {
     expect(alasanQcTolakValid("   ")).toBe(false);
     expect(alasanQcTolakValid(null)).toBe(false);
     expect(alasanQcTolakValid(undefined)).toBe(false);
+  });
+});
+
+describe("pembatalan servis", () => {
+  it("STATUS_BOLEH_BATAL = semua status aktif, tanpa CANCELLED", () => {
+    // 8 dari 9 status — termasuk tahap kerja (IN_PROGRESS/WAITING_PARTS)
+    // dan selesai (DONE): customer boleh batalkan kapan pun.
+    expect(STATUS_BOLEH_BATAL).toHaveLength(8);
+    for (const s of STATUS_BOLEH_BATAL) expect(ALL_STATUSES).toContain(s);
+    expect(STATUS_BOLEH_BATAL).not.toContain("CANCELLED");
+    expect(STATUS_BOLEH_BATAL).toContain("IN_PROGRESS");
+    expect(STATUS_BOLEH_BATAL).toContain("WAITING_PARTS");
+    expect(STATUS_BOLEH_BATAL).toContain("DONE");
   });
 });
 

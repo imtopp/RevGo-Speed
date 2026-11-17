@@ -18,7 +18,14 @@ import {
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import {
+  KATA_BATALKAN,
+  konfirmasiBatal,
+  rencanaPembatalan,
+} from "@/lib/cancel-plan";
+import {
   QC_DARI_STATUS,
+  STATUS_BOLEH_BATAL,
+  STATUS_LABEL,
   alasanQcTolakValid,
   formatRupiah,
   formatTanggalWIB,
@@ -952,61 +959,207 @@ export async function cancelService(
   const id = String(formData.get("id") ?? "").trim();
   const reason = String(formData.get("reason") ?? "").trim();
   if (!reason) return { error: "Alasan pembatalan wajib diisi." };
+  // Lapis konfirmasi terakhir — server tidak percaya UI: user wajib mengetik
+  // kata BATALKAN (pola sama dengan alur update/backup).
+  if (!konfirmasiBatal(String(formData.get("konfirmasi") ?? ""))) {
+    return {
+      error: `Konfirmasi belum sesuai — ketik ${KATA_BATALKAN} untuk membatalkan servis.`,
+    };
+  }
 
   const service = await prisma.service.findUnique({
     where: { id },
-    select: { status: true, scheduledAt: true },
+    select: { id: true, code: true, status: true, branchId: true },
   });
   if (!service) return { error: "Servis tidak ditemukan." };
+  const aksesError = await cekCabangServis(service.branchId);
+  if (aksesError) return { error: aksesError };
+  const cfg = await getDpConfig();
+  const session = await auth();
+  if (!session?.user) return { error: "Sesi berakhir — silakan login ulang." };
 
-  // Aturan DP seragam ikut `dp_policy` (tidak ada override no-show):
-  // - TANPA_REFUND (default): pembayaran aktif kind=DP saja → boleh cancel
-  //   tanpa void, DP tetap income (hangus) — wajib centang konfirmasi.
-  // - REFUND_PENUH: masih ada pembayaran aktif → ditolak, wajib void
-  //   (refund) dulu lewat menu Kas.
-  // - Selalu blokir bila ada pembayaran non-DP aktif (mis. PELUNASAN).
-  const bayar = await prisma.payment.findMany({
-    where: { serviceId: id, voidedAt: null },
-    select: { amount: true, kind: true },
-  });
-  let dpHangus = 0;
-  if (bayar.length > 0) {
-    const hanyaDp = bayar.every((p) => p.kind === "DP");
-    if (hanyaDp) {
-      const cfg = await getDpConfig();
-      if (cfg.policy !== "REFUND_PENUH") {
-        dpHangus = bayar.reduce((s, p) => s + p.amount, 0);
+  // 1 transaksi (§2: kas & stok tidak boleh terpisah dari status):
+  // (1) void otomatis pembayaran aktif — 1 pembayaran = 1 klaim + 1 baris
+  //     kas EXPENSE reversal + audit (pola identik voidPayment);
+  // (2) kembalikan stok tiap part — pola removeServicePart (IN pengembalian
+  //     sebagai jejak, alokasi FIFO lama ikut terbuka via cascade, usage
+  //     retur ditahan biar unit tak dobel di antrean FIFO);
+  // (3) status → CANCELLED + cancelReason + audit.
+  // Semua baca ulang di dalam transaksi setelah kunci baris — anti race
+  // dengan aksi/bayar paralel.
+  let totalVoid = 0;
+  let nVoid = 0;
+  let nPart = 0;
+  let totalHangus = 0;
+  try {
+    await prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM "Service" WHERE id = ${id} FOR UPDATE`;
+      const fresh = await tx.service.findUnique({
+        where: { id },
+        select: { status: true },
+      });
+      if (!fresh) throw new Error("Servis tidak ditemukan.");
+      if (fresh.status === "CANCELLED") {
+        throw new Error("Servis sudah pernah dibatalkan.");
       }
-    }
-    if (dpHangus === 0) {
-      const totalBayar = bayar.reduce((s, p) => s + p.amount, 0);
-      return {
-        error: `Ada pembayaran aktif total Rp${totalBayar.toLocaleString("id-ID")} — batalkan (void) dulu pembayarannya lewat menu Kas sebelum membatalkan servis.`,
-      };
-    }
-    if (String(formData.get("dpHangus") ?? "") !== "1") {
-      return {
-        error: `Centang konfirmasi "DP Rp${dpHangus.toLocaleString("id-ID")} ditahan (tidak direfund)" sebelum membatalkan servis.`,
-      };
-    }
+      if (!STATUS_BOLEH_BATAL.includes(fresh.status)) {
+        throw new Error(
+          `Status ${STATUS_LABEL[fresh.status]} tidak bisa dibatalkan.`,
+        );
+      }
+
+      // Aturan DP seragam ikut `dp_policy` (baca ulang dari DB):
+      // - TANPA_REFUND (default): DP aktif ditahan (hangus) — baris Payment &
+      //   kas INCOME tidak disentuh, tetap tercatat; wajib centang konfirmasi.
+      // - REFUND_PENUH: DP ikut di-void otomatis (uang kembali ke customer).
+      // - Selalu: pembayaran non-DP (mis. PELUNASAN) di-void otomatis.
+      // - Baris REFUND aktif → tolak: refund tak bisa di-void (amount negatif),
+      //   membatalkan saat refund aktif = uang keluar dua kali.
+      const bayar = await tx.payment.findMany({
+        where: { serviceId: id, voidedAt: null },
+        select: { id: true, kind: true, method: true, amount: true },
+      });
+      const plan = rencanaPembatalan(bayar, cfg.policy);
+      if (plan.terblokirRefund) {
+        throw new Error(
+          "Ada baris refund (kelebihan bayar) yang masih aktif — urus dulu lewat menu Kas sebelum membatalkan servis.",
+        );
+      }
+      if (
+        plan.perluCentangHangus &&
+        String(formData.get("dpHangus") ?? "") !== "1"
+      ) {
+        throw new Error(
+          `Centang konfirmasi "DP ${formatRupiah(plan.totalHangus)} ditahan (tidak direfund)" sebelum membatalkan servis.`,
+        );
+      }
+
+      for (const p of plan.voids) {
+        const claimed = await tx.payment.updateMany({
+          where: { id: p.id, voidedAt: null },
+          data: {
+            voidedAt: new Date(),
+            voidReason: reason,
+            voidedBy: session.user.id,
+          },
+        });
+        // Sudah divoid pihak lain sejak rencana dibuat → lewati (reversal kas
+        // sudah dibuat oleh klaim yang menang — jangan dobel).
+        if (claimed.count === 0) continue;
+        const account = p.method === "CASH" ? "KAS" : "BANK";
+        await tx.cashflow.create({
+          data: {
+            type: "EXPENSE",
+            category: "Pembatalan Bayar",
+            amount: p.amount,
+            account,
+            branchId: service.branchId,
+            description: `${service.code} · void: ${reason}`,
+            createdBy: session.user.id,
+          },
+        });
+        await logAudit(tx, session.user, {
+          action: "PAYMENT_VOID",
+          entityType: "Payment",
+          entityId: p.id,
+          branchId: service.branchId,
+          summary: `${service.code} · void ${p.amount.toLocaleString("id-ID")} (${p.method}) — ${reason} (otomatis saat batal)`,
+          before: {
+            amount: p.amount,
+            kind: p.kind,
+            method: p.method,
+            voidedAt: null,
+          },
+          after: { voidReason: reason, reversalAccount: account },
+        });
+        totalVoid += p.amount;
+        nVoid += 1;
+      }
+
+      const parts = await tx.servicePart.findMany({
+        where: { serviceId: id },
+        select: {
+          id: true,
+          partId: true,
+          quantity: true,
+          cost: true,
+          part: { select: { name: true, unit: true } },
+        },
+      });
+      for (const sp of parts) {
+        await tx.$queryRaw`SELECT id FROM "Part" WHERE id = ${sp.partId} FOR UPDATE`;
+        const costPerUnit =
+          sp.quantity > 0 ? Math.round(sp.cost / sp.quantity) : null;
+        const retur = await tx.stockMovement.create({
+          data: {
+            partId: sp.partId,
+            type: "IN",
+            quantity: sp.quantity,
+            cost: costPerUnit,
+            note: `Dikembalikan dari servis ${service.code} (batal)`,
+          },
+        });
+        await tx.part.update({
+          where: { id: sp.partId },
+          data: { quantity: { increment: sp.quantity } },
+        });
+        // Hapus ServicePart → alokasi FIFO lama ikut cascade terbuka.
+        await tx.servicePart.delete({ where: { id: sp.id } });
+        await tx.partBatchUsage.create({
+          data: { movementId: retur.id, quantity: sp.quantity },
+        });
+        await logAudit(tx, session.user, {
+          action: "SERVICE_PART_REMOVE",
+          entityType: "ServicePart",
+          entityId: sp.id,
+          branchId: service.branchId,
+          summary: `${service.code} · −${sp.quantity} ${sp.part.unit} ${sp.part.name} dikembalikan ke stok (batal)`,
+          before: { partId: sp.partId, quantity: sp.quantity, cost: sp.cost },
+        });
+        nPart += 1;
+      }
+
+      await tx.service.update({
+        where: { id },
+        data: { status: "CANCELLED", cancelReason: reason },
+      });
+      await logAudit(tx, session.user, {
+        action: "SERVICE_STATUS",
+        entityType: "Service",
+        entityId: id,
+        branchId: service.branchId,
+        summary: `${service.code}: ${fresh.status} → CANCELLED`,
+        before: { status: fresh.status },
+        after: { status: "CANCELLED", cancelReason: reason },
+      });
+      totalHangus = plan.totalHangus;
+    });
+  } catch (e) {
+    return {
+      error: e instanceof Error ? e.message : "Gagal membatalkan servis.",
+    };
   }
 
-  await transition(
-    id,
-    ["WAITING_DP", "PENDING", "WAITING_APPROVAL", "CONFIRMED", "CHECKED_IN"],
-    "CANCELLED",
-    { cancelReason: reason },
-  );
   after(() => notifyBatal(id));
   revalidatePath("/dashboard/servis");
   revalidatePath(`/dashboard/servis/${id}`);
   revalidatePath("/pesanan");
-  return {
-    success:
-      dpHangus > 0
-        ? `Servis dibatalkan. DP Rp${dpHangus.toLocaleString("id-ID")} tetap diterima bengkel (hangus).`
-        : "Servis dibatalkan.",
-  };
+  revalidatePath("/dashboard/kas");
+  revalidatePath("/dashboard/piutang");
+
+  const bagian = ["Servis dibatalkan."];
+  if (nVoid > 0) {
+    bagian.push(
+      `${nVoid} pembayaran di-void (${formatRupiah(totalVoid)} kembali ke customer).`,
+    );
+  }
+  if (nPart > 0) bagian.push(`${nPart} part dikembalikan ke stok.`);
+  if (totalHangus > 0) {
+    bagian.push(
+      `DP ${formatRupiah(totalHangus)} tetap diterima bengkel (hangus).`,
+    );
+  }
+  return { success: bagian.join(" ") };
 }
 
 // ─── Part Terpakai ────────────────────────────────────────────────────
