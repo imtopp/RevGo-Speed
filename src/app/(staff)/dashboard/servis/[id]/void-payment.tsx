@@ -48,7 +48,7 @@ export function VoidPaymentForm({
         minLength={4}
         autoFocus
         placeholder="Alasan pembatalan (wajib)"
-        className="w-full rounded-lg border border-slate-300 px-2.5 py-1.5 text-xs outline-none focus:border-red-500"
+        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-base outline-none focus:border-red-500"
       />
       {state.error && (
         <p className="text-xs text-danger">{state.error}</p>

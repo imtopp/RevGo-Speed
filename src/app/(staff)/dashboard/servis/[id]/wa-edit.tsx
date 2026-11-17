@@ -6,7 +6,7 @@ import { SubmitButton } from "@/components/submit-button";
 import { formatWaLocal, waLink } from "@/lib/wa";
 
 const inputCls =
-  "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900";
+  "w-full rounded-lg border border-slate-300 px-3 py-2 text-base outline-none focus:border-slate-900";
 
 export function WaEdit({
   serviceId,

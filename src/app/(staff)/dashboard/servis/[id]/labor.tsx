@@ -190,7 +190,7 @@ export function EditLaborCostButton({
     <form
       onReset={(e) => e.preventDefault()}
       action={formAction}
-      className="flex flex-wrap items-center justify-end gap-2"
+      className="flex w-full flex-wrap items-center justify-end gap-2"
     >
       <input type="hidden" name="id" value={serviceId} />
       <input
@@ -199,13 +199,13 @@ export function EditLaborCostButton({
         onChange={(e) => setNama(e.target.value)}
         maxLength={200}
         placeholder="Nama jasa"
-        className="w-full rounded-lg border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-slate-900"
+        className="w-full rounded-lg border border-slate-300 px-2 py-1.5 text-base outline-none focus:border-slate-900"
       />
       <NumberInput
         name="laborCost"
         defaultValue={value}
         required
-        className="w-32 rounded-lg border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-slate-900"
+        className="w-32 rounded-lg border border-slate-300 px-2 py-1.5 text-base outline-none focus:border-slate-900"
       />
       <SubmitButton
         pendingText="Menyimpan..."

@@ -177,7 +177,7 @@ export default async function ServisPage({
           type="date"
           name="tanggal"
           defaultValue={tanggal ?? ""}
-          className="rounded-lg border border-slate-300 bg-surface px-3 py-1.5 text-sm text-foreground outline-none focus:border-slate-400"
+          className="rounded-lg border border-slate-300 bg-surface px-3 py-1.5 text-base text-foreground outline-none focus:border-slate-400"
         />
         <button
           type="submit"

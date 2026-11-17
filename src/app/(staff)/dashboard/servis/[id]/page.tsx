@@ -305,22 +305,21 @@ export default async function ServisDetailPage({
             </span>
           </div>
           <ul className="mt-2 divide-y divide-slate-100">
-            <li className="flex items-center justify-between gap-2 py-2 text-sm">
-              <div className="min-w-0">
-                <p className="truncate">{namaJasaUtama(service)}</p>
-              </div>
-              <div className="flex shrink-0 items-center gap-3">
-                <span className="font-medium">
-                  {formatRupiah(service.laborCost)}
-                </span>
-                {bolehUbahJasaUtama && (
-                  <EditLaborCostButton
-                    serviceId={service.id}
-                    value={service.laborCost}
-                    namaAwal={namaJasaUtama(service)}
-                  />
-                )}
-              </div>
+            {/* flex-wrap: saat form Ubah terbuka, ia jadi child w-full yang
+                turun ke baris baru — jangan dibungkus shrink-0 (form sempit /
+                overflow di layar kecil). */}
+            <li className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm">
+              <p className="min-w-0 flex-1 truncate">{namaJasaUtama(service)}</p>
+              <span className="shrink-0 font-medium">
+                {formatRupiah(service.laborCost)}
+              </span>
+              {bolehUbahJasaUtama && (
+                <EditLaborCostButton
+                  serviceId={service.id}
+                  value={service.laborCost}
+                  namaAwal={namaJasaUtama(service)}
+                />
+              )}
             </li>
             {service.labors.map((l) => (
               <li
@@ -438,31 +437,35 @@ export default async function ServisDetailPage({
               {service.payments.map((p) => (
                 <li
                   key={p.id}
-                  className="flex items-center justify-between gap-3 py-2 text-sm"
+                  className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 py-2 text-sm"
                 >
-                  <div className={p.voidedAt ? "opacity-60" : ""}>
-                    <p>
-                      {p.kind === "DP"
-                        ? "DP"
-                        : p.kind === "REFUND"
-                          ? "Kembali"
-                          : "Bayar"}{" "}
-                      · {labelMetodeBayar(p.method)}
-                      {p.voidedAt && (
-                        <span className="ml-2 rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-medium text-danger">
-                          DIBATALKAN
-                        </span>
-                      )}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {formatTanggalPendek(p.paidAt)}
-                      {p.note ? ` · ${p.note}` : ""}
-                      {p.voidedAt ? ` · ${p.voidReason}` : ""}
-                    </p>
-                  </div>
-                  <div className="flex shrink-0 flex-col items-end gap-1">
+                  <div
+                    className={`flex min-w-0 flex-1 items-center justify-between gap-3 ${
+                      p.voidedAt ? "opacity-60" : ""
+                    }`}
+                  >
+                    <div className="min-w-0">
+                      <p>
+                        {p.kind === "DP"
+                          ? "DP"
+                          : p.kind === "REFUND"
+                            ? "Kembali"
+                            : "Bayar"}{" "}
+                        · {labelMetodeBayar(p.method)}
+                        {p.voidedAt && (
+                          <span className="ml-2 rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-medium text-danger">
+                            DIBATALKAN
+                          </span>
+                        )}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {formatTanggalPendek(p.paidAt)}
+                        {p.note ? ` · ${p.note}` : ""}
+                        {p.voidedAt ? ` · ${p.voidReason}` : ""}
+                      </p>
+                    </div>
                     <span
-                      className={`font-medium ${
+                      className={`shrink-0 font-medium ${
                         p.voidedAt
                           ? "text-muted-foreground line-through"
                           : p.kind === "REFUND"
@@ -472,10 +475,12 @@ export default async function ServisDetailPage({
                     >
                       {formatRupiah(p.amount)}
                     </span>
-                    {isOwner && !p.voidedAt && p.kind !== "REFUND" && (
-                      <VoidPaymentForm paymentId={p.id} />
-                    )}
                   </div>
+                  {/* Child langsung li (bukan dibungkus shrink-0): saat form
+                      terbuka, w-full = lebar baris penuh di layar kecil. */}
+                  {isOwner && !p.voidedAt && p.kind !== "REFUND" && (
+                    <VoidPaymentForm paymentId={p.id} />
+                  )}
                 </li>
               ))}
             </ul>

@@ -66,7 +66,7 @@ function ActionPanel({
               name="branchId"
               defaultValue={user.branch?.id ?? ""}
               required
-              className="mt-1 w-full rounded-lg border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-slate-900"
+              className="mt-1 w-full rounded-lg border border-slate-300 px-2 py-1.5 text-base outline-none focus:border-slate-900"
             >
               <option value="" disabled>
                 Pilih cabang…
@@ -108,7 +108,7 @@ function ActionPanel({
               minLength={6}
               placeholder="min. 6 karakter"
               autoComplete="new-password"
-              className="mt-1 w-full rounded-lg border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-slate-900"
+              className="mt-1 w-full rounded-lg border border-slate-300 px-2 py-1.5 text-base outline-none focus:border-slate-900"
             />
           </div>
           <SubmitButton

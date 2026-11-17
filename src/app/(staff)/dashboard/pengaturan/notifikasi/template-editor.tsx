@@ -36,7 +36,7 @@ function FieldEditor({
         defaultValue={current}
         placeholder={field.default}
         rows={fieldName === "title" ? 2 : 4}
-        className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 font-mono text-sm outline-none focus:border-slate-900"
+        className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 font-mono text-base outline-none focus:border-slate-900"
       />
       <p className="mt-1 text-xs text-muted-foreground">
         {field.variabel.length > 0 ? (
