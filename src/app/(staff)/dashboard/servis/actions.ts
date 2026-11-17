@@ -1134,7 +1134,7 @@ export async function cancelService(
         after: { status: "CANCELLED", cancelReason: reason },
       });
       totalHangus = plan.totalHangus;
-    });
+    }, { maxWait: 10_000, timeout: 30_000 });
   } catch (e) {
     return {
       error: e instanceof Error ? e.message : "Gagal membatalkan servis.",
@@ -1290,7 +1290,7 @@ export async function addServicePart(
         after: { partId, quantity, price: sp.price, cost },
       });
     }
-  });
+  }, { maxWait: 10_000, timeout: 30_000 });
 
   after(() => notifyStokMenipis(partId, qtySebelum, qtySesudah));
   revalidatePath(`/dashboard/servis/${serviceId}`);

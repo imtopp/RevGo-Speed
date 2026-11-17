@@ -248,7 +248,7 @@ export async function updateDpSettings(
         after: { value: ringkas(value) },
       });
     }
-  });
+  }, { maxWait: 10_000, timeout: 30_000 });
 
   revalidatePath("/dashboard/pengaturan");
   return {

@@ -527,7 +527,7 @@ export async function deletePart(
         },
       });
       return total;
-    });
+    }, { maxWait: 10_000, timeout: 30_000 });
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Part gagal dihapus." };
   }
@@ -931,7 +931,7 @@ export async function sellPart(
       summary: `${sale.code} · jual ${quantity} ${partF.unit} ${partF.name} @${price.toLocaleString("id-ID")} = ${total.toLocaleString("id-ID")} (${accountFromMethod(method)}) — HPP/unit ${cost.toLocaleString("id-ID")}`,
       after: { quantity, price, cost, total, method },
     });
-  });
+  }, { maxWait: 10_000, timeout: 30_000 });
 
   after(() => notifyStokMenipis(partId, qtySebelum, qtySesudah));
   revalidatePath("/dashboard/stok");
@@ -1257,7 +1257,7 @@ export async function correctStockCost(
         affectedUnits: x,
       },
     });
-  });
+  }, { maxWait: 10_000, timeout: 30_000 });
 
   revalidatePath("/dashboard/stok");
   revalidatePath("/dashboard/laporan");

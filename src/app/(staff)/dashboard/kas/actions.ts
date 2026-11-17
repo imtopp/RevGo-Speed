@@ -293,7 +293,7 @@ export async function voidPayment(
         before: { amount: payment.amount, method: payment.method, voidedAt: null },
         after: { voidReason: reason, reversalAccount: account, restocked: sale.items.length },
       });
-    });
+    }, { maxWait: 10_000, timeout: 30_000 });
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Void gagal." };
   }
