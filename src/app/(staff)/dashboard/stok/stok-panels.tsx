@@ -223,7 +223,8 @@ function PartForm({
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="block text-sm font-medium text-foreground">Harga Beli (Rp)</label>
-          <NumberInput name="buyPrice" value={buyPrice} onChange={setBuyPrice} />
+          <NumberInput name="buyPrice" required onChange={setBuyPrice} />
+          <p className="mt-1 text-xs text-muted-foreground">Wajib — isi 0 untuk barang gratis</p>
         </div>
         <div>
           <label className="block text-sm font-medium text-foreground">Harga Jual (Rp)</label>

@@ -142,12 +142,18 @@ export async function createPart(
   const unit = String(formData.get("unit") ?? "pcs").trim();
   const quantity = Number(formData.get("quantity") ?? 0);
   const minStock = Number(formData.get("minStock") ?? 0);
-  const buyPrice = Number(formData.get("buyPrice") ?? 0);
+  // String kosong → NaN (ditolak), bukan 0 diam-diam — stok awal @0 pernah
+  // mencemari rata-rata buyPrice (kasus Enduro matic). "0" eksplisit tetap sah.
+  const rawBuyPrice = String(formData.get("buyPrice") ?? "").trim();
+  const buyPrice = rawBuyPrice === "" ? Number.NaN : Number(rawBuyPrice);
   const sellPrice = Number(formData.get("sellPrice") ?? 0);
   const supplierId = String(formData.get("supplierId") ?? "").trim();
   const consignment = formData.get("consignment") === "on";
 
   if (!branchId || !name) return { error: "Cabang dan nama wajib diisi." };
+  if (rawBuyPrice === "") {
+    return { error: "Harga beli wajib diisi — ketik 0 untuk barang gratis." };
+  }
   if (consignment && !supplierId) {
     return { error: "Part konsinyasi wajib memilih supplier (pemilik barang)." };
   }
@@ -552,11 +558,17 @@ export async function stockIn(
   const session = await requireStokRole();
   const partId = String(formData.get("partId") ?? "").trim();
   const quantity = Number(formData.get("quantity") ?? 0);
-  const buyPrice = Number(formData.get("buyPrice") ?? 0);
+  // Kosong → NaN, ditolak; "0" eksplisit (barang gratis) tetap sah — jangan
+  // biarkan "" berubah jadi 0 diam-diam dan menyeret rata-rata buyPrice.
+  const rawBuyPrice = String(formData.get("buyPrice") ?? "").trim();
+  const buyPrice = rawBuyPrice === "" ? Number.NaN : Number(rawBuyPrice);
   const supplierId = String(formData.get("supplierId") ?? "").trim();
   const method = String(formData.get("method") ?? "CASH") as PaymentMethod;
   const note = String(formData.get("note") ?? "").trim();
 
+  if (rawBuyPrice === "") {
+    return { error: "Harga beli wajib diisi — ketik 0 untuk barang gratis." };
+  }
   if (
     !partId ||
     !Number.isFinite(quantity) ||
