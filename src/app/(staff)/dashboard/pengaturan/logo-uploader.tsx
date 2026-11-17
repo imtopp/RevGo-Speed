@@ -68,7 +68,7 @@ export function LogoUploader({ value }: { value: string }) {
           name="logo"
           accept="image/png,image/jpeg,image/webp,image/svg+xml"
           required
-          className="block w-full flex-1 text-sm text-muted-foreground file:mr-3 file:rounded-lg file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:text-sm file:font-medium file:text-foreground"
+          className="block w-full flex-1 text-base text-muted-foreground file:mr-3 file:rounded-lg file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:text-base file:font-medium file:text-foreground"
         />
         <SubmitButton
           pendingText="Memproses..."

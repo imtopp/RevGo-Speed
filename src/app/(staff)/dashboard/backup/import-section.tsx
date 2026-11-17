@@ -103,7 +103,7 @@ export function ImportSection() {
           type="file"
           accept=".json,application/json"
           onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-          className="block w-full text-sm text-foreground file:mr-3 file:rounded-lg file:border file:border-slate-300 file:bg-white file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-foreground active:file:opacity-90"
+          className="block w-full text-base text-foreground file:mr-3 file:rounded-lg file:border file:border-slate-300 file:bg-white file:px-3 file:py-1.5 file:text-base file:font-medium file:text-foreground active:file:opacity-90"
         />
         <input
           type="text"

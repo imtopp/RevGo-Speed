@@ -32,7 +32,7 @@ export function BranchPicker({
           router.push(`${basePath}?${q.toString()}`);
         });
       }}
-      className={`rounded-lg border border-slate-300 px-3 py-2 text-sm disabled:opacity-60 ${
+      className={`rounded-lg border border-slate-300 px-3 py-2 text-base disabled:opacity-60 ${
         isPending ? "animate-pulse" : ""
       }`}
     >

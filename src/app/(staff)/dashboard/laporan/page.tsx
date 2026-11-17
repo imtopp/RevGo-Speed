@@ -179,11 +179,11 @@ export default async function LaporanPage({
         {activeBranchId && <input type="hidden" name="branch" value={activeBranchId} />}
         <div>
           <label className="block text-xs font-medium text-muted-foreground">Dari</label>
-          <input type="date" name="from" defaultValue={periode.dari} className="mt-1 rounded-lg border border-slate-300 px-2 py-1.5 text-sm" />
+          <input type="date" name="from" defaultValue={periode.dari} className="mt-1 rounded-lg border border-slate-300 px-2 py-1.5 text-base" />
         </div>
         <div>
           <label className="block text-xs font-medium text-muted-foreground">Sampai</label>
-          <input type="date" name="to" defaultValue={periode.sampai} className="mt-1 rounded-lg border border-slate-300 px-2 py-1.5 text-sm" />
+          <input type="date" name="to" defaultValue={periode.sampai} className="mt-1 rounded-lg border border-slate-300 px-2 py-1.5 text-base" />
         </div>
         <SubmitButton
           pendingText="Menerapkan..."
@@ -209,7 +209,10 @@ export default async function LaporanPage({
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
           <h2 className="text-sm font-semibold text-foreground">Rekap per Kantong</h2>
-        <table className="mt-2 w-full text-sm">
+          {/* overflow-x: angka besar (Rp) tak muat di 360px — geser, jangan
+              meledak keluar kartu. */}
+          <div className="mt-2 overflow-x-auto">
+        <table className="w-full text-sm">
           <thead>
             <tr className="text-left text-xs text-muted-foreground">
               <th className="py-1">Kantong</th>
@@ -229,6 +232,7 @@ export default async function LaporanPage({
             ))}
           </tbody>
         </table>
+          </div>
         </div>
 
         {/* Laba per servis */}
