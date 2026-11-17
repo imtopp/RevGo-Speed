@@ -74,7 +74,14 @@ export default async function LaporanPage({
         include: { part: { select: { buyPrice: true } } },
       }),
       prisma.partSale.findMany({
-        where: { ...branchWhere, soldAt: { gte: periode.gte, lt: periode.lt } },
+        where: {
+          ...branchWhere,
+          soldAt: { gte: periode.gte, lt: periode.lt },
+          // Penjualan yang di-void: uang sudah dibalik & stok kembali —
+          // jangan dihitung sbg pendapatan/laba (laba vs kas jadi selisih;
+          // unit terjual lagi bisa tercatat dobel).
+          NOT: { payments: { some: { voidedAt: { not: null } } } },
+        },
         include: {
           items: { select: { quantity: true, price: true, cost: true } },
         },

@@ -27,3 +27,22 @@ export function alasanTolakHapusPart(input: {
   if (!hanyaStokAwal) return "bukan-stok-awal";
   return null;
 }
+
+/**
+ * Gerakan IN yang BUKAN pembelian uang nyata — koreksi kas harus dilewati.
+ *
+ * Pencocokan kas koreksi/HPP pakai heuristik amount ±1 hari (data legacy
+ * tanpa `cashflowId`); false-match ke gerakan ini menghasilkan **kas fiktif**
+ * (baris kas tanpa uang bergerak). Gerakan yang di sini memang tak pernah
+ * menyentuh kas: konsinyasi, retur servis, penyesuaian opname, retur
+ * penjualan yang dibatalkan.
+ */
+export function gerakanBukanPembelianKas(note: string | null): boolean {
+  const n = (note ?? "").trim().toLowerCase();
+  return (
+    n.includes("konsinyasi") ||
+    n.startsWith("dikembalikan dari servis") ||
+    n.startsWith("penyesuaian") ||
+    n.startsWith("penjualan")
+  );
+}

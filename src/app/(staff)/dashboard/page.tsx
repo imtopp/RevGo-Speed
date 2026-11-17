@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { getStaffBranchId } from "@/lib/guard";
 import { redirect } from "next/navigation";
-import { formatRupiah, totalTagihan } from "@/lib/service-status";
+import { formatRupiah, totalTagihan, windowHariWIB } from "@/lib/service-status";
 import { pushEnabled } from "@/lib/push";
 import { PushOptInCard } from "@/components/push-opt-in-card";
 import {
@@ -26,8 +26,12 @@ export default async function DashboardHome() {
   const branchIdStaff = await getStaffBranchId();
   const branchWhere = branchIdStaff ? { branchId: branchIdStaff } : {};
 
-  const dayStart = new Date();
-  dayStart.setHours(0, 0, 0, 0);
+  // Hari menurut kalender WIB (bukan waktu lokal server — Vercel = UTC,
+  // setHours(0) lokal meleset 7 jam dari hari user). Pola sama dgn laporan.
+  const hariIni = windowHariWIB(
+    new Date(new Date().getTime() + 7 * 3600_000).toISOString().slice(0, 10),
+  );
+  const dayStart = hariIni ? new Date(hariIni.gte) : new Date(0);
 
   const [activeServices, waitingBookings, omzetHariIni, openServices, parts] =
     await Promise.all([

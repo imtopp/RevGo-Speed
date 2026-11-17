@@ -608,8 +608,14 @@ function CancelForm({ service }: { service: ServiceInfo }) {
         <p className="font-semibold text-danger">Yang terjadi saat dibatalkan:</p>
         {plan.terblokirRefund && (
           <p className="text-danger">
-            Ada baris refund aktif — pembatalan akan ditolak; urus dulu lewat
-            menu Kas.
+            Ada refund aktif bersama pembayaran lain — void dulu pembayaran
+            positifnya lewat menu Kas sebelum membatalkan servis.
+          </p>
+        )}
+        {plan.adaRefund && !plan.terblokirRefund && (
+          <p className="text-muted-foreground">
+            Refund kelebihan sudah pernah dikembalikan — tidak diubah saat
+            pembatalan.
           </p>
         )}
         {plan.voids.length > 0 && (
@@ -643,7 +649,8 @@ function CancelForm({ service }: { service: ServiceInfo }) {
         )}
         {plan.voids.length === 0 &&
           plan.totalHangus === 0 &&
-          service.partTerpakai.length === 0 && (
+          service.partTerpakai.length === 0 &&
+          !plan.adaRefund && (
             <p className="text-muted-foreground">
               Tidak ada pembayaran/part — pembatalan bersih.
             </p>

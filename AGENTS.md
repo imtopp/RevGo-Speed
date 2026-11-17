@@ -101,7 +101,9 @@ generated/                  # Prisma client output (gitignored)
   dalam 1 transaksi: void semua pembayaran aktif (1 baris kas reversal per baris;
   DP hangus = Payment & kas INCOME disentuh 0 — tetap tercatat) + kembalikan stok
   part per `ServicePart` (pola `removeServicePart`: IN retur + buka alokasi FIFO);
-  ditolak bila ada baris `REFUND` aktif — `src/lib/cancel-plan.ts` (murni, diuji))
+  ditolak bila baris `REFUND` aktif **bersama** pembayaran yang akan di-void —
+  REFUND sendirian (positif sudah di-void manual) = flip status tanpa gerakan
+  kas, boleh — `src/lib/cancel-plan.ts` (murni, diuji))
 - **DP booking:** SystemSetting `dp_*` dibaca via `getDpConfig()` (`src/lib/dp.ts`);
   `dp_nominal = 0` = DP nonaktif → booking langsung `PENDING`. Booking baru (APP & admin)
   mulai `WAITING_DP`; `confirmDp` (OWNER/ADMIN) membuat Payment kind `DP` + Cashflow
@@ -116,7 +118,7 @@ generated/                  # Prisma client output (gitignored)
 ## Aturan Penting
 
 1. **Stok tidak boleh negatif.** Selalu cek `quantity` sebelum decrement; gunakan `prisma.$transaction` untuk operasi multi-tabel (part + movement + cashflow).
-2. **Kas dari pembayaran/pembelian dibuat dalam transaksi DB yang sama** dengan Payment/StockMovement â€” jangan terpisah.
+2. **Kas dari pembayaran/pembelian dibuat dalam transaksi DB yang sama** dengan Payment/StockMovement â€” jangan terpisah. Cari baris kas terkait via `cashflowId` gerakan (jangan tebak amount; heuristik hanya fallback data legacy dan wajib ditahan `gerakanBukanPembelianKas()`), dan laporan/export kecualikan penjualan part yang void (`NOT payments.some(voidedAt)`).
 3. **Jangan pernah commit `.env`, `.env.local`, atau `generated/`.**
 4. **Perubahan skema Prisma** â†’ jalankan `npm run db:migrate`, commit file `migrations/` yang dihasilkan.
 5. **Setelah ubah `schema.prisma`** â†’ `npm run db:generate` agar types di `generated/` update.

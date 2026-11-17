@@ -58,13 +58,46 @@ describe("rencanaPembatalan", () => {
     expect(p.perluCentangHangus).toBe(false);
   });
 
-  it("ada baris REFUND aktif → terblokirRefund (cancel ditolak server)", () => {
+  it("REFUND bersama pembayaran lain → terblokirRefund (cancel ditolak server)", () => {
     const p = rencanaPembatalan(
       [bayar("PELUNASAN", 200_000, "a"), bayar("REFUND", -50_000, "b")],
       "TANPA_REFUND",
     );
     expect(p.terblokirRefund).toBe(true);
+    expect(p.adaRefund).toBe(true);
     // Tetap dihitung untuk tampilan, tapi server menolak sebelum eksekusi.
+    expect(p.voids.map((x) => x.id)).toEqual(["a"]);
+  });
+
+  it("REFUND saja yang tersisa (positif sudah di-void manual) → boleh", () => {
+    const p = rencanaPembatalan(
+      [bayar("REFUND", -50_000, "b")],
+      "TANPA_REFUND",
+    );
+    expect(p.terblokirRefund).toBe(false);
+    expect(p.adaRefund).toBe(true);
+    expect(p.voids).toHaveLength(0);
+    expect(p.totalVoid).toBe(0);
+  });
+
+  it("REFUND + DP yang ditahan (TANPA_REFUND) → boleh — tanpa gerakan kas", () => {
+    // Net tercatat sudah benar: DP gantung + refund keluar = sesuai total.
+    const p = rencanaPembatalan(
+      [bayar("DP", 50_000, "a"), bayar("REFUND", -20_000, "b")],
+      "TANPA_REFUND",
+    );
+    expect(p.terblokirRefund).toBe(false);
+    expect(p.adaRefund).toBe(true);
+    expect(p.voids).toHaveLength(0);
+    expect(p.hangusDp.map((x) => x.id)).toEqual(["a"]);
+  });
+
+  it("REFUND + DP di-void (REFUND_PENUH) → terblokirRefund", () => {
+    const p = rencanaPembatalan(
+      [bayar("DP", 50_000, "a"), bayar("REFUND", -20_000, "b")],
+      "REFUND_PENUH",
+    );
+    expect(p.terblokirRefund).toBe(true);
     expect(p.voids.map((x) => x.id)).toEqual(["a"]);
   });
 });

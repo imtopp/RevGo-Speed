@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { alasanTolakHapusPart } from "./part";
+import { alasanTolakHapusPart, gerakanBukanPembelianKas } from "./part";
 
 const stokAwal = [{ type: "IN" as const, note: "Stok awal" }];
 
@@ -120,5 +120,34 @@ describe("alasanTolakHapusPart", () => {
         ],
       }),
     ).toBe("bukan-stok-awal");
+  });
+});
+
+describe("gerakanBukanPembelianKas", () => {
+  it("pembelian asli (stok awal / pembelian stok / catatan bebas) ? false", () => {
+    expect(gerakanBukanPembelianKas("Stok awal")).toBe(false);
+    expect(gerakanBukanPembelianKas("Pembelian stok")).toBe(false);
+    expect(gerakanBukanPembelianKas("Beli di supplier X")).toBe(false);
+    expect(gerakanBukanPembelianKas(null)).toBe(false);
+  });
+
+  it("konsinyasi ? true (tanpa kas, jangan dicocokkan)", () => {
+    expect(gerakanBukanPembelianKas("Stok awal (konsinyasi)")).toBe(true);
+    expect(gerakanBukanPembelianKas("Konsinyasi: PO-001")).toBe(true);
+  });
+
+  it("retur servis / penyesuaian opname / retur penjualan batal ? true", () => {
+    expect(
+      gerakanBukanPembelianKas("Dikembalikan dari servis SV-001 (batal)"),
+    ).toBe(true);
+    expect(gerakanBukanPembelianKas("Penyesuaian: opname rutin")).toBe(true);
+    expect(
+      gerakanBukanPembelianKas("Penjualan SL-001 dibatalkan"),
+    ).toBe(true);
+  });
+
+  it("abai besar-kecil huruf & spasi di awal", () => {
+    expect(gerakanBukanPembelianKas("  KONSINYASI")).toBe(true);
+    expect(gerakanBukanPembelianKas("penyesuaian: x")).toBe(true);
   });
 });

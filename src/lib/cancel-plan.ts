@@ -12,9 +12,11 @@
  *   reversal per pembayaran — uang kembali ke customer).
  * - DP → ikut `dp_policy`: TANPA_REFUND = ditahan (hangus — baris Payment &
  *   kas INCOME tidak disentuh, tetap tercatat), REFUND_PENUH = ikut di-void.
- * - Baris REFUND aktif → pembatalan DITOLAK: refund tidak bisa di-void
- *   (amount negatif), membatalkan servis saat refund aktif = uang keluar
- *   dua kali untuk pihak yang sama.
+ * - Baris REFUND aktif BERSAMA pembayaran positif → pembatalan DITOLAK:
+ *   auto-void akan mengembalikan penuh pembayaran positif padahal kelebihan
+ *   sudah pernah direfund → uang keluar dua kali untuk pihak yang sama.
+ *   REFUND saja yang tersisa (positif sudah di-void manual lebih dulu) →
+ *   BOLEH: tak ada gerakan kas sama sekali.
  */
 import type { DpPolicy } from "@/lib/dp";
 
@@ -40,8 +42,14 @@ export type RencanaPembatalan = {
   totalHangus: number;
   /** Wajib centang "DP ditahan (tidak direfund)" sebelum submit. */
   perluCentangHangus: boolean;
-  /** Ada baris REFUND aktif → pembatalan harus ditolak server-side. */
+  /**
+   * REFUND aktif bersama pembayaran positif → pembatalan harus ditolak
+   * server-side (auto-void akan mengembalikan lebih). REFUND sendirian
+   * (positif sudah di-void manual) → boleh — tanpa gerakan kas.
+   */
   terblokirRefund: boolean;
+  /** Ada baris REFUND aktif (apa pun kondisinya) — untuk ringkasan UI. */
+  adaRefund: boolean;
 };
 
 /** Hitung rencana void/hangus dari pembayaran aktif + kebijakan DP. */
@@ -49,23 +57,27 @@ export function rencanaPembatalan(
   bayarAktif: BayarAktif[],
   policy: DpPolicy,
 ): RencanaPembatalan {
-  const terblokirRefund = bayarAktif.some((p) => p.kind === "REFUND");
+  const adaRefund = bayarAktif.some((p) => p.kind === "REFUND");
   const dp = bayarAktif.filter((p) => p.kind === "DP");
-  // REFUND (amount negatif) tidak bisa di-void — hanya penanda blokir;
-  // jangan pernah masuk rencana void.
+  // REFUND (amount negatif) tidak bisa di-void — jangan pernah masuk rencana void.
   const lain = bayarAktif.filter(
     (p) => p.kind !== "DP" && p.kind !== "REFUND",
   );
   // REFUND_PENUH: DP ikut dikembalikan. TANPA_REFUND: DP ditahan (hangus).
   const hangusDp = policy === "REFUND_PENUH" ? [] : dp;
   const voids = policy === "REFUND_PENUH" ? [...lain, ...dp] : lain;
+  // Blokir hanya bila masih ada pembayaran yang akan di-void — itu yang
+  // membuat uang keluar dua kali. REFUND sendirian (voids kosong): pembatalan
+  // murni flip status tanpa gerakan kas, aman — termasuk REFUND + DP yang
+  // ditahan (hangus): net yang tercatat sudah benar.
   return {
     voids,
     hangusDp,
     totalVoid: voids.reduce((s, p) => s + p.amount, 0),
     totalHangus: hangusDp.reduce((s, p) => s + p.amount, 0),
     perluCentangHangus: hangusDp.length > 0,
-    terblokirRefund,
+    terblokirRefund: adaRefund && voids.length > 0,
+    adaRefund,
   };
 }
 

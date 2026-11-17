@@ -55,7 +55,12 @@ export async function GET(request: Request) {
       include: { part: { select: { buyPrice: true } } },
     }),
     prisma.partSale.findMany({
-      where: { ...branchWhere, soldAt: { gte: periode.gte, lt: periode.lt } },
+      where: {
+        ...branchWhere,
+        soldAt: { gte: periode.gte, lt: periode.lt },
+        // Sama dgn laporan: penjualan ter-void dikecualikan (lihat laporan/page.tsx).
+        NOT: { payments: { some: { voidedAt: { not: null } } } },
+      },
       include: { items: { select: { quantity: true, price: true, cost: true } } },
       orderBy: { soldAt: "asc" },
     }),

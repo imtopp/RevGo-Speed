@@ -6,7 +6,7 @@ import { getStaffBranchId } from "@/lib/guard";
 import { logAudit } from "@/lib/audit";
 import { samakanKategori } from "@/lib/category";
 import { skuBerikutnya } from "@/lib/sku";
-import { alasanTolakHapusPart } from "@/lib/part";
+import { alasanTolakHapusPart, gerakanBukanPembelianKas } from "@/lib/part";
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import { notifyStokMenipis } from "@/lib/push";
@@ -390,7 +390,7 @@ export async function deletePart(
 
   const movements = await prisma.stockMovement.findMany({
     where: { partId: id },
-    select: { id: true, type: true, quantity: true, cost: true, note: true, createdAt: true },
+    select: { id: true, type: true, quantity: true, cost: true, note: true, createdAt: true, cashflowId: true },
     orderBy: { createdAt: "asc" },
   });
   const alasan = alasanTolakHapusPart({
@@ -426,7 +426,7 @@ export async function deletePart(
       if (!partF) throw new Error("Part tidak ditemukan.");
       const movementsF = await tx.stockMovement.findMany({
         where: { partId: id },
-        select: { id: true, type: true, quantity: true, cost: true, note: true, createdAt: true },
+        select: { id: true, type: true, quantity: true, cost: true, note: true, createdAt: true, cashflowId: true },
         orderBy: { createdAt: "asc" },
       });
       const alasanF = alasanTolakHapusPart({
@@ -448,23 +448,39 @@ export async function deletePart(
       let total = 0;
       for (const m of movementsF) {
         if (!m.cost || m.cost <= 0 || m.quantity <= 0) continue;
-        // Konsinyasi tidak pernah membuat baris kas — jangan dicocokkan dengan
-        // EXPENSE part lain (jumlah bisa kembar) supaya tidak membalik kas salah.
-        if (m.note?.toLowerCase().includes("konsinyasi")) continue;
         const amount = m.quantity * m.cost;
-        const orig = await tx.cashflow.findFirst({
-          where: {
-            type: "EXPENSE",
-            category: "Pembelian Part",
-            amount,
-            branchId: partF.branchId,
-            createdAt: {
-              gte: new Date(m.createdAt.getTime() - 86_400_000),
-              lte: new Date(m.createdAt.getTime() + 86_400_000),
-            },
-          },
-          orderBy: { createdAt: "asc" },
-        });
+        // Utamakan tautan langsung gerakan → kas pembelian aslinya. Bila
+        // amount kas asli tak lagi = qty×cost → batch pernah dikoreksi
+        // (kas koreksi baris terpisah sudah tercatat); membalik dengan amount
+        // mana pun meleset → kas hilang. Tolak hapus — rapikan lewat Opname.
+        const linked = m.cashflowId
+          ? await tx.cashflow.findUnique({ where: { id: m.cashflowId } })
+          : null;
+        if (linked && linked.amount !== amount) {
+          throw new Error(
+            `Part "${partF.name}" tidak bisa dihapus: harga batch pernah dikoreksi (kas pembelian sudah menyesuaikan) — biarkan partnya, rapikan stok lewat Opname.`,
+          );
+        }
+        // Data legacy tanpa tautan: heuristik amount ±1 hari. Konsinyasi
+        // tidak pernah membuat baris kas — jangan dicocokkan dengan EXPENSE
+        // part lain (jumlah bisa kembar) supaya tidak membalik kas salah.
+        const orig =
+          linked ??
+          (m.note?.toLowerCase().includes("konsinyasi")
+            ? null
+            : await tx.cashflow.findFirst({
+                where: {
+                  type: "EXPENSE",
+                  category: "Pembelian Part",
+                  amount,
+                  branchId: partF.branchId,
+                  createdAt: {
+                    gte: new Date(m.createdAt.getTime() - 86_400_000),
+                    lte: new Date(m.createdAt.getTime() + 86_400_000),
+                  },
+                },
+                orderBy: { createdAt: "asc" },
+              }));
         if (!orig) continue; // stok awal tanpa baris kas (data lama) → tanpa reversal
         const sudahDibatalkan = await tx.cashflow.findFirst({
           where: {
@@ -584,9 +600,11 @@ export async function stockIn(
     });
     // Konsinyasi: barang titipan supplier — stok & batch cost masuk (HPP benar),
     // tapi TIDAK ada kas keluar (kas baru saat bayar supplier via kas manual).
+    // Harga beli 0 (barang gratis/hadiah) juga tanpa kas — baris EXPENSE Rp0
+    // hanya membuang rekap kas (createPart memakai guard yang sama).
     // Kas dulu (bila ada) → gerakan stok menunjuk kasnya (cashflowId).
     let cashflowId: string | null = null;
-    if (!part.consignment) {
+    if (!part.consignment && total > 0) {
       const cf = await tx.cashflow.create({
         data: {
           type: "EXPENSE",
@@ -621,7 +639,9 @@ export async function stockIn(
       branchId: part.branchId,
       summary: part.consignment
         ? `Konsinyasi ${quantity} ${part.unit} ${part.name} @${buyPrice.toLocaleString("id-ID")} (tanpa kas)`
-        : `Beli ${quantity} ${part.unit} ${part.name} @${buyPrice.toLocaleString("id-ID")} = ${total.toLocaleString("id-ID")} (${accountFromMethod(method)})`,
+        : total > 0
+          ? `Beli ${quantity} ${part.unit} ${part.name} @${buyPrice.toLocaleString("id-ID")} = ${total.toLocaleString("id-ID")} (${accountFromMethod(method)})`
+          : `Beli ${quantity} ${part.unit} ${part.name} @0 (harga 0, tanpa kas)`,
       before: { buyPrice: fresh.buyPrice, quantity: fresh.quantity },
       after: { buyPrice: avgBaru, quantity: fresh.quantity + quantity },
     });
@@ -631,6 +651,11 @@ export async function stockIn(
   if (part.consignment) {
     return {
       success: `Stok masuk ${quantity} ${part.unit} ${part.name} (konsinyasi, tanpa kas).`,
+    };
+  }
+  if (total <= 0) {
+    return {
+      success: `Stok masuk ${quantity} ${part.unit} ${part.name} (harga beli 0 — tanpa kas).`,
     };
   }
   return {
@@ -1077,7 +1102,7 @@ export async function correctStockCost(
     });
     const mvF = await tx.stockMovement.findUnique({
       where: { id: movementId },
-      select: { quantity: true, cost: true, createdAt: true },
+      select: { quantity: true, cost: true, createdAt: true, cashflowId: true, note: true },
     });
     if (!partF || !mvF || mvF.cost === null) {
       throw new Error("Batch pembelian tidak ditemukan.");
@@ -1163,22 +1188,45 @@ export async function correctStockCost(
         });
       }
     }
-    // 4. Kas koreksi bertanggal pembelian asli — hanya bila pembeliannya
-    //    memang tercatat di kas (stok awal ikut tercatat; penyesuaian tidak).
+    // 4. Kas koreksi HANYA bila pembelian aslinya tercatat di kas — bertanggal
+    //    pembelian asli. Utamakan tautan langsung `cashflowId`: presisi utk
+    //    koreksi ke-2+ (pencocokan amount gagal setelah koreksi pertama
+    //    mengubah harga) & kantong asli tanpa tebak. Data legacy tanpa tautan:
+    //    heuristik amount ±1 hari, TAPI gerakan non-pembelian (konsinyasi/retur/
+    //    opname — `gerakanBukanPembelianKas`) dilewati: false-match = kas fiktif.
     kasDelta = mvF.quantity * (newCost - costLama);
-    const origCash = await tx.cashflow.findFirst({
-      where: {
-        type: "EXPENSE",
-        category: "Pembelian Part",
-        amount: mvF.quantity * costLama,
-        branchId: part.branchId,
-        createdAt: {
-          gte: new Date(mvF.createdAt.getTime() - 86_400_000),
-          lte: new Date(mvF.createdAt.getTime() + 86_400_000),
-        },
-      },
-      orderBy: { createdAt: "asc" },
-    });
+    let origCash: { account: "KAS" | "BANK" } | null = null;
+    if (!gerakanBukanPembelianKas(mvF.note)) {
+      if (mvF.cashflowId) {
+        const linked = await tx.cashflow.findUnique({
+          where: { id: mvF.cashflowId },
+          select: { account: true, type: true, category: true },
+        });
+        if (
+          linked &&
+          linked.type === "EXPENSE" &&
+          linked.category === "Pembelian Part"
+        ) {
+          origCash = { account: linked.account };
+        }
+      } else {
+        const legacy = await tx.cashflow.findFirst({
+          where: {
+            type: "EXPENSE",
+            category: "Pembelian Part",
+            amount: mvF.quantity * costLama,
+            branchId: part.branchId,
+            createdAt: {
+              gte: new Date(mvF.createdAt.getTime() - 86_400_000),
+              lte: new Date(mvF.createdAt.getTime() + 86_400_000),
+            },
+          },
+          orderBy: { createdAt: "asc" },
+          select: { account: true },
+        });
+        origCash = legacy;
+      }
+    }
     kasTercatat = Boolean(origCash);
     if (kasDelta !== 0 && origCash) {
       await tx.cashflow.create({

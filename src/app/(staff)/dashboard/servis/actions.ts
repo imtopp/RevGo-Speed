@@ -1013,8 +1013,9 @@ export async function cancelService(
       //   kas INCOME tidak disentuh, tetap tercatat; wajib centang konfirmasi.
       // - REFUND_PENUH: DP ikut di-void otomatis (uang kembali ke customer).
       // - Selalu: pembayaran non-DP (mis. PELUNASAN) di-void otomatis.
-      // - Baris REFUND aktif → tolak: refund tak bisa di-void (amount negatif),
-      //   membatalkan saat refund aktif = uang keluar dua kali.
+      // - Baris REFUND aktif BERSAMA pembayaran yang akan di-void → tolak:
+      //   auto-void mengembalikan penuh padahal kelebihan sudah direfund
+      //   (uang keluar dua kali). REFUND sendirian → boleh (tanpa gerakan kas).
       const bayar = await tx.payment.findMany({
         where: { serviceId: id, voidedAt: null },
         select: { id: true, kind: true, method: true, amount: true },
@@ -1022,7 +1023,7 @@ export async function cancelService(
       const plan = rencanaPembatalan(bayar, cfg.policy);
       if (plan.terblokirRefund) {
         throw new Error(
-          "Ada baris refund (kelebihan bayar) yang masih aktif — urus dulu lewat menu Kas sebelum membatalkan servis.",
+          "Ada refund (kelebihan bayar) yang masih aktif bersama pembayaran lain — void dulu pembayaran positifnya lewat menu Kas sebelum membatalkan servis.",
         );
       }
       if (
@@ -1146,6 +1147,9 @@ export async function cancelService(
   revalidatePath("/pesanan");
   revalidatePath("/dashboard/kas");
   revalidatePath("/dashboard/piutang");
+  // Stok part & laporan ikut berubah (retur stok + void bayar).
+  revalidatePath("/dashboard/stok");
+  revalidatePath("/dashboard/laporan");
 
   const bagian = ["Servis dibatalkan."];
   if (nVoid > 0) {
