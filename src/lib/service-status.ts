@@ -79,6 +79,14 @@ export function bolehBayar(status: ServiceStatus): boolean {
 export const PESAN_BAYAR_DITAHAN =
   "Pembayaran ditahan — DP saat booking, pelunasan setelah servis SELESAI (QC lolos).";
 
+/** Status yang menerima aksi QC (lolos/tolak) — `finishedAt` terisi. */
+export const QC_DARI_STATUS: ServiceStatus[] = ["IN_PROGRESS", "WAITING_PARTS"];
+
+/** Alasan QC tolak wajib non-kosong setelah trim (server; client pakai required). */
+export function alasanQcTolakValid(alasan: string | null | undefined): boolean {
+  return (alasan ?? "").trim().length > 0;
+}
+
 /** Item part ringkas untuk hitung total (harga jual × jumlah). */
 export type PartRingkas = { price: number; quantity: number };
 /** Item rincian jasa ringkas untuk hitung total (harga per baris). */

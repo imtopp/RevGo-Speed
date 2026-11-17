@@ -17,7 +17,14 @@ import {
 } from "@/lib/availability";
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
-import { formatRupiah, formatTanggalWIB, totalTagihan, namaJasaUtama } from "@/lib/service-status";
+import {
+  QC_DARI_STATUS,
+  alasanQcTolakValid,
+  formatRupiah,
+  formatTanggalWIB,
+  totalTagihan,
+  namaJasaUtama,
+} from "@/lib/service-status";
 import {
   notifyBatal,
   notifyBookingBaru,
@@ -896,13 +903,45 @@ export async function qcDone(
 ): Promise<ServisState> {
   await requireStaffRole(["OWNER", "ADMIN"]);
   const id = String(formData.get("id") ?? "").trim();
-  await transition(id, ["IN_PROGRESS", "WAITING_PARTS"], "DONE", {
+  // qcReason dikosongkan: catatan tolak berlaku selama siklus perbaikan
+  // berjalan — lolos = siklus selesai (jejak penuh di AuditLog).
+  await transition(id, [...QC_DARI_STATUS], "DONE", {
     finishedAt: new Date(),
+    qcReason: null,
   });
   after(() => notifySelesai(id));
   revalidatePath("/dashboard/servis");
   revalidatePath(`/dashboard/servis/${id}`);
   return { success: "QC lolos → servis SELESAI. Siap diambil & bayar." };
+}
+
+/**
+ * QC tolak — kembali ke mekanik: `finishedAt` dihapus (status tetap
+ * IN_PROGRESS) sehingga tombol "Tandai Selesai Dikerjakan" muncul lagi;
+ * alasan disimpan di `qcReason` untuk tampil di halaman detail.
+ */
+export async function qcReject(
+  _prev: ServisState,
+  formData: FormData,
+): Promise<ServisState> {
+  await requireStaffRole(["OWNER", "ADMIN"]);
+  const id = String(formData.get("id") ?? "").trim();
+  const alasan = String(formData.get("reason") ?? "").trim();
+  if (!alasanQcTolakValid(alasan))
+    return { error: "Alasan penolakan QC wajib diisi." };
+  const service = await getServiceOrThrow(id);
+  if (!service.finishedAt)
+    return { error: "Belum ada penyelesaian yang bisa ditolak." };
+  await transition(id, [...QC_DARI_STATUS], "IN_PROGRESS", {
+    finishedAt: null,
+    qcReason: alasan,
+  });
+  revalidatePath("/dashboard/servis");
+  revalidatePath(`/dashboard/tugas`);
+  revalidatePath(`/dashboard/servis/${id}`);
+  return {
+    success: "QC ditolak — dikembalikan ke mekanik untuk perbaikan.",
+  };
 }
 
 export async function cancelService(

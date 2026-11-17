@@ -13,6 +13,7 @@ import {
   saveDiagnosis,
   mechanicFinish,
   qcDone,
+  qcReject,
   cancelService,
   addServicePart,
   confirmDp,
@@ -506,16 +507,65 @@ function FinishForm({ service }: { service: ServiceInfo }) {
 }
 
 function QcForm({ service }: { service: ServiceInfo }) {
-  const { state, formAction } = useForm(qcDone);
+  const lolos = useForm(qcDone);
+  const tolak = useForm(qcReject);
+  const [tolakOpen, setTolakOpen] = useState(false);
   return (
-    <form onReset={(e) => e.preventDefault()} action={formAction} className="space-y-2 rounded-xl bg-emerald-50 p-4 ring-1 ring-emerald-200">
-      <input type="hidden" name="id" value={service.id} />
-      <p className="text-sm font-semibold text-emerald-800">
-        Quality Control — verifikasi sebelum serah terima
-      </p>
-      <Msg state={state} />
-      <SubmitButton className={btnPrimary}>QC Lolos → SELESAI</SubmitButton>
-    </form>
+    <div className="space-y-3 rounded-xl bg-emerald-50 p-4 ring-1 ring-emerald-200">
+      <form
+        onReset={(e) => e.preventDefault()}
+        action={lolos.formAction}
+        className="space-y-2"
+      >
+        <input type="hidden" name="id" value={service.id} />
+        <p className="text-sm font-semibold text-emerald-800">
+          Quality Control — verifikasi sebelum serah terima
+        </p>
+        <Msg state={lolos.state} />
+        <SubmitButton className={btnPrimary}>QC Lolos → SELESAI</SubmitButton>
+      </form>
+      <div className="border-t border-emerald-200 pt-3">
+        {!tolakOpen ? (
+          <button
+            type="button"
+            onClick={() => setTolakOpen(true)}
+            className="w-full rounded-lg border border-emerald-300 py-2.5 text-sm font-medium text-danger active:opacity-90"
+          >
+            QC Tolak → ulang kerja
+          </button>
+        ) : (
+          <form
+            onReset={(e) => e.preventDefault()}
+            action={tolak.formAction}
+            className="space-y-2"
+          >
+            <input type="hidden" name="id" value={service.id} />
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-semibold text-danger">QC Tolak</p>
+              <button
+                type="button"
+                onClick={() => setTolakOpen(false)}
+                className="text-xs font-medium text-danger underline underline-offset-2"
+              >
+                Tutup
+              </button>
+            </div>
+            <Msg state={tolak.state} />
+            <Field label="Alasan penolakan *">
+              <input
+                name="reason"
+                required
+                placeholder="Mis. rem masih bunyi, oli bocor"
+                className={inputCls}
+              />
+            </Field>
+            <SubmitButton className={btnDanger}>
+              Tolak &amp; kembalikan ke mekanik
+            </SubmitButton>
+          </form>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -525,8 +575,8 @@ function TungguQc() {
     <div className="space-y-1 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
       <p className="text-sm font-semibold text-foreground">Menunggu QC admin</p>
       <p className="text-xs text-muted-foreground">
-        Pekerjaan sudah ditandai selesai. Admin akan memeriksa hasilnya sebelum
-        servis dinyatakan SELESAI.
+        Pekerjaan sudah ditandai selesai. Bila QC ditolak, alasan penolakan
+        tampil di halaman ini — perbaiki lalu tandai selesai lagi.
       </p>
     </div>
   );

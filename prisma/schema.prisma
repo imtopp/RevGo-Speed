@@ -255,6 +255,9 @@ model Service {
   /// dan tagihan. Null = data lama / belum estimasi → fallback catalog.nama.
   laborName    String?
   cancelReason String?
+  /// Alasan QC tolak terakhir — tampil di detail ke mekanik; dihapus saat
+  /// QC akhirnya lolos (riwayat lengkapnya di AuditLog via transition).
+  qcReason     String?
   scheduledAt  DateTime?
   /// Durasi efektif saat booking dibuat (override admin / estimasi katalog) — bahan blokir slot.
   estimasiMenit Int?

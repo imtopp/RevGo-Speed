@@ -246,6 +246,13 @@ export default async function ServisDetailPage({
               <dd>{service.diagnosis}</dd>
             </div>
           )}
+          {/* Alasan QC tolak — hilang otomatis saat QC lolos (qcReason null). */}
+          {service.qcReason && (
+            <div className="col-span-2">
+              <dt className="text-muted-foreground">Catatan QC (ditolak)</dt>
+              <dd className="text-danger">{service.qcReason}</dd>
+            </div>
+          )}
           <div>
             <dt className="text-muted-foreground">Cabang</dt>
             <dd className="font-medium">{service.branch.name}</dd>

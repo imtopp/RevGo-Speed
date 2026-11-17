@@ -7,6 +7,8 @@ import {
   STATUS_OVERDUE,
   bolehBayar,
   PESAN_BAYAR_DITAHAN,
+  QC_DARI_STATUS,
+  alasanQcTolakValid,
   totalTagihan,
   labelMetodeBayar,
   namaJasaUtama,
@@ -91,6 +93,21 @@ describe("bolehBayar (urutan kas: DP di awal, sisanya setelah selesai)", () => {
   it("pesan penahan menyebut DP di awal & pelunasan setelah SELESAI", () => {
     expect(PESAN_BAYAR_DITAHAN).toContain("DP");
     expect(PESAN_BAYAR_DITAHAN).toContain("SELESAI");
+  });
+});
+
+describe("QC (lolos/tolak)", () => {
+  it("QC_DARI_STATUS hanya tahap menunggu QC", () => {
+    expect(QC_DARI_STATUS).toEqual(["IN_PROGRESS", "WAITING_PARTS"]);
+  });
+
+  it("alasanQcTolakValid: wajib non-kosong setelah trim", () => {
+    expect(alasanQcTolakValid("rem masih bunyi")).toBe(true);
+    expect(alasanQcTolakValid("  x  ")).toBe(true);
+    expect(alasanQcTolakValid("")).toBe(false);
+    expect(alasanQcTolakValid("   ")).toBe(false);
+    expect(alasanQcTolakValid(null)).toBe(false);
+    expect(alasanQcTolakValid(undefined)).toBe(false);
   });
 });
 
