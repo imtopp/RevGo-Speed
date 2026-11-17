@@ -60,7 +60,7 @@ export function PageSkeleton({
           ))}
         </div>
       )}
-      <p className="pt-1 text-center text-xs text-slate-400">Memuat halaman…</p>
+      <p className="pt-1 text-center text-xs text-muted-foreground">Memuat halaman…</p>
     </div>
   );
 }

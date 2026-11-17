@@ -164,7 +164,7 @@ export default async function PesananPage() {
               <p className="text-xs font-semibold uppercase tracking-wide text-primary">
                 Sedang berjalan
               </p>
-              <p className="font-mono text-xs text-slate-400">{active.code}</p>
+              <p className="font-mono text-xs text-muted-foreground">{active.code}</p>
               <p className="font-medium">
                 {active.vehicle.plateNumber} · {active.vehicle.brand}{" "}
                 {active.vehicle.model}
@@ -280,7 +280,7 @@ export default async function PesananPage() {
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <p className="font-mono text-xs text-slate-400">{s.code}</p>
+                  <p className="font-mono text-xs text-muted-foreground">{s.code}</p>
                   <p className="font-medium">
                     {s.vehicle.plateNumber} · {s.vehicle.brand}{" "}
                     {s.vehicle.model}

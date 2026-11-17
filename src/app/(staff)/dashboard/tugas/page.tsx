@@ -67,7 +67,7 @@ export default async function TugasPage() {
           >
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
-                <p className="font-mono text-xs text-slate-400">{s.code}</p>
+                <p className="font-mono text-xs text-muted-foreground">{s.code}</p>
                 <p className="font-medium">
                   {s.vehicle.plateNumber} · {s.vehicle.brand} {s.vehicle.model}
                 </p>
@@ -86,7 +86,7 @@ export default async function TugasPage() {
                 {STATUS_LABEL[s.status]}
               </span>
             </div>
-            <div className="mt-2 flex justify-between text-xs text-slate-400">
+            <div className="mt-2 flex justify-between text-xs text-muted-foreground">
               <span>{formatTanggalPendek(s.createdAt)}</span>
               {s.estimate > 0 && (
                 <span>Est. {formatRupiah(s.estimate)}</span>

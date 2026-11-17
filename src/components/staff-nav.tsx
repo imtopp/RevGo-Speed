@@ -207,7 +207,7 @@ export function SidebarNav({ role }: { role: Role }) {
         if (items.length === 0) return null;
         return (
           <div key={group.label} className="mb-5">
-            <p className="mb-1 px-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
+            <p className="mb-1 px-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               {group.label}
             </p>
             <div className="space-y-0.5">

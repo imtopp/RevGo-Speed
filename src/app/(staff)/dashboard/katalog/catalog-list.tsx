@@ -41,7 +41,7 @@ export function CatalogList({ items }: { items: Item[] }) {
                 <p className="text-sm text-muted-foreground">
                   {formatRupiah(item.hargaDasar)} · ± {item.estimasiMenit} menit
                 </p>
-                <p className="mt-1 text-xs text-slate-400">
+                <p className="mt-1 text-xs text-muted-foreground">
                   {item.allowDp ? "Boleh DP" : "Lunas penuh"} ·{" "}
                   {item.aktif ? "Aktif" : "Nonaktif"}
                 </p>

@@ -131,7 +131,7 @@ export function PartPicker({
                 >
                   <span className="min-w-0 flex-1 truncate">
                     {p.name}
-                    <span className="text-slate-400"> · {p.sku}</span>
+                    <span className="text-muted-foreground"> · {p.sku}</span>
                   </span>
                   <span
                     className={`shrink-0 text-xs ${
@@ -145,7 +145,7 @@ export function PartPicker({
             );
           })}
           {semua.length > matches.length && (
-            <li className="px-3 py-2 text-xs text-slate-400">
+            <li className="px-3 py-2 text-xs text-muted-foreground">
               Menampilkan 50 dari {semua.length} — ketik untuk mempersempit.
             </li>
           )}

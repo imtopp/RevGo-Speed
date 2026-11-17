@@ -213,7 +213,7 @@ export default async function ServisPage({
           >
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
-                <p className="font-mono text-xs text-slate-400">{s.code}</p>
+                <p className="font-mono text-xs text-muted-foreground">{s.code}</p>
                 <p className="font-medium">
                   {s.vehicle.plateNumber} · {s.vehicle.brand} {s.vehicle.model}
                 </p>
@@ -233,7 +233,7 @@ export default async function ServisPage({
                 >
                   {STATUS_LABEL[s.status]}
                 </span>
-                <p className="mt-1 text-xs text-slate-400">
+                <p className="mt-1 text-xs text-muted-foreground">
                   {formatTanggalPendek(s.createdAt)}
                 </p>
                 {s.status === "WAITING_DP" && s.dpClaimedAt && (

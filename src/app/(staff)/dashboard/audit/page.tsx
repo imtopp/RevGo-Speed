@@ -180,7 +180,7 @@ export default async function AuditPage({
             </li>
           ))}
           {laborFlags.length > 5 && (
-            <li className="text-slate-400">…{laborFlags.length - 5} lagi</li>
+            <li className="text-muted-foreground">…{laborFlags.length - 5} lagi</li>
           )}
         </AlertCard>
         <AlertCard title="Part &lt; harga jual" count={partFlags.length}>
@@ -192,7 +192,7 @@ export default async function AuditPage({
             </li>
           ))}
           {partFlags.length > 5 && (
-            <li className="text-slate-400">…{partFlags.length - 5} lagi</li>
+            <li className="text-muted-foreground">…{partFlags.length - 5} lagi</li>
           )}
         </AlertCard>
         <AlertCard title="Stok disesuaikan (10 terakhir)" count={adjustLogs.length}>
@@ -247,7 +247,7 @@ export default async function AuditPage({
             {logs.map((l) => (
               <li key={l.id} className="py-2.5 text-sm">
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                  <span className="text-xs text-slate-400">
+                  <span className="text-xs text-muted-foreground">
                     {fmtWaktu(l.createdAt)}
                   </span>
                   <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
@@ -256,7 +256,7 @@ export default async function AuditPage({
                   <span className="text-xs font-medium text-foreground">
                     {l.actorName}
                   </span>
-                  <span className="text-[11px] text-slate-400">
+                  <span className="text-[11px] text-muted-foreground">
                     ({l.actorRole})
                   </span>
                 </div>

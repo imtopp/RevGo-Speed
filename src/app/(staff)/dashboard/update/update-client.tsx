@@ -194,7 +194,7 @@ export function UpdateClient(props: Props) {
           <InfoRow label="Channel" value={props.channelBranch ?? "—"} />
         </dl>
         {props.latestMessage && (
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-muted-foreground">
             “{props.latestMessage}”
             {props.latestDate ? ` · ${formatWaktu(props.latestDate)}` : ""}
           </p>

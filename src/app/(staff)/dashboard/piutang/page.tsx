@@ -93,7 +93,7 @@ export default async function PiutangPage({
                     : ""} ·{" "}
                   {s.vehicle.plateNumber}
                 </p>
-                <p className="text-xs text-slate-400">
+                <p className="text-xs text-muted-foreground">
                   {STATUS_LABEL[s.status]} · {s.branch.name}
                 </p>
               </div>
@@ -101,7 +101,7 @@ export default async function PiutangPage({
                 <p className="text-sm font-semibold text-danger">
                   {formatRupiah(s.remaining)}
                 </p>
-                <p className="text-xs text-slate-400">
+                <p className="text-xs text-muted-foreground">
                   dari {formatRupiah(s.total)} · lunas {formatRupiah(s.paid)}
                 </p>
               </div>

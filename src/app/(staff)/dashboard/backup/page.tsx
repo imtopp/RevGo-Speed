@@ -59,7 +59,7 @@ export default async function BackupPage() {
         >
           Unduh Backup JSON
         </DownloadLink>
-        <p className="text-xs text-slate-400">
+        <p className="text-xs text-muted-foreground">
           Catatan: file export memuat data sensitif (termasuk hash password).
           Simpan di tempat aman dan jangan bagikan sembarangan.
         </p>

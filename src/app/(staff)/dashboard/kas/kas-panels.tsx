@@ -142,7 +142,7 @@ export function RiwayatList({ items }: { items: Cashflow[] }) {
                 {c.description ?? "—"} · {c.account}
               </p>
             </div>
-            <span className="shrink-0 text-xs text-slate-400">
+            <span className="shrink-0 text-xs text-muted-foreground">
               {formatTanggalPendek(c.createdAt)}
             </span>
           </div>

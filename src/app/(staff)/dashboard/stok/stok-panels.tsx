@@ -22,7 +22,7 @@ import {
   updateSupplier,
   type StokState,
 } from "./actions";
-import { formatRupiah, formatTanggalPendek } from "@/lib/service-status";
+import { formatRupiah, formatTanggalPendek, labelMetodeBayar } from "@/lib/service-status";
 import { totalPenjualan, labaPenjualan } from "@/lib/sale";
 import { VoidPaymentForm } from "../servis/[id]/void-payment";
 import { SubmitButton } from "@/components/submit-button";
@@ -184,7 +184,7 @@ function PartForm({
             placeholder="OLI-001"
             className={`${inputCls} uppercase`}
           />
-          <p className="mt-1 text-xs text-slate-400">Kosongkan → auto PART-0001</p>
+          <p className="mt-1 text-xs text-muted-foreground">Kosongkan → auto PART-0001</p>
         </div>
         <div>
           <label className="block text-sm font-medium text-foreground">Nama</label>
@@ -252,7 +252,7 @@ function PartForm({
             <option value="TRANSFER">Transfer (Bank)</option>
             <option value="QRIS">QRIS (Bank)</option>
           </select>
-          <p className="mt-1 text-xs text-slate-400">
+          <p className="mt-1 text-xs text-muted-foreground">
             Stok awal = belanja: otomatis catat kas keluar {formatRupiah(totalStokAwal)} (qty ×
             harga beli).
           </p>
@@ -355,7 +355,7 @@ function StockInForm({
         <label className="block text-sm font-medium text-foreground">Catatan</label>
         <input name="note" placeholder="PO-001" className={inputCls} />
       </div>
-      <p className="text-xs text-slate-400">
+      <p className="text-xs text-muted-foreground">
         {picked?.consignment
           ? "Konsinyasi: stok & batch cost masuk (HPP benar) — TANPA kas keluar. Bayar supplier via kas manual."
           : "Otomatis catat kas keluar sesuai total (qty × harga beli)."}
@@ -430,7 +430,7 @@ function SellForm({ parts }: { parts: Part[] }) {
             }`}
           >
             {picked ? formatRupiah(picked.sellPrice) : "Ikut data part"}
-            {picked && <span className="text-slate-400"> · dari data part</span>}
+            {picked && <span className="text-muted-foreground"> · dari data part</span>}
           </p>
         </div>
       </div>
@@ -454,7 +454,7 @@ function SellForm({ parts }: { parts: Part[] }) {
           <input name="note" placeholder="Opsional" className={inputCls} />
         </div>
       </div>
-      <p className="text-xs text-slate-400">
+      <p className="text-xs text-muted-foreground">
         Harga jual otomatis dari data part. Otomatis: stok berkurang (FIFO),
         kas masuk sesuai total, masuk laporan.
       </p>
@@ -575,7 +575,7 @@ function SupplierPanel({ suppliers }: { suppliers: Supplier[] }) {
               <div>
                 <p className="font-medium">{s.nama}</p>
                 <p className="text-sm text-muted-foreground">{s.telepon ?? "—"}</p>
-                <p className="text-xs text-slate-400">{s.aktif ? "Aktif" : "Nonaktif"}</p>
+                <p className="text-xs text-muted-foreground">{s.aktif ? "Aktif" : "Nonaktif"}</p>
               </div>
               <button
                 type="button"
@@ -663,7 +663,7 @@ function PartRow({
           <p className="text-sm text-muted-foreground">
             {part.sku} · stok {part.quantity} {part.unit} (min {part.minStock})
           </p>
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-muted-foreground">
             Jual {formatRupiah(part.sellPrice)}
             {part.supplier ? ` · ${part.supplier.nama}` : ""}
           </p>
@@ -752,7 +752,7 @@ function PartEdit({ part, kategoris }: { part: Part; kategoris: string[] }) {
           <p className="mt-1 rounded-lg bg-slate-100 px-3 py-2 text-base text-slate-600">
             {formatRupiah(part.buyPrice)}
           </p>
-          <p className="mt-1 text-xs text-slate-400">
+          <p className="mt-1 text-xs text-muted-foreground">
             Otomatis rata-rata pembelian — koreksi per batch lewat tab Riwayat.
           </p>
         </div>
@@ -825,7 +825,7 @@ function ReturForm({
               <input name="note" placeholder="PO-001" className={inputCls} />
             </div>
           </div>
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-muted-foreground">
             Barang ditarik balik ke supplier: stok keluar <span className="font-medium">tanpa
             kas</span> &amp; tanpa beban laporan. Yang sudah terjual dibayar lewat kas manual
             &quot;Bayar konsinyasi&quot;.
@@ -891,7 +891,7 @@ function MovementRow({ m }: { m: Movement }) {
           </p>
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1">
-          <span className="text-xs text-slate-400">
+          <span className="text-xs text-muted-foreground">
             {formatTanggalPendek(m.createdAt)}
           </span>
           {canCorrect && (
@@ -976,9 +976,9 @@ export function StokPanels({
                     <div className="flex items-center justify-between gap-3">
                       <div className="min-w-0">
                         <p className="font-medium text-foreground">
-                          {s.code} · {s.method}
+                          {s.code} · {labelMetodeBayar(s.method)}
                         </p>
-                        <p className="text-xs text-slate-400">
+                        <p className="text-xs text-muted-foreground">
                           {formatTanggalPendek(s.soldAt)}
                           {s.note ? ` · ${s.note}` : ""}
                         </p>
@@ -986,7 +986,7 @@ export function StokPanels({
                       <div className="shrink-0 text-right">
                         <p className="font-medium">{formatRupiah(total)}</p>
                         <p
-                          className={`text-xs ${laba < 0 ? "text-danger" : "text-slate-400"}`}
+                          className={`text-xs ${laba < 0 ? "text-danger" : "text-muted-foreground"}`}
                         >
                           laba {formatRupiah(laba)}
                         </p>

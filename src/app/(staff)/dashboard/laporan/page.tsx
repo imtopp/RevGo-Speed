@@ -259,7 +259,7 @@ export default async function LaporanPage({
                     <p className={`font-semibold ${laba >= 0 ? "text-success" : "text-danger"}`}>
                       {formatRupiah(laba)}
                     </p>
-                    <p className="text-xs text-slate-400">
+                    <p className="text-xs text-muted-foreground">
                       rev {formatRupiah(revenue)} · hpp {formatRupiah(hpp)}
                     </p>
                   </div>

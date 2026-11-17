@@ -184,7 +184,7 @@ export function UserList({
               <p className="truncate text-sm text-muted-foreground">
                 {user.email ?? "tanpa email — tidak bisa login"}
               </p>
-              <p className="mt-1 text-xs text-slate-400">
+              <p className="mt-1 text-xs text-muted-foreground">
                 {ROLE_LABEL[user.role] ?? user.role}
                 {user.role !== "CUSTOMER" && (
                   <> · {user.branch?.name ?? "Lintas cabang"}</>
