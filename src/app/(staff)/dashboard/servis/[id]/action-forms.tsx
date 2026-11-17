@@ -34,6 +34,7 @@ type ServiceInfo = {
   catalogId: string | null;
   estimate: number;
   laborCost: number;
+  laborName: string | null;
   mechanicId: string | null;
   mechanicName: string | null;
   scheduledAt: Date | null;
@@ -141,6 +142,9 @@ function EstimateForm({
   const [laborCost, setLaborCost] = useState(
     service.laborCost || pilihAwal?.hargaDasar || 0,
   );
+  const [namaJasa, setNamaJasa] = useState(
+    service.laborName ?? pilihAwal?.nama ?? "",
+  );
   const pilih = catalog.find((c) => c.id === catalogId);
   return (
     <form onReset={(e) => e.preventDefault()} action={formAction} className="space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
@@ -157,6 +161,7 @@ function EstimateForm({
             if (c) {
               setEstimate(c.hargaDasar);
               setLaborCost(c.hargaDasar);
+              setNamaJasa(c.nama);
             }
           }}
           className={inputCls}
@@ -175,6 +180,21 @@ function EstimateForm({
             Pilih jenis jasa untuk mengisi biaya otomatis.
           </p>
         )}
+      </Field>
+      <Field label="Nama jasa">
+        <input
+          name="laborName"
+          value={namaJasa}
+          onChange={(e) => setNamaJasa(e.target.value)}
+          maxLength={200}
+          required={!catalogId && laborCost > 0}
+          placeholder="mis. Perbaikan spion"
+          className={inputCls}
+        />
+        <p className="mt-1 text-xs text-muted-foreground">
+          Nama ini yang tampil di nota &amp; riwayat
+          {!catalogId && " — wajib diisi saat Bebas"}.
+        </p>
       </Field>
       <div className="grid grid-cols-2 gap-3">
         <Field label="Estimasi Biaya (Rp)">

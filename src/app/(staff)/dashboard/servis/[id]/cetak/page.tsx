@@ -3,7 +3,7 @@ import { requireStaffRole, getStaffBranchId } from "@/lib/guard";
 import { getAppName } from "@/lib/branding";
 import { notFound } from "next/navigation";
 import { BackLink } from "@/components/back-link";
-import { formatRupiah, formatTanggal, totalTagihan } from "@/lib/service-status";
+import { formatRupiah, formatTanggal, totalTagihan, namaJasaUtama } from "@/lib/service-status";
 import { formatWaLocal } from "@/lib/wa";
 import { PrintButton } from "./print-button";
 
@@ -22,6 +22,7 @@ export default async function CetakNotaPage({
     where: { id },
     include: {
       branch: true,
+      catalog: { select: { nama: true } },
       customer: { select: { name: true, phone: true } },
       vehicle: { select: { plateNumber: true, brand: true, model: true } },
       parts: { include: { part: { select: { name: true, unit: true } } } },
@@ -96,7 +97,7 @@ export default async function CetakNotaPage({
             </thead>
             <tbody>
               <tr>
-                <td className="py-0.5">Jasa servis</td>
+                <td className="py-0.5">{namaJasaUtama(service)}</td>
                 <td className="py-0.5 text-right">1</td>
                 <td className="py-0.5 text-right">{formatRupiah(service.laborCost)}</td>
                 <td className="py-0.5 text-right">{formatRupiah(service.laborCost)}</td>

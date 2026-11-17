@@ -17,7 +17,7 @@ import {
 } from "@/lib/availability";
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
-import { formatRupiah, formatTanggalWIB, totalTagihan } from "@/lib/service-status";
+import { formatRupiah, formatTanggalWIB, totalTagihan, namaJasaUtama } from "@/lib/service-status";
 import {
   notifyBatal,
   notifyBookingBaru,
@@ -385,6 +385,7 @@ export async function submitEstimate(
   const laborCost = Number(formData.get("laborCost") ?? 0);
   const mechanicId = String(formData.get("mechanicId") ?? "").trim();
   const catalogId = String(formData.get("catalogId") ?? "").trim();
+  const laborName = String(formData.get("laborName") ?? "").trim();
 
   if (
     !Number.isFinite(estimate) ||
@@ -396,14 +397,25 @@ export async function submitEstimate(
   ) {
     return { error: "Biaya tidak valid." };
   }
+  if (laborName.length > 200) {
+    return { error: "Nama jasa maksimal 200 karakter." };
+  }
 
+  let cat: { id: string; nama: string } | null = null;
   if (catalogId) {
-    const cat = await prisma.serviceCatalog.findFirst({
+    cat = await prisma.serviceCatalog.findFirst({
       where: { id: catalogId, aktif: true },
-      select: { id: true },
+      select: { id: true, nama: true },
     });
     if (!cat) return { error: "Jenis jasa tidak ditemukan di katalog." };
   }
+  // Bebas + ada biaya → nama wajib: tanpa ini nota/riwayat hanya punya
+  // angka tanpa keterangan jasa atas apa.
+  if (!cat && laborCost > 0 && !laborName) {
+    return { error: "Nama jasa wajib diisi untuk jenis Bebas / keluhan." };
+  }
+  // Snapshot nama: input admin > nama katalog (lihat namaJasaUtama).
+  const namaFinal = laborName || (cat ? cat.nama : null);
 
   const service = await prisma.service.findUnique({
     where: { id },
@@ -435,6 +447,7 @@ export async function submitEstimate(
       {
         estimate,
         laborCost,
+        laborName: namaFinal,
         mechanicId: mechanicId || null,
         catalogId: catalogId || null,
       },
@@ -1280,10 +1293,10 @@ export async function removeServiceLabor(
 }
 
 /**
- * Ubah jasa utama (`laborCost`) setelah estimasi — OWNER/ADMIN, selain
- * PENDING (paketnya form Estimasi) & DONE/CANCELLED. Total tagihan ikut
- * berubah; tak boleh turun di bawah yang sudah dibayar (invariant yang
- * sama dengan hapus rincian jasa).
+ * Ubah jasa utama (`laborCost` + `laborName`) setelah estimasi — OWNER/ADMIN,
+ * selain PENDING (paketnya form Estimasi) & DONE/CANCELLED. Total tagihan ikut
+ * berubah; tak boleh turun di bawah yang sudah dibayar (invariant yang sama
+ * dengan hapus rincian jasa).
  */
 export async function updateServiceLaborCost(
   _prev: ServisState,
@@ -1292,8 +1305,12 @@ export async function updateServiceLaborCost(
   const session = await requireStaffRole(["OWNER", "ADMIN"]);
   const id = String(formData.get("id") ?? "").trim();
   const laborCost = Number(formData.get("laborCost") ?? 0);
+  const laborNameBaru = String(formData.get("laborName") ?? "").trim();
   if (!Number.isInteger(laborCost) || laborCost < 0 || laborCost > 2_000_000_000) {
     return { error: "Biaya jasa tidak valid — isi bilangan bulat rupiah (0–2 miliar)." };
+  }
+  if (laborNameBaru.length > 200) {
+    return { error: "Nama jasa maksimal 200 karakter." };
   }
 
   const service = await prisma.service.findUnique({
@@ -1304,6 +1321,9 @@ export async function updateServiceLaborCost(
       branchId: true,
       status: true,
       laborCost: true,
+      laborName: true,
+      catalogId: true,
+      catalog: { select: { nama: true } },
       parts: { select: { price: true, quantity: true } },
       payments: { where: { voidedAt: null }, select: { amount: true } },
     },
@@ -1312,8 +1332,17 @@ export async function updateServiceLaborCost(
   if (["PENDING", "DONE", "CANCELLED"].includes(service.status)) {
     return { error: "Biaya jasa tidak bisa diubah pada tahap ini." };
   }
+  // Bebas tanpa katalog + ada biaya → nama wajib (sama dengan form Estimasi).
+  if (!service.catalogId && laborCost > 0 && !laborNameBaru) {
+    return { error: "Nama jasa wajib diisi untuk jenis Bebas / keluhan." };
+  }
   const aksesError = await cekCabangServis(service.branchId);
   if (aksesError) return { error: aksesError };
+
+  // Simpan snapshot nama (kosong → null → jatuh ke katalog/"Jasa servis").
+  const laborName = laborNameBaru || null;
+  const namaLama = namaJasaUtama(service);
+  const namaBaru = namaJasaUtama({ laborName, catalog: service.catalog });
 
   const labors = await prisma.serviceLabor.findMany({
     where: { serviceId: id },
@@ -1328,20 +1357,23 @@ export async function updateServiceLaborCost(
   }
 
   await prisma.$transaction(async (tx) => {
-    await tx.service.update({ where: { id }, data: { laborCost } });
+    await tx.service.update({ where: { id }, data: { laborCost, laborName } });
     await logAudit(tx, session.user, {
       action: "SERVICE_LABOR_COST_UPDATE",
       entityType: "Service",
       entityId: id,
       branchId: service.branchId,
-      summary: `${service.code} · jasa utama ${service.laborCost.toLocaleString("id-ID")} → ${laborCost.toLocaleString("id-ID")}`,
-      before: { laborCost: service.laborCost },
-      after: { laborCost },
+      summary:
+        `${service.code} · jasa utama "${namaBaru}"` +
+        (namaLama !== namaBaru ? ` (sebelumnya "${namaLama}")` : "") +
+        ` ${service.laborCost.toLocaleString("id-ID")} → ${laborCost.toLocaleString("id-ID")}`,
+      before: { laborCost: service.laborCost, laborName: service.laborName },
+      after: { laborCost, laborName },
     });
   });
 
   revalidatePath(`/dashboard/servis/${id}`);
-  return { success: "Biaya jasa diperbarui." };
+  return { success: "Jasa utama diperbarui." };
 }
 
 /**

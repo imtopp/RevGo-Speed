@@ -123,6 +123,20 @@ export function labelMetodeBayar(method: string): string {
   return PAYMENT_METHOD_LABEL[method] ?? method;
 }
 
+/**
+ * Nama jasa utama untuk tampilan (staff, nota, rincian biaya customer):
+ * snapshot `laborName` → nama katalog → "Jasa servis". Data lama tanpa
+ * snapshot tetap bernama selama katalognya masih ada.
+ */
+export function namaJasaUtama(s: {
+  laborName?: string | null;
+  catalog?: { nama: string } | null;
+}): string {
+  const snap = s.laborName?.trim();
+  if (snap) return snap;
+  return s.catalog?.nama || "Jasa servis";
+}
+
 export function formatTanggal(d: Date | string | null): string {
   if (!d) return "—";
   const date = typeof d === "string" ? new Date(d) : d;

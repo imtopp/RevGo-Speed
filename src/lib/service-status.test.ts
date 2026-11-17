@@ -9,6 +9,7 @@ import {
   PESAN_BAYAR_DITAHAN,
   totalTagihan,
   labelMetodeBayar,
+  namaJasaUtama,
   formatRupiah,
   formatTanggal,
   formatTanggalPendek,
@@ -134,6 +135,37 @@ describe("labelMetodeBayar", () => {
   it("nilai tak dikenal tampil apa adanya (info jangan hilang)", () => {
     expect(labelMetodeBayar("DEBIT")).toBe("DEBIT");
     expect(labelMetodeBayar("")).toBe("");
+  });
+});
+
+describe("namaJasaUtama", () => {
+  const katalog = { nama: "Ganti oli & filter" };
+
+  it("snapshot laborName menang atas katalog", () => {
+    expect(
+      namaJasaUtama({ laborName: "Perbaikan spion", catalog: katalog }),
+    ).toBe("Perbaikan spion");
+  });
+
+  it("tanpa snapshot → nama katalog (data lama tetap bernama)", () => {
+    expect(namaJasaUtama({ laborName: null, catalog: katalog })).toBe(
+      "Ganti oli & filter",
+    );
+    expect(namaJasaUtama({ catalog: katalog })).toBe("Ganti oli & filter");
+  });
+
+  it("snapshot kosong/spasi dianggap tidak ada", () => {
+    expect(namaJasaUtama({ laborName: "   ", catalog: katalog })).toBe(
+      "Ganti oli & filter",
+    );
+    expect(namaJasaUtama({ laborName: "" })).toBe("Jasa servis");
+  });
+
+  it("tanpa katalog & tanpa snapshot → fallback generik", () => {
+    expect(namaJasaUtama({})).toBe("Jasa servis");
+    expect(namaJasaUtama({ laborName: null, catalog: null })).toBe(
+      "Jasa servis",
+    );
   });
 });
 

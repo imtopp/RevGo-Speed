@@ -145,23 +145,26 @@ export function RemoveLaborButton({ laborId }: { laborId: string }) {
 }
 
 /**
- * Ubah jasa utama (`laborCost`) inline — OWNER/ADMIN, selain PENDING
- * (form Estimasi) / DONE / CANCELLED (dicek di action). Pola render-
+ * Ubah jasa utama (`laborCost` + `laborName`) inline — OWNER/ADMIN, selain
+ * PENDING (form Estimasi) / DONE / CANCELLED (dicek di action). Pola render-
  * adjustment sama dengan WaEdit: sukses → form tertutup saat render.
  * Error tetap tampil selama form terbuka.
  */
 export function EditLaborCostButton({
   serviceId,
   value,
+  namaAwal,
 }: {
   serviceId: string;
   value: number;
+  namaAwal: string;
 }) {
   const [state, formAction] = useActionState<ServisState, FormData>(
     updateServiceLaborCost,
     {},
   );
   const [open, setOpen] = useState(false);
+  const [nama, setNama] = useState(namaAwal);
   const [stateSebelumnya, setStateSebelumnya] = useState(state);
   if (state !== stateSebelumnya) {
     setStateSebelumnya(state);
@@ -172,7 +175,10 @@ export function EditLaborCostButton({
     return (
       <button
         type="button"
-        onClick={() => setOpen(true)}
+        onClick={() => {
+          setNama(namaAwal);
+          setOpen(true);
+        }}
         className="text-xs font-medium text-primary underline underline-offset-2"
       >
         Ubah
@@ -187,6 +193,14 @@ export function EditLaborCostButton({
       className="flex flex-wrap items-center justify-end gap-2"
     >
       <input type="hidden" name="id" value={serviceId} />
+      <input
+        name="laborName"
+        value={nama}
+        onChange={(e) => setNama(e.target.value)}
+        maxLength={200}
+        placeholder="Nama jasa"
+        className="w-full rounded-lg border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-slate-900"
+      />
       <NumberInput
         name="laborCost"
         defaultValue={value}
@@ -201,7 +215,10 @@ export function EditLaborCostButton({
       </SubmitButton>
       <button
         type="button"
-        onClick={() => setOpen(false)}
+        onClick={() => {
+          setNama(namaAwal);
+          setOpen(false);
+        }}
         className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-foreground active:opacity-90"
       >
         Batal

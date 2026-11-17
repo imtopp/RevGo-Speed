@@ -17,6 +17,7 @@ import {
   PESAN_BAYAR_DITAHAN,
   totalTagihan,
   labelMetodeBayar,
+  namaJasaUtama,
 } from "@/lib/service-status";
 import { ActionForms } from "./action-forms";
 import { AddLaborForm, RemoveLaborButton, EditLaborCostButton } from "./labor";
@@ -306,12 +307,7 @@ export default async function ServisDetailPage({
           <ul className="mt-2 divide-y divide-slate-100">
             <li className="flex items-center justify-between gap-2 py-2 text-sm">
               <div className="min-w-0">
-                <p className="truncate">Jasa servis (utama)</p>
-                {service.catalog && (
-                  <p className="text-xs text-muted-foreground">
-                    {service.catalog.nama}
-                  </p>
-                )}
+                <p className="truncate">{namaJasaUtama(service)}</p>
               </div>
               <div className="flex shrink-0 items-center gap-3">
                 <span className="font-medium">
@@ -321,6 +317,7 @@ export default async function ServisDetailPage({
                   <EditLaborCostButton
                     serviceId={service.id}
                     value={service.laborCost}
+                    namaAwal={namaJasaUtama(service)}
                   />
                 )}
               </div>
@@ -343,26 +340,22 @@ export default async function ServisDetailPage({
               </li>
             ))}
           </ul>
-          {service.labors.length === 0 && (
-            <p className="mt-2 text-sm text-muted-foreground">
-              Belum ada jasa tambahan.
-            </p>
-          )}
           {bolehTambahJasa && <AddLaborForm serviceId={service.id} />}
         </div>
       )}
 
-      {/* Part terpakai */}
-      <div className="rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
-        <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-foreground">Part Terpakai</h2>
-          <span className="text-sm text-muted-foreground">
-            {formatRupiah(totalPartHarga)}
-          </span>
-        </div>
-        {service.parts.length === 0 ? (
-          <p className="mt-2 text-sm text-muted-foreground">Belum ada part.</p>
-        ) : (
+      {/* Part terpakai — hanya tampil kalau ada isinya (penambahan part lewat
+          form aksi; angka totalnya tetap terbaca di kartu Tagihan). */}
+      {service.parts.length > 0 && (
+        <div className="rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-foreground">
+              Part Terpakai
+            </h2>
+            <span className="text-sm text-muted-foreground">
+              {formatRupiah(totalPartHarga)}
+            </span>
+          </div>
           <ul className="mt-2 divide-y divide-slate-100">
             {service.parts.map((sp) => (
               <li
@@ -384,8 +377,8 @@ export default async function ServisDetailPage({
               </li>
             ))}
           </ul>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Tagihan & pembayaran — 1 kartu: ringkasan (jasa + part = total),
           riwayat pembayaran, lalu sudah bayar & sisa. */}
@@ -527,6 +520,7 @@ export default async function ServisDetailPage({
               catalogId: service.catalogId,
               estimate: service.estimate,
               laborCost: service.laborCost,
+              laborName: service.laborName,
               mechanicId: service.mechanicId,
               mechanicName: service.mechanic?.name ?? null,
               scheduledAt: service.scheduledAt,

@@ -8,6 +8,7 @@ import {
   formatTanggalPendek,
   formatTanggalWIB,
   totalTagihan,
+  namaJasaUtama,
 } from "@/lib/service-status";
 import { BookingSection } from "./booking-section";
 import { DpInfoCard } from "./dp-card";
@@ -43,10 +44,12 @@ type JasaRincian = { name: string; price: number };
 
 /** Blok rincian biaya customer: jasa utama + jasa tambahan + part + total. */
 function RincianBiaya({
+  namaJasa,
   laborCost,
   parts,
   labors,
 }: {
+  namaJasa: string;
   laborCost: number;
   parts: PartRincian[];
   labors: JasaRincian[];
@@ -58,7 +61,7 @@ function RincianBiaya({
       <p className="font-medium text-foreground">Rincian biaya</p>
       <div className="mt-1 space-y-0.5">
         <div className="flex justify-between gap-2">
-          <span className="text-muted-foreground">Jasa servis</span>
+          <span className="text-muted-foreground">{namaJasa}</span>
           <span className="shrink-0">{formatRupiah(laborCost)}</span>
         </div>
         {labors.map((l) => (
@@ -113,6 +116,7 @@ export default async function PesananPage() {
       include: {
         vehicle: true,
         branch: { select: { name: true } },
+        catalog: { select: { nama: true } },
         payments: true,
         parts: {
           select: {
@@ -203,6 +207,7 @@ export default async function PesananPage() {
           )}
 
           <RincianBiaya
+            namaJasa={namaJasaUtama(active)}
             laborCost={active.laborCost}
             parts={active.parts}
             labors={active.labors}
@@ -315,6 +320,7 @@ export default async function PesananPage() {
               )}
 
               <RincianBiaya
+                namaJasa={namaJasaUtama(s)}
                 laborCost={s.laborCost}
                 parts={s.parts}
                 labors={s.labors}

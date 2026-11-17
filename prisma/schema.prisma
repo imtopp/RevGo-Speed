@@ -251,6 +251,9 @@ model Service {
   diagnosis    String?
   estimate     Int             @default(0)
   laborCost    Int             @default(0)
+  /// Nama jasa utama (snapshot saat estimasi/ubah) — tampilan nota, riwayat,
+  /// dan tagihan. Null = data lama / belum estimasi → fallback catalog.nama.
+  laborName    String?
   cancelReason String?
   scheduledAt  DateTime?
   /// Durasi efektif saat booking dibuat (override admin / estimasi katalog) — bahan blokir slot.
