@@ -19,7 +19,7 @@ import {
   labelMetodeBayar,
   namaJasaUtama,
 } from "@/lib/service-status";
-import { ActionForms } from "./action-forms";
+import { ActionForms, AddPartForm } from "./action-forms";
 import { AddLaborForm, RemoveLaborButton, EditLaborCostButton } from "./labor";
 import { VoidPaymentForm } from "./void-payment";
 import { RefundForm } from "./refund-form";
@@ -94,6 +94,11 @@ export default async function ServisDetailPage({
   // form Estimasi — dan selain DONE/CANCELLED (ikut bolehUbahJasa).
   const bolehUbahJasaUtama =
     bolehUbahJasa && service.status !== "PENDING";
+  // Catat part = OWNER/ADMIN saat IN_PROGRESS / WAITING_PARTS (§B: mekanik
+  // tidak memegang form) — formnya kini inline di kartu Part Terpakai.
+  const bolehCatatPart =
+    !isMechanic &&
+    ["IN_PROGRESS", "WAITING_PARTS"].includes(service.status);
 
   const mechanics = await prisma.user.findMany({
     where: { role: "MECHANIC", isActive: true, branchId: service.branchId },
@@ -305,20 +310,21 @@ export default async function ServisDetailPage({
             </span>
           </div>
           <ul className="mt-2 divide-y divide-slate-100">
-            {/* flex-wrap: saat form Ubah terbuka, ia jadi child w-full yang
-                turun ke baris baru — jangan dibungkus shrink-0 (form sempit /
-                overflow di layar kecil). */}
-            <li className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm">
+            {/* flex-wrap: saat form Ubah terbuka, harga disembunyikan dan
+                form jadi child w-full yang turun ke baris baru — jangan
+                dibungkus shrink-0 (form sempit / overflow di layar kecil). */}
+            <li className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 py-2 text-sm">
               <p className="min-w-0 flex-1 truncate">{namaJasaUtama(service)}</p>
-              <span className="shrink-0 font-medium">
-                {formatRupiah(service.laborCost)}
-              </span>
-              {bolehUbahJasaUtama && (
+              {bolehUbahJasaUtama ? (
                 <EditLaborCostButton
                   serviceId={service.id}
                   value={service.laborCost}
                   namaAwal={namaJasaUtama(service)}
                 />
+              ) : (
+                <span className="shrink-0 font-medium">
+                  {formatRupiah(service.laborCost)}
+                </span>
               )}
             </li>
             {service.labors.map((l) => (
@@ -343,9 +349,9 @@ export default async function ServisDetailPage({
         </div>
       )}
 
-      {/* Part terpakai — hanya tampil kalau ada isinya (penambahan part lewat
-          form aksi; angka totalnya tetap terbaca di kartu Tagihan). */}
-      {service.parts.length > 0 && (
+      {/* Part terpakai + catat part inline (model Rincian Jasa) — kartu
+          tampil kalau ada isinya ATAU statusnya boleh mencatat part. */}
+      {(service.parts.length > 0 || bolehCatatPart) && (
         <div className="rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-semibold text-foreground">
@@ -355,27 +361,36 @@ export default async function ServisDetailPage({
               {formatRupiah(totalPartHarga)}
             </span>
           </div>
-          <ul className="mt-2 divide-y divide-slate-100">
-            {service.parts.map((sp) => (
-              <li
-                key={sp.id}
-                className="flex items-center justify-between gap-2 py-2 text-sm"
-              >
-                <div className="min-w-0">
-                  <p className="truncate">{sp.part.name}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {sp.quantity} {sp.part.unit} × {formatRupiah(sp.price)}
-                  </p>
-                </div>
-                <div className="flex shrink-0 items-center gap-3">
-                  <span className="font-medium">
-                    {formatRupiah(sp.price * sp.quantity)}
-                  </span>
-                  {bolehHapusPart && <RemovePartButton servicePartId={sp.id} />}
-                </div>
-              </li>
-            ))}
-          </ul>
+          {service.parts.length > 0 ? (
+            <ul className="mt-2 divide-y divide-slate-100">
+              {service.parts.map((sp) => (
+                <li
+                  key={sp.id}
+                  className="flex items-center justify-between gap-2 py-2 text-sm"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate">{sp.part.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {sp.quantity} {sp.part.unit} × {formatRupiah(sp.price)}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-3">
+                    <span className="font-medium">
+                      {formatRupiah(sp.price * sp.quantity)}
+                    </span>
+                    {bolehHapusPart && <RemovePartButton servicePartId={sp.id} />}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="mt-2 text-sm text-muted-foreground">
+              Belum ada part terpakai.
+            </p>
+          )}
+          {bolehCatatPart && (
+            <AddPartForm serviceId={service.id} parts={parts} />
+          )}
         </div>
       )}
 
@@ -538,7 +553,6 @@ export default async function ServisDetailPage({
             mechanics={mekanikTersedia}
             busyMechanics={busyMechanics}
             catalog={catalogList}
-            parts={parts}
             isMechanic={isMechanic}
             isAssignedMechanic={isAssignedMechanic}
             appName={appName}

@@ -9,6 +9,7 @@ import {
 } from "../actions";
 import { SubmitButton } from "@/components/submit-button";
 import { NumberInput } from "@/components/number-input";
+import { formatRupiah } from "@/lib/service-status";
 
 const inputCls =
   "mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-base outline-none focus:border-slate-900";
@@ -172,17 +173,23 @@ export function EditLaborCostButton({
   }
 
   if (!open) {
+    // Harga + tombol jadi dua anak langsung <li> (gap-x-3) supaya harga
+    // membentuk kolom rapi; saat form terbuka harga disembunyikan — nilai
+    // yang diedit sudah ada di input angka.
     return (
-      <button
-        type="button"
-        onClick={() => {
-          setNama(namaAwal);
-          setOpen(true);
-        }}
-        className="text-xs font-medium text-primary underline underline-offset-2"
-      >
-        Ubah
-      </button>
+      <>
+        <span className="shrink-0 font-medium">{formatRupiah(value)}</span>
+        <button
+          type="button"
+          onClick={() => {
+            setNama(namaAwal);
+            setOpen(true);
+          }}
+          className="shrink-0 text-xs font-medium text-primary underline underline-offset-2"
+        >
+          Ubah
+        </button>
+      </>
     );
   }
 

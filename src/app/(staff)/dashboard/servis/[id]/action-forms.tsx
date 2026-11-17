@@ -395,7 +395,12 @@ function DiagnosisForm({ service }: { service: ServiceInfo }) {
   );
 }
 
-function AddPartForm({
+/**
+ * Catat part — inline di dalam kartu "Part Terpakai" (model Rincian Jasa:
+ * tertutup sebagai "+ Catat Part", sukses tetap terbuka & remount agar bisa
+ * mencatat beberapa part beruntun).
+ */
+export function AddPartForm({
   serviceId,
   parts,
 }: {
@@ -408,15 +413,45 @@ function AddPartForm({
   // mungkin terjadi dan sekarang harus mengisi ulang. Catatan saat render
   // (pola "adjusting state when props change").
   const [formKey, setFormKey] = useState(0);
+  const [open, setOpen] = useState(false);
   const [stateSebelumnya, setStateSebelumnya] = useState(state);
   if (state !== stateSebelumnya) {
     setStateSebelumnya(state);
     if (state.success) setFormKey((k) => k + 1);
   }
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="mt-3 w-full rounded-lg border border-slate-300 py-2.5 text-sm font-medium text-foreground active:opacity-90"
+      >
+        + Catat Part
+      </button>
+    );
+  }
+
   return (
-    <form key={formKey} onReset={(e) => e.preventDefault()} action={formAction} className="space-y-3 rounded-xl bg-surface p-4 ring-1 ring-slate-200 shadow-card">
+    <form
+      key={formKey}
+      onReset={(e) => e.preventDefault()}
+      action={formAction}
+      className="mt-3 space-y-3 border-t border-slate-100 pt-3"
+    >
       <input type="hidden" name="serviceId" value={serviceId} />
-      <p className="text-sm font-semibold text-foreground">Catat Part Terpakai</p>
+      <div className="flex items-center justify-between">
+        <p className="text-sm font-semibold text-foreground">
+          Catat Part Terpakai
+        </p>
+        <button
+          type="button"
+          onClick={() => setOpen(false)}
+          className="text-xs font-medium text-primary underline underline-offset-2"
+        >
+          Tutup
+        </button>
+      </div>
       <Msg state={state} />
       <Field label="Part (stok cabang)">
         <PartPicker parts={parts} />
@@ -634,7 +669,6 @@ export function ActionForms({
   mechanics,
   busyMechanics,
   catalog,
-  parts,
   isMechanic,
   isAssignedMechanic,
   appName,
@@ -646,7 +680,6 @@ export function ActionForms({
   mechanics: Mechanic[];
   busyMechanics: Mechanic[];
   catalog: Catalog[];
-  parts: Part[];
   isMechanic: boolean;
   isAssignedMechanic: boolean;
   appName: string;
@@ -753,10 +786,8 @@ export function ActionForms({
         primary = canAdmin ? <QcForm service={service} /> : <TungguQc />;
         others = [
           <DiagnosisForm key="dx" service={service} />,
-          // §B: tambah part = OWNER/ADMIN saja — mekanik tidak memegang form.
-          canAdmin && (
-            <AddPartForm key="part" serviceId={service.id} parts={parts} />
-          ),
+          // §B: tambah part = OWNER/ADMIN saja — form kini menempel di kartu
+          // "Part Terpakai" (page.tsx), bukan lagi di sini.
           canAdmin && (
             <ReassignMechanicForm
               key="mekanik"
@@ -773,9 +804,6 @@ export function ActionForms({
           ) : null;
         others = [
           <DiagnosisForm key="dx" service={service} />,
-          canAdmin && (
-            <AddPartForm key="part" serviceId={service.id} parts={parts} />
-          ),
           canAdmin && (
             <ReassignMechanicForm
               key="mekanik"
@@ -806,7 +834,6 @@ export function ActionForms({
       );
       others = [
         <DiagnosisForm key="dx" service={service} />,
-        canAdmin && <AddPartForm key="part" serviceId={service.id} parts={parts} />,
         canAdmin && (
           <ReassignMechanicForm
             key="mekanik"
